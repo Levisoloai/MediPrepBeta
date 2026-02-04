@@ -19,6 +19,16 @@ const HISTOLOGY_TRIGGERS = [
   'representative image'
 ];
 
+const HISTOLOGY_BASE_URL = (import.meta.env.VITE_HISTOLOGY_BASE_URL || '').trim();
+
+const resolveHistologyUrl = (imageUrl: string) => {
+  if (!imageUrl || !HISTOLOGY_BASE_URL) return imageUrl;
+  if (/^https?:\\/\\//i.test(imageUrl)) return imageUrl;
+  const base = HISTOLOGY_BASE_URL.replace(/\\/$/, '');
+  const path = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
+  return `${base}${path}`;
+};
+
 const normalizeModule = (moduleId?: string | null): HistologyEntry['module'] | null => {
   if (!moduleId) return null;
   const lowered = moduleId.toLowerCase();
@@ -204,7 +214,7 @@ export const attachHistologyToQuestions = (
       histology: {
         id: entry.id,
         title: entry.title,
-        imageUrl: entry.imageUrl,
+        imageUrl: resolveHistologyUrl(entry.imageUrl),
         caption: entry.caption,
         source: entry.source,
         sourceUrl: entry.sourceUrl,
