@@ -292,11 +292,13 @@ const StudySession: React.FC<StudySessionProps> = ({ dueQuestions, onComplete, o
                )}
                
                {/* Tags */}
-               <div className="flex flex-wrap gap-2 pt-2">
-                   {currentQuestion.studyConcepts.map(c => (
-                     <span key={c} className="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded border border-slate-200 font-bold uppercase">{c}</span>
-                   ))}
-               </div>
+               {Array.isArray(currentQuestion.studyConcepts) && currentQuestion.studyConcepts.length > 0 && (
+                 <div className="flex flex-wrap gap-2 pt-2">
+                     {currentQuestion.studyConcepts.map(c => (
+                       <span key={c} className="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded border border-slate-200 font-bold uppercase">{c}</span>
+                     ))}
+                 </div>
+               )}
           </div>
         );
     }
@@ -317,11 +319,13 @@ const StudySession: React.FC<StudySessionProps> = ({ dueQuestions, onComplete, o
            <div className="prose prose-slate max-w-none">
              <h4 className="text-sm font-bold uppercase text-slate-400 tracking-wider">Rationale</h4>
              <div className="text-slate-700 leading-relaxed whitespace-pre-wrap">{renderMessageContent(text)}</div>
-             <div className="mt-4 flex flex-wrap gap-2">
-               {currentQuestion.studyConcepts.map(c => (
-                 <span key={c} className="text-[10px] bg-slate-100 text-slate-600 px-2 py-1 rounded border border-slate-200 font-bold uppercase">{c}</span>
-               ))}
-             </div>
+             {Array.isArray(currentQuestion.studyConcepts) && currentQuestion.studyConcepts.length > 0 && (
+               <div className="mt-4 flex flex-wrap gap-2">
+                 {currentQuestion.studyConcepts.map(c => (
+                   <span key={c} className="text-[10px] bg-slate-100 text-slate-600 px-2 py-1 rounded border border-slate-200 font-bold uppercase">{c}</span>
+                 ))}
+               </div>
+             )}
            </div>
         </div>
       );
@@ -387,11 +391,13 @@ const StudySession: React.FC<StudySessionProps> = ({ dueQuestions, onComplete, o
            )}
 
            {/* Concepts */}
-           <div className="flex flex-wrap gap-2 mt-2">
-               {currentQuestion.studyConcepts.map(c => (
-                 <span key={c} className="text-[10px] bg-slate-100 text-slate-600 px-2 py-1 rounded border border-slate-200 font-bold uppercase">{c}</span>
-               ))}
-           </div>
+           {Array.isArray(currentQuestion.studyConcepts) && currentQuestion.studyConcepts.length > 0 && (
+             <div className="flex flex-wrap gap-2 mt-2">
+                 {currentQuestion.studyConcepts.map(c => (
+                   <span key={c} className="text-[10px] bg-slate-100 text-slate-600 px-2 py-1 rounded border border-slate-200 font-bold uppercase">{c}</span>
+                 ))}
+             </div>
+           )}
       </div>
     );
   };
@@ -445,7 +451,7 @@ const StudySession: React.FC<StudySessionProps> = ({ dueQuestions, onComplete, o
                 )}
               </div>
 
-              {isMC && currentQuestion.options && (
+              {isMC && Array.isArray(currentQuestion.options) && currentQuestion.options.length > 0 && (
                 <div className="space-y-3 mb-8">
                   {currentQuestion.options.map((opt, i) => (
                     <div key={i} className={`p-4 rounded-xl border ${showAnswer && opt === currentQuestion.correctAnswer ? 'bg-green-50 border-green-200 text-green-900 font-medium' : 'bg-slate-50 border-slate-100 text-slate-600'}`}>

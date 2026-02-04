@@ -2329,7 +2329,7 @@ const BetaAnalyticsView: React.FC = () => {
                 </div>
               </div>
 
-              {questionPayload?.options?.length ? (
+              {Array.isArray(questionPayload?.options) && questionPayload.options.length > 0 ? (
                 <div>
                   <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Options</div>
                   <div className="space-y-2">
@@ -2366,7 +2366,7 @@ const BetaAnalyticsView: React.FC = () => {
                 </div>
               </div>
 
-              {questionPayload?.studyConcepts?.length ? (
+              {Array.isArray(questionPayload?.studyConcepts) && questionPayload.studyConcepts.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {questionPayload.studyConcepts.map((concept: string) => (
                     <span
@@ -2528,7 +2528,7 @@ const BetaAnalyticsView: React.FC = () => {
                       {question.questionText}
                     </div>
 
-                    {question.options?.length ? (
+                    {Array.isArray(question.options) && question.options.length > 0 ? (
                       <div className="space-y-2 mb-4">
                         {question.options.map((option, optIdx) => {
                           const isCorrect = option === question.correctAnswer;
@@ -2558,7 +2558,7 @@ const BetaAnalyticsView: React.FC = () => {
                       <div className="text-sm text-slate-600 whitespace-pre-wrap">{question.explanation}</div>
                     </div>
 
-                    {question.studyConcepts?.length ? (
+                    {Array.isArray(question.studyConcepts) && question.studyConcepts.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
                         {question.studyConcepts.map((concept) => (
                           <span

@@ -990,13 +990,15 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ question, index, userId, on
           
           {renderExplanation(question.explanation)}
           
-          <div className="flex flex-wrap gap-2 mt-12 pt-8 border-t border-slate-200/60">
-            {question.studyConcepts.map((concept, i) => (
-              <span key={i} className="px-4 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-500 text-[10px] font-black uppercase tracking-widest shadow-sm">
-                {concept}
-              </span>
-            ))}
-          </div>
+          {Array.isArray(question.studyConcepts) && question.studyConcepts.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-12 pt-8 border-t border-slate-200/60">
+              {question.studyConcepts.map((concept, i) => (
+                <span key={i} className="px-4 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-500 text-[10px] font-black uppercase tracking-widest shadow-sm">
+                  {concept}
+                </span>
+              ))}
+            </div>
+          )}
 
         </div>
       )}

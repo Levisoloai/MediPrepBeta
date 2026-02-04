@@ -108,11 +108,13 @@ const Library: React.FC<LibraryProps> = ({ questions, onRefresh }) => {
                   <td className="p-6">
                     <div className="flex flex-col gap-1.5">
                        <p className="text-sm text-slate-800 font-bold line-clamp-2 tracking-tight leading-snug">{q.questionText}</p>
-                       <div className="flex gap-2">
-                          {q.studyConcepts.slice(0, 2).map(c => (
-                            <span key={c} className="text-[9px] font-black px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200 uppercase tracking-tighter">{c}</span>
-                          ))}
-                       </div>
+                       {Array.isArray(q.studyConcepts) && q.studyConcepts.length > 0 && (
+                         <div className="flex gap-2">
+                            {q.studyConcepts.slice(0, 2).map(c => (
+                              <span key={c} className="text-[9px] font-black px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200 uppercase tracking-tighter">{c}</span>
+                            ))}
+                         </div>
+                       )}
                     </div>
                   </td>
                   <td className="p-6">
