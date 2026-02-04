@@ -1275,11 +1275,11 @@ const App: React.FC = () => {
             )}
           </div>
           <h1 className="mt-5 text-2xl font-black text-slate-800">
-            {emailConfirmState.status === 'success' ? 'Email verified!' : emailConfirmState.status === 'error' ? 'Verification issue' : 'Verifying...'}
+            {emailConfirmState.status === 'success' ? "You're verified" : emailConfirmState.status === 'error' ? 'Verification issue' : 'Verifying...'}
           </h1>
           <p className="mt-3 text-sm text-slate-500">
             {emailConfirmState.status === 'success'
-              ? 'You can now log in and continue using MediPrep.'
+              ? 'Welcome to MediPrep Beta. You can now log in and start practicing.'
               : emailConfirmState.message || 'Hang tight while we confirm your email.'}
           </p>
           <button
@@ -1290,7 +1290,7 @@ const App: React.FC = () => {
             }}
             className="mt-6 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest hover:bg-slate-800"
           >
-            Continue to app
+            Go to MediPrep
           </button>
         </div>
       </div>

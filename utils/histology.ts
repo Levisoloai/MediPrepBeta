@@ -217,9 +217,25 @@ export const attachHistologyToQuestions = (
   options?: { maxPerSession?: number; existingQuestions?: Question[] }
 ) => {
   const module = normalizeModule(moduleId);
-  if (!module) return questions;
+  if (!module) {
+    return questions.map((question) => {
+      if (question.histology) return question;
+      return {
+        ...question,
+        questionText: stripHistologyCue(question.questionText)
+      };
+    });
+  }
   const pool = histologyBank.filter((entry) => entry.module === module);
-  if (pool.length === 0) return questions;
+  if (pool.length === 0) {
+    return questions.map((question) => {
+      if (question.histology) return question;
+      return {
+        ...question,
+        questionText: stripHistologyCue(question.questionText)
+      };
+    });
+  }
 
   const maxPerSession = options?.maxPerSession ?? Math.max(3, Math.round(questions.length * 0.6));
   let attached = 0;
@@ -233,8 +249,13 @@ export const attachHistologyToQuestions = (
   }
 
   return questions.map((question) => {
-    if (attached >= maxPerSession) return question;
     if (question.histology) return question;
+    if (attached >= maxPerSession) {
+      return {
+        ...question,
+        questionText: stripHistologyCue(question.questionText)
+      };
+    }
 
     const cue = hasHistologyCue(question);
     const entry = findBestEntry(question, pool, usage);
@@ -245,7 +266,10 @@ export const attachHistologyToQuestions = (
           questionText: stripHistologyCue(question.questionText)
         };
       }
-      return question;
+      return {
+        ...question,
+        questionText: stripHistologyCue(question.questionText)
+      };
     }
 
     attached += 1;
