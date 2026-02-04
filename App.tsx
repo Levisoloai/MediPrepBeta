@@ -10,7 +10,7 @@ import { generateQuestions, chatWithTutor } from './services/geminiService';
 import { flushFeedbackQueue } from './services/feedbackService';
 import { getPrefabSet, getActivePrefabQuestions } from './services/prefabService';
 import { getApprovedGoldQuestions } from './services/goldQuestionService';
-import { Question, UserPreferences, StudyFile, ChatMessage, QuestionState, StudyGuideItem } from './types';
+import { Question, UserPreferences, StudyFile, ChatMessage, QuestionState, StudyGuideItem, QuestionType, DifficultyLevel, ExamFormat, CardStyle } from './types';
 import { buildFingerprintSet, buildFingerprintVariants, filterDuplicateQuestions } from './utils/questionDedupe';
 import { attachHistologyToQuestions } from './utils/histology';
 import { SparklesIcon, XMarkIcon, ChatBubbleLeftRightIcon, PaperAirplaneIcon, ExclamationTriangleIcon, CheckIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/solid';
@@ -127,6 +127,33 @@ const normalizeQuestionShape = (question: Question): Question => {
 const App: React.FC = () => {
   const LAST_GUIDE_CONTEXT_KEY = 'mediprep_last_guide_context';
   const allowedViews = new Set<ViewMode>(['generate', 'practice', 'remediation', 'deepdive', 'analytics']);
+  const loadBetaPrefs = (): UserPreferences => {
+    const defaults: UserPreferences = {
+      generationMode: 'questions',
+      questionType: QuestionType.MULTIPLE_CHOICE,
+      difficulty: DifficultyLevel.CLINICAL_VIGNETTE,
+      questionCount: 10,
+      autoQuestionCount: false,
+      customInstructions: '',
+      focusedOnWeakness: false,
+      examFormat: ExamFormat.NBME,
+      cardStyle: CardStyle.BASIC
+    };
+    try {
+      const saved = localStorage.getItem('mediprep_beta_prefs');
+      if (!saved) return defaults;
+      const parsed = JSON.parse(saved);
+      const safeCount = Math.min(20, Math.max(3, Number(parsed.questionCount) || defaults.questionCount));
+      return {
+        ...defaults,
+        ...parsed,
+        questionCount: safeCount,
+        autoQuestionCount: Boolean(parsed.autoQuestionCount)
+      };
+    } catch {
+      return defaults;
+    }
+  };
   const onboardingSteps = [
     {
       title: 'Pick a module',
@@ -1060,35 +1087,56 @@ const App: React.FC = () => {
   };
 
   const handleGenerateRemediation = async () => {
-    if (!lastGuideContext) {
-      setError('Remediation needs an active practice session. Generate a new set first.');
-      return;
-    }
     const weakConcepts = practiceSummary.weakConcepts.map(stat => stat.concept);
     if (practiceSummary.totalAnswered === 0 || weakConcepts.length === 0) return;
 
     setIsLoading(true);
     setError(null);
     try {
+      let context = lastGuideContext;
+      if (!context) {
+        const fallbackGuideHash = practiceQuestions.find((q) => q.guideHash)?.guideHash;
+        if (fallbackGuideHash) {
+          const cached = await getPrefabSet(fallbackGuideHash);
+          if (cached?.items?.length) {
+            const reconstructed = cached.items.map((item) => item.content || '').filter(Boolean).join('\n\n');
+            context = {
+              content: reconstructed,
+              prefs: loadBetaPrefs(),
+              guideHash: cached.guideHash,
+              guideItems: cached.items,
+              guideTitle: cached.guideTitle
+            };
+            setLastGuideContext(context);
+          }
+        }
+      }
+
+      if (!context || !context.content?.trim()) {
+        setError('Remediation needs an active practice session. Generate a new set first.');
+        return;
+      }
+
       const focusLine = `Remediation focus: ${weakConcepts.join(', ')}. Emphasize these weaknesses with clear teaching points and NBME-style questions.`;
       const updatedPrefs: UserPreferences = {
-        ...lastGuideContext.prefs,
-        customInstructions: [lastGuideContext.prefs.customInstructions, focusLine].filter(Boolean).join('\n')
+        ...context.prefs,
+        customInstructions: [context.prefs.customInstructions, focusLine].filter(Boolean).join('\n')
       };
       const remediation = await generateQuestions(
-        lastGuideContext.content,
+        context.content,
         [],
         null,
         updatedPrefs
       );
-      const seenFingerprintSet = await ensureSeenFingerprints(lastGuideContext.guideHash || 'custom');
+      const moduleKey = context.guideHash || 'custom';
+      const seenFingerprintSet = await ensureSeenFingerprints(moduleKey);
       const existingSet = buildFingerprintSet(practiceQuestions);
       const union = new Set<string>([...existingSet, ...seenFingerprintSet]);
       const { unique } = filterDuplicateQuestions(remediation, union);
       const generatedTagged = unique.map((q) => ({ ...q, sourceType: 'generated' }));
       const withHistology = attachHistologyToQuestions(
         generatedTagged.map(normalizeQuestionShape),
-        lastGuideContext.moduleId || lastGuideContext.guideTitle || ''
+        context.moduleId || context.guideTitle || ''
       );
       const normalizedRemediation = withHistology.map(normalizeQuestionShape);
       setRemediationQuestions(normalizedRemediation);
@@ -1097,8 +1145,8 @@ const App: React.FC = () => {
         concepts: weakConcepts,
         generatedAt: new Date().toISOString()
       });
-      markQuestionsSeen(lastGuideContext.guideHash || 'custom', normalizedRemediation);
-      await markQuestionsSeenByFingerprint(lastGuideContext.guideHash || 'custom', normalizedRemediation);
+      markQuestionsSeen(moduleKey, normalizedRemediation);
+      await markQuestionsSeenByFingerprint(moduleKey, normalizedRemediation);
       setView('remediation');
     } catch (err: any) {
       setError(err.message || 'Failed to generate remediation questions.');
@@ -1441,8 +1489,7 @@ const App: React.FC = () => {
                                   <div className="mt-2">
                                     <button
                                       onClick={handleGenerateRemediation}
-                                      disabled={isLoading || practiceSummary.totalAnswered === 0 || !lastGuideContext}
-                                      title={!lastGuideContext ? 'Generate a new practice set to enable remediation.' : undefined}
+                                      disabled={isLoading || practiceSummary.totalAnswered === 0}
                                       className="w-full px-2 py-2 rounded-xl bg-indigo-600 text-white text-[9px] font-black uppercase tracking-widest disabled:opacity-50"
                                     >
                                       Generate remediation
