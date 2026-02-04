@@ -1005,6 +1005,12 @@ const App: React.FC = () => {
     setIsChatOpen(true);
   };
 
+  const getTutorTargetQuestion = () => {
+    if (questions.length === 0) return null;
+    const unanswered = questions.find((q) => !practiceStates[q.id]?.selectedOption);
+    return unanswered || questions[0];
+  };
+
   const handleSendChatMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!chatInput.trim() || isChatLoading || !activeQuestionForChat) return;
@@ -1349,6 +1355,29 @@ const App: React.FC = () => {
                )}
 
                {performanceSummary.totalAnswered > 0 && <div className="mb-2" />}
+
+               {questions.length > 0 && (
+                 <div className="mb-6 p-4 rounded-2xl border border-slate-200 bg-white/90 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                   <div>
+                     <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">AI Tutor</div>
+                     <div className="mt-1 text-sm font-semibold text-slate-700">
+                       The tutor has full context of the current question and guides you Socratically.
+                     </div>
+                     <div className="mt-1 text-[11px] text-slate-500">
+                       Ask for hints, next steps, or a deeper explanation.
+                     </div>
+                   </div>
+                   <button
+                     onClick={() => {
+                       const target = getTutorTargetQuestion();
+                       if (target) openChatForQuestion(target);
+                     }}
+                     className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest shadow-sm hover:bg-indigo-700"
+                   >
+                     Open Socratic Tutor
+                   </button>
+                 </div>
+               )}
 
                {prefabExhausted && (
                  <div className="mb-6 p-4 rounded-2xl border border-amber-200 bg-amber-50/80 text-amber-800 shadow-sm">
