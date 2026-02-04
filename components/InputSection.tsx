@@ -152,6 +152,15 @@ const InputSection: React.FC<InputSectionProps> = ({ onGenerate, isLoading }) =>
       </div>
 
       <div className="flex-1 px-8 py-4 flex flex-col gap-8 overflow-y-auto custom-scrollbar">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Getting Started</div>
+          <div className="mt-3 space-y-2 text-sm text-slate-600 font-medium">
+            <div><span className="text-slate-800 font-black">1.</span> Choose a module (Heme or Pulm).</div>
+            <div><span className="text-slate-800 font-black">2.</span> Adjust question count and difficulty.</div>
+            <div><span className="text-slate-800 font-black">3.</span> Generate questions and begin practicing.</div>
+          </div>
+        </div>
+
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {betaGuides.map((guide) => {

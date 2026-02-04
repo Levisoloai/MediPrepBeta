@@ -75,6 +75,20 @@ const normalizeQuestionShape = (question: Question): Question => ({
 
 const App: React.FC = () => {
   const allowedViews = new Set<ViewMode>(['generate', 'practice', 'deepdive', 'analytics']);
+  const onboardingSteps = [
+    {
+      title: 'Pick a module',
+      body: 'Choose Hematology or Pulmonology to load the study guide.'
+    },
+    {
+      title: 'Tune your session',
+      body: 'Set question count, difficulty, and any custom focus before generating.'
+    },
+    {
+      title: 'Practice + review',
+      body: 'Answer, reveal explanations, and use the hover performance summary to spot weak concepts.'
+    }
+  ];
 
   const shuffleList = <T,>(items: T[]) => {
     const arr = [...items];
@@ -99,6 +113,8 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('mediprep_current_view') as ViewMode | null;
     return saved && allowedViews.has(saved) ? saved : 'generate';
   });
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState(0);
 
   const [questions, setQuestions] = useState<Question[]>(() => {
     try {
@@ -510,6 +526,27 @@ const App: React.FC = () => {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    const seen = localStorage.getItem('mediprep_onboarding_seen');
+    if (!seen) {
+      setShowOnboarding(true);
+      setOnboardingStep(0);
+    }
+  }, []);
+
+  const closeOnboarding = () => {
+    setShowOnboarding(false);
+    localStorage.setItem('mediprep_onboarding_seen', '1');
+  };
+
+  const advanceOnboarding = () => {
+    if (onboardingStep >= onboardingSteps.length - 1) {
+      closeOnboarding();
+      return;
+    }
+    setOnboardingStep((prev) => Math.min(prev + 1, onboardingSteps.length - 1));
+  };
 
   useEffect(() => {
     if (user) {
@@ -1070,6 +1107,41 @@ const App: React.FC = () => {
         onClose={() => setIsAuthModalOpen(false)} 
         onLoginSuccess={() => {}}
       />
+
+      {showOnboarding && view === 'generate' && !isAuthModalOpen && (
+        <div className="fixed inset-0 z-[220] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-3xl bg-white border border-slate-200 shadow-2xl p-6">
+            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Getting Started</div>
+            <div className="mt-2 text-xl font-black text-slate-900">{onboardingSteps[onboardingStep].title}</div>
+            <p className="mt-2 text-sm text-slate-600 leading-relaxed">{onboardingSteps[onboardingStep].body}</p>
+            <div className="mt-4 h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-teal-500 to-indigo-500 transition-all"
+                style={{ width: `${Math.round(((onboardingStep + 1) / onboardingSteps.length) * 100)}%` }}
+              />
+            </div>
+            <div className="mt-4 flex items-center justify-between">
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                Step {onboardingStep + 1} of {onboardingSteps.length}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={closeOnboarding}
+                  className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600"
+                >
+                  Skip
+                </button>
+                <button
+                  onClick={advanceOnboarding}
+                  className="px-4 py-2 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-slate-800"
+                >
+                  {onboardingStep >= onboardingSteps.length - 1 ? 'Start Practicing' : 'Next'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Navigation 
         currentView={view} 
