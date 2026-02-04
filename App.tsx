@@ -125,6 +125,7 @@ const normalizeQuestionShape = (question: Question): Question => {
 };
 
 const App: React.FC = () => {
+  const LAST_GUIDE_CONTEXT_KEY = 'mediprep_last_guide_context';
   const allowedViews = new Set<ViewMode>(['generate', 'practice', 'remediation', 'deepdive', 'analytics']);
   const onboardingSteps = [
     {
@@ -236,7 +237,14 @@ const App: React.FC = () => {
     guideItems?: StudyGuideItem[];
     guideTitle?: string;
     moduleId?: 'heme' | 'pulm';
-  } | null>(null);
+  } | null>(() => {
+    try {
+      const saved = localStorage.getItem(LAST_GUIDE_CONTEXT_KEY);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
 
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [activeQuestionForChat, setActiveQuestionForChat] = useState<Question | null>(null);
@@ -459,6 +467,18 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('mediprep_remediation_states', JSON.stringify(remediationStates));
   }, [remediationStates]);
+
+  useEffect(() => {
+    try {
+      if (lastGuideContext) {
+        localStorage.setItem(LAST_GUIDE_CONTEXT_KEY, JSON.stringify(lastGuideContext));
+      } else {
+        localStorage.removeItem(LAST_GUIDE_CONTEXT_KEY);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [lastGuideContext]);
 
   useEffect(() => {
     localStorage.setItem('mediprep_chat_history_by_question', JSON.stringify(chatHistoryByQuestion));
@@ -1040,7 +1060,10 @@ const App: React.FC = () => {
   };
 
   const handleGenerateRemediation = async () => {
-    if (!lastGuideContext) return;
+    if (!lastGuideContext) {
+      setError('Remediation needs an active practice session. Generate a new set first.');
+      return;
+    }
     const weakConcepts = practiceSummary.weakConcepts.map(stat => stat.concept);
     if (practiceSummary.totalAnswered === 0 || weakConcepts.length === 0) return;
 
@@ -1418,7 +1441,8 @@ const App: React.FC = () => {
                                   <div className="mt-2">
                                     <button
                                       onClick={handleGenerateRemediation}
-                                      disabled={isLoading || practiceSummary.totalAnswered === 0}
+                                      disabled={isLoading || practiceSummary.totalAnswered === 0 || !lastGuideContext}
+                                      title={!lastGuideContext ? 'Generate a new practice set to enable remediation.' : undefined}
                                       className="w-full px-2 py-2 rounded-xl bg-indigo-600 text-white text-[9px] font-black uppercase tracking-widest disabled:opacity-50"
                                     >
                                       Generate remediation
