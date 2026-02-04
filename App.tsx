@@ -20,15 +20,19 @@ import { fetchSeenFingerprints, recordSeenQuestions } from './services/seenQuest
 
 type ViewMode = 'generate' | 'practice' | 'deepdive' | 'analytics';
 
+const stripOptionPrefix = (text: string) => String(text ?? '').replace(/^[A-E](?:[\)\.\:]|\s)\s*/i, '').trim();
+
 const normalizeOptions = (raw: any): string[] => {
   if (Array.isArray(raw)) {
-    return raw.map((opt) => String(opt ?? '').trim()).filter((opt) => opt.length > 0);
+    return raw
+      .map((opt) => stripOptionPrefix(opt))
+      .filter((opt) => opt.length > 0);
   }
   if (raw && typeof raw === 'object') {
     const orderedLetterKeys = ['A', 'B', 'C', 'D', 'E', 'a', 'b', 'c', 'd', 'e'];
     const letterValues = orderedLetterKeys
       .filter((key) => Object.prototype.hasOwnProperty.call(raw, key))
-      .map((key) => String(raw[key] ?? '').trim())
+      .map((key) => stripOptionPrefix(raw[key]))
       .filter((opt) => opt.length > 0);
     if (letterValues.length > 0) {
       return letterValues;
@@ -38,17 +42,17 @@ const normalizeOptions = (raw: any): string[] => {
       .sort((a, b) => Number(a) - Number(b));
     if (numericKeys.length > 0) {
       return numericKeys
-        .map((key) => String(raw[key] ?? '').trim())
+        .map((key) => stripOptionPrefix(raw[key]))
         .filter((opt) => opt.length > 0);
     }
     return Object.values(raw)
-      .map((opt) => String(opt ?? '').trim())
+      .map((opt) => stripOptionPrefix(opt))
       .filter((opt) => opt.length > 0);
   }
   if (typeof raw === 'string') {
     return raw
       .split(/\r?\n/)
-      .map((opt) => String(opt ?? '').trim())
+      .map((opt) => stripOptionPrefix(opt))
       .filter((opt) => opt.length > 0);
   }
   return [];
@@ -67,11 +71,58 @@ const normalizeStudyConcepts = (raw: any): string[] => {
   return [];
 };
 
-const normalizeQuestionShape = (question: Question): Question => ({
-  ...question,
-  options: normalizeOptions(question.options),
-  studyConcepts: normalizeStudyConcepts(question.studyConcepts)
-});
+const inferCorrectFromExplanation = (explanation: string, options: string[]) => {
+  if (!explanation) return null;
+  const marker = '**Choice Analysis:**';
+  const idx = explanation.indexOf(marker);
+  if (idx === -1) return null;
+  const after = explanation.slice(idx + marker.length);
+  const lines = after.split('\n').map((line) => line.trim());
+  const tableLines = lines.filter((line) => line.startsWith('|'));
+  if (tableLines.length < 3) return null;
+  const dataLines = tableLines.slice(2);
+  for (const line of dataLines) {
+    const cols = line.split('|').map((c) => c.trim()).filter((c) => c.length > 0);
+    if (cols.length < 2) continue;
+    const optionText = cols[0];
+    const rationale = cols[1] || '';
+    if (!/^correct[:\s]/i.test(rationale)) continue;
+    const normalizedOption = stripOptionPrefix(optionText).toLowerCase();
+    const matched = options.find((opt) => opt.toLowerCase() === normalizedOption)
+      || options.find((opt) => opt.toLowerCase().includes(normalizedOption) || normalizedOption.includes(opt.toLowerCase()));
+    if (matched) return matched;
+  }
+  return null;
+};
+
+const normalizeCorrectAnswer = (raw: any, options: string[], explanation?: string): string => {
+  const answer = String(raw ?? '').trim();
+  if (!answer) return '';
+  const normalizedOptions = options.map((opt) => stripOptionPrefix(opt)).filter(Boolean);
+  const letterMatch = answer.match(/\b([A-E])\b/i);
+  if (letterMatch) {
+    const idx = letterMatch[1].toUpperCase().charCodeAt(0) - 65;
+    if (normalizedOptions[idx]) return normalizedOptions[idx];
+  }
+  const normalizedAnswer = stripOptionPrefix(answer).toLowerCase();
+  const exact = normalizedOptions.find((opt) => opt.toLowerCase() === normalizedAnswer);
+  if (exact) return exact;
+  const partial = normalizedOptions.find((opt) => opt.toLowerCase().includes(normalizedAnswer) || normalizedAnswer.includes(opt.toLowerCase()));
+  if (partial) return partial;
+  const inferred = explanation ? inferCorrectFromExplanation(explanation, normalizedOptions) : null;
+  if (inferred) return inferred;
+  return stripOptionPrefix(answer);
+};
+
+const normalizeQuestionShape = (question: Question): Question => {
+  const normalizedOptions = normalizeOptions(question.options);
+  return {
+    ...question,
+    options: normalizedOptions,
+    correctAnswer: normalizeCorrectAnswer(question.correctAnswer, normalizedOptions, question.explanation),
+    studyConcepts: normalizeStudyConcepts(question.studyConcepts)
+  };
+};
 
 const App: React.FC = () => {
   const allowedViews = new Set<ViewMode>(['generate', 'practice', 'deepdive', 'analytics']);
