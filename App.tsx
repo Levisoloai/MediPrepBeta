@@ -85,38 +85,6 @@ const App: React.FC = () => {
     return arr;
   };
 
-  const hashString = (value: string) => {
-    let hash = 0;
-    for (let i = 0; i < value.length; i += 1) {
-      hash = (hash << 5) - hash + value.charCodeAt(i);
-      hash |= 0;
-    }
-    return Math.abs(hash);
-  };
-
-  const getGuideVariant = useCallback(
-    (guideHash: string) => {
-      const storageKey = `mediprep_ab_variant_${guideHash}`;
-      if (!user?.id) {
-        const stored = localStorage.getItem(storageKey);
-        if (stored === 'gold' || stored === 'guide') return stored;
-      }
-      const seed = `${user?.id || 'anon'}:${guideHash}`;
-      const variant = hashString(seed) % 2 === 0 ? 'gold' : 'guide';
-      if (!user?.id) {
-        localStorage.setItem(storageKey, variant);
-      }
-      return variant;
-    },
-    [user?.id]
-  );
-
-  const shortHash = (value?: string | null) => {
-    if (!value) return 'n/a';
-    if (value.length <= 10) return value;
-    return `${value.slice(0, 6)}…${value.slice(-4)}`;
-  };
-
   const hasSeenFingerprint = useCallback((question: Question, set: Set<string>) => {
     const variants = buildFingerprintVariants(question);
     return variants.some((variant) => set.has(variant));
@@ -198,6 +166,38 @@ const App: React.FC = () => {
   const [sidebarWidth, setSidebarWidth] = useState(400);
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
+
+  const hashString = (value: string) => {
+    let hash = 0;
+    for (let i = 0; i < value.length; i += 1) {
+      hash = (hash << 5) - hash + value.charCodeAt(i);
+      hash |= 0;
+    }
+    return Math.abs(hash);
+  };
+
+  const getGuideVariant = useCallback(
+    (guideHash: string) => {
+      const storageKey = `mediprep_ab_variant_${guideHash}`;
+      if (!user?.id) {
+        const stored = localStorage.getItem(storageKey);
+        if (stored === 'gold' || stored === 'guide') return stored;
+      }
+      const seed = `${user?.id || 'anon'}:${guideHash}`;
+      const variant = hashString(seed) % 2 === 0 ? 'gold' : 'guide';
+      if (!user?.id) {
+        localStorage.setItem(storageKey, variant);
+      }
+      return variant;
+    },
+    [user?.id]
+  );
+
+  const shortHash = (value?: string | null) => {
+    if (!value) return 'n/a';
+    if (value.length <= 10) return value;
+    return `${value.slice(0, 6)}…${value.slice(-4)}`;
+  };
 
   const getSeenKey = useCallback(
     (moduleId: string) => `mediprep_seen_${user?.id || 'anon'}_${moduleId}`,
