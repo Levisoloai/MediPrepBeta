@@ -468,7 +468,9 @@ const App: React.FC = () => {
       pathname === '/auth/confirm' ||
       type === 'signup' ||
       Boolean(tokenHash) ||
-      Boolean(code);
+      Boolean(code) ||
+      Boolean(accessToken) ||
+      Boolean(refreshToken);
 
     if (!isConfirmRoute) return;
 
