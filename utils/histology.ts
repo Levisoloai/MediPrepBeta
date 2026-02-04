@@ -23,8 +23,8 @@ const HISTOLOGY_BASE_URL = (import.meta.env.VITE_HISTOLOGY_BASE_URL || '').trim(
 
 const resolveHistologyUrl = (imageUrl: string) => {
   if (!imageUrl || !HISTOLOGY_BASE_URL) return imageUrl;
-  if (/^https?:\\/\\//i.test(imageUrl)) return imageUrl;
-  const base = HISTOLOGY_BASE_URL.replace(/\\/$/, '');
+  if (/^https?:\/\//i.test(imageUrl)) return imageUrl;
+  const base = HISTOLOGY_BASE_URL.replace(/\/$/, '');
   const path = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
   return `${base}${path}`;
 };
@@ -40,8 +40,8 @@ const normalizeModule = (moduleId?: string | null): HistologyEntry['module'] | n
 const tokenize = (text: string) =>
   (text || '')
     .toLowerCase()
-    .replace(/[^a-z0-9\\s\\-]/g, ' ')
-    .split(/\\s+/)
+    .replace(/[^a-z0-9\s\-]/g, ' ')
+    .split(/\s+/)
     .map((token) => token.trim())
     .filter((token) => token.length >= 3);
 
