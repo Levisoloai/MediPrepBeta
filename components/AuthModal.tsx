@@ -15,6 +15,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSuccess }
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [signupNotice, setSignupNotice] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -33,6 +34,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSuccess }
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        setSignupNotice(null);
       } else {
         const { error } = await supabase.auth.signUp({ 
           email, 
@@ -42,6 +44,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSuccess }
           }
         });
         if (error) throw error;
+        setSignupNotice("Check your email to confirm authorization. Click “confirm your email.” It’s okay if the page says it couldn’t connect to the server — the confirmation still works.");
+        setIsLogin(true);
+        setError(null);
+        return;
       }
       onLoginSuccess();
       onClose();
@@ -80,6 +86,16 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSuccess }
                  <p className="font-bold mb-1">Missing API Key</p>
                  The Supabase <strong>Anon Key</strong> is not set. You must provide the key starting with <code>ey...</code> in your environment variables.
                </div>
+            </div>
+          )}
+
+          {signupNotice && (
+            <div className="mb-6 p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-start gap-3">
+              <CloudIcon className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+              <div className="text-xs text-emerald-800 leading-relaxed">
+                <p className="font-bold mb-1">Confirm your email</p>
+                {signupNotice}
+              </div>
             </div>
           )}
 
@@ -136,7 +152,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSuccess }
 
           <div className="mt-6 text-center">
             <button 
-              onClick={() => { setIsLogin(!isLogin); setError(null); }}
+              onClick={() => { setIsLogin(!isLogin); setError(null); setSignupNotice(null); }}
               className="text-slate-500 text-xs font-bold hover:text-teal-600 transition-colors"
             >
               {isLogin ? "Don't have an account? Sign up" : "Already have an account? Log in"}
