@@ -43,7 +43,7 @@ export interface Question {
   explanation: string;
   studyConcepts: string[];
   difficulty: string;
-  sourceType?: 'generated' | 'gold' | 'prefab' | 'deep-dive';
+  sourceType?: 'generated' | 'gold' | 'prefab' | 'deep-dive' | 'histology';
   abVariant?: 'gold' | 'guide' | 'mixed';
   guideHash?: string;
   histology?: {

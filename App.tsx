@@ -14,13 +14,15 @@ import { Question, UserPreferences, StudyFile, ChatMessage, QuestionState, Study
 import { normalizeOptions, resolveCorrectAnswer } from './utils/answerKey';
 import { buildFingerprintSet, buildFingerprintVariants, filterDuplicateQuestions } from './utils/questionDedupe';
 import { attachHistologyToQuestions } from './utils/histology';
+import { buildHistologyReviewQuestions, selectHistologyEntries, HistologyReviewMode } from './utils/histologyReview';
 import { SparklesIcon, XMarkIcon, ChatBubbleLeftRightIcon, PaperAirplaneIcon, ExclamationTriangleIcon, CheckIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/solid';
 import katex from 'katex';
 import { supabase } from './services/supabaseClient';
 import { fetchSeenFingerprints, recordSeenQuestions } from './services/seenQuestionsService';
 import { trackTutorUsage } from './services/tutorUsageService';
+import { getHistologyVignettes } from './services/histologyReviewService';
 
-type ViewMode = 'generate' | 'practice' | 'remediation' | 'deepdive' | 'analytics';
+type ViewMode = 'generate' | 'practice' | 'remediation' | 'deepdive' | 'histology' | 'analytics';
 
 const normalizeStudyConcepts = (raw: any): string[] => {
   if (Array.isArray(raw)) {
@@ -51,7 +53,7 @@ const normalizeQuestionShape = (question: Question): Question => {
 
 const App: React.FC = () => {
   const LAST_GUIDE_CONTEXT_KEY = 'mediprep_last_guide_context';
-  const allowedViews = new Set<ViewMode>(['generate', 'practice', 'remediation', 'deepdive', 'analytics']);
+  const allowedViews = new Set<ViewMode>(['generate', 'practice', 'remediation', 'deepdive', 'histology', 'analytics']);
   const loadBetaPrefs = (): UserPreferences => {
     const defaults: UserPreferences = {
       generationMode: 'questions',
@@ -194,6 +196,18 @@ const App: React.FC = () => {
     concepts: string[];
     generatedAt: string;
   } | null>(null);
+  const [histologyQuestions, setHistologyQuestions] = useState<Question[]>([]);
+  const [histologyStates, setHistologyStates] = useState<Record<string, QuestionState>>({});
+  const [histologyMode, setHistologyMode] = useState<HistologyReviewMode>(() => {
+    try {
+      const saved = localStorage.getItem('mediprep_histology_mode');
+      return saved === 'diagnosis' ? 'diagnosis' : 'vignette';
+    } catch {
+      return 'vignette';
+    }
+  });
+  const [isHistologyLoading, setIsHistologyLoading] = useState(false);
+  const [histologyError, setHistologyError] = useState<string | null>(null);
   const [lastGuideContext, setLastGuideContext] = useState<{
     content: string;
     prefs: UserPreferences;
@@ -458,6 +472,14 @@ const App: React.FC = () => {
   }, [sessionToolsOpen]);
 
   useEffect(() => {
+    try {
+      localStorage.setItem('mediprep_histology_mode', histologyMode);
+    } catch {
+      // ignore storage errors
+    }
+  }, [histologyMode]);
+
+  useEffect(() => {
     const { pathname, search, hash } = window.location;
     const searchParams = new URLSearchParams(search);
     const hashParams = new URLSearchParams(hash.replace(/^#/, ''));
@@ -589,6 +611,11 @@ const App: React.FC = () => {
   const remediationSummary = React.useMemo(
     () => buildPerformanceSummary(remediationQuestions, remediationStates),
     [remediationQuestions, remediationStates]
+  );
+
+  const histologySummary = React.useMemo(
+    () => buildPerformanceSummary(histologyQuestions, histologyStates),
+    [histologyQuestions, histologyStates]
   );
 
   const abDebug = React.useMemo(() => {
@@ -994,6 +1021,28 @@ const App: React.FC = () => {
     }
   };
 
+  const handleGenerateHistology = async () => {
+    setIsHistologyLoading(true);
+    setHistologyError(null);
+    try {
+      const entries = selectHistologyEntries('heme', 10);
+      const vignettes = histologyMode === 'vignette'
+        ? await getHistologyVignettes(entries)
+        : {};
+      const questions = buildHistologyReviewQuestions({
+        entries,
+        vignettes,
+        mode: histologyMode
+      });
+      setHistologyQuestions(questions);
+      setHistologyStates({});
+    } catch (err: any) {
+      setHistologyError(err?.message || 'Failed to generate histology review.');
+    } finally {
+      setIsHistologyLoading(false);
+    }
+  };
+
   const handleFinishPractice = () => {
     setPracticeQuestions([]);
     setRemediationQuestions([]);
@@ -1362,7 +1411,7 @@ const App: React.FC = () => {
   const canViewAnalytics = isAdmin;
 
   const isRemediationView = view === 'remediation';
-  const isImmersiveView = view === 'practice' || view === 'deepdive' || view === 'remediation';
+  const isImmersiveView = view === 'practice' || view === 'deepdive' || view === 'remediation' || view === 'histology';
   const activeQuestions = isRemediationView ? remediationQuestions : practiceQuestions;
   const activeStates = isRemediationView ? remediationStates : practiceStates;
   const activeSummary = isRemediationView ? remediationSummary : practiceSummary;
@@ -1500,6 +1549,121 @@ const App: React.FC = () => {
                   <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Access Restricted</div>
                   <h3 className="text-lg font-black text-slate-800">Analytics is admin-only</h3>
                   <p className="text-sm text-slate-500 mt-2">Ask an admin to enable analytics access for your account.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {view === 'histology' && (
+            <div
+              className="h-full flex flex-col transition-all duration-300 ease-out p-6 md:p-10"
+            >
+              <div className="mb-4 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                <div className="flex-1">
+                  <h2 className="text-2xl font-black text-slate-800 tracking-tight">Histology Review</h2>
+                  <p className="text-slate-500 text-sm font-medium">
+                    Heme morphology drill with image-first vignettes.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-2xl p-1">
+                    <button
+                      onClick={() => setHistologyMode('vignette')}
+                      className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-colors ${
+                        histologyMode === 'vignette'
+                          ? 'bg-slate-900 text-white'
+                          : 'text-slate-400 hover:text-slate-600'
+                      }`}
+                    >
+                      Vignette
+                    </button>
+                    <button
+                      onClick={() => setHistologyMode('diagnosis')}
+                      className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-colors ${
+                        histologyMode === 'diagnosis'
+                          ? 'bg-slate-900 text-white'
+                          : 'text-slate-400 hover:text-slate-600'
+                      }`}
+                    >
+                      Diagnosis
+                    </button>
+                  </div>
+                  <button
+                    onClick={handleGenerateHistology}
+                    disabled={isHistologyLoading}
+                    className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest shadow-sm hover:bg-indigo-700 disabled:opacity-60"
+                  >
+                    {isHistologyLoading ? 'Generating…' : 'Generate 10'}
+                  </button>
+                </div>
+              </div>
+
+              {histologyError && (
+                <div className="mb-4 p-4 rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 text-sm font-semibold">
+                  {histologyError}
+                </div>
+              )}
+
+              {histologyQuestions.length > 0 && (
+                <div className="mb-6 p-4 rounded-2xl border border-slate-200 bg-white/90 shadow-sm">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Session Progress</div>
+                  <div className="mt-2 flex flex-wrap items-center gap-4 text-[11px] text-slate-600 font-semibold">
+                    <div>
+                      Completed:{' '}
+                      <span className="text-slate-900">
+                        {histologySummary.totalAnswered}/{histologyQuestions.length}
+                      </span>
+                    </div>
+                    {histologySummary.totalAnswered > 0 && (
+                      <div className="text-slate-400">
+                        {Math.round(histologySummary.overallAccuracy * 100)}% accuracy
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-3 h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-teal-500 to-indigo-500"
+                      style={{
+                        width: `${histologyQuestions.length > 0
+                          ? Math.min(100, Math.round((histologySummary.totalAnswered / Math.max(histologyQuestions.length, 1)) * 100))
+                          : 0}%`
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {histologyQuestions.length > 0 ? (
+                <div className="flex-1 overflow-y-auto space-y-8 pb-32 pr-2 custom-scrollbar">
+                  {histologyQuestions.map((q, idx) => (
+                    <QuestionCard
+                      key={q.id}
+                      question={q}
+                      index={idx}
+                      userId={user?.id}
+                      savedState={histologyStates[q.id]}
+                      onStateChange={(s) => setHistologyStates((prev) => ({ ...prev, [q.id]: s }))}
+                      defaultShowHistology
+                    />
+                  ))}
+                </div>
+              ) : !isHistologyLoading ? (
+                <div className="flex-1 flex flex-col items-center justify-center bg-white border border-slate-200 rounded-3xl p-10 text-center shadow-sm">
+                  <div className="text-xs font-black uppercase tracking-widest text-indigo-500 mb-2">Heme only</div>
+                  <h3 className="text-xl font-black text-slate-800 mb-3">Ready to drill morphology?</h3>
+                  <p className="text-sm text-slate-500 mb-6 max-w-sm">
+                    Generate a 10‑question set focused on high‑yield heme histology.
+                  </p>
+                  <button
+                    onClick={handleGenerateHistology}
+                    className="px-6 py-3 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
+                  >
+                    Generate histology set
+                  </button>
+                </div>
+              ) : (
+                <div className="flex-1 flex items-center justify-center text-sm text-slate-500">
+                  Generating histology set…
                 </div>
               )}
             </div>

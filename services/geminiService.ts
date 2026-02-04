@@ -18,6 +18,14 @@ type XaiMessage = {
   content: string;
 };
 
+export type HistologyVignetteSeed = {
+  id: string;
+  title: string;
+  keywords?: string[];
+  conceptTags?: string[];
+  caption?: string;
+};
+
 const callXai = async (
   messages: XaiMessage[],
   model: string,
@@ -688,6 +696,56 @@ Include exactly 5 options per question.
   const parsed = parseJsonFromText(raw);
   const rawQuiz = Array.isArray(parsed?.quiz) ? parsed.quiz : [];
   return normalizeDeepDiveQuiz(rawQuiz, concept);
+};
+
+export const generateHistologyVignettes = async (
+  seeds: HistologyVignetteSeed[]
+): Promise<Record<string, string>> => {
+  if (!seeds || seeds.length === 0) return {};
+  const seedPayload = seeds.map((seed) => ({
+    id: seed.id,
+    title: seed.title,
+    keywords: seed.keywords || [],
+    conceptTags: seed.conceptTags || [],
+    caption: seed.caption || ''
+  }));
+  const prompt = `
+You are a hematopathology educator. Write short, high-yield vignettes for histology review.
+
+Rules:
+- Return ONLY valid JSON.
+- Output format: { "vignettes": [ { "id": "...", "vignette": "..." } ] }.
+- Each vignette: 1-2 sentences max.
+- Do NOT include the exact title text.
+- Do NOT mention answer choices.
+- The vignette should hint at the diagnosis/morphology using key clinical or lab clues.
+- Avoid saying “image provided”; the UI already shows it.
+
+Seeds:
+${JSON.stringify(seedPayload, null, 2)}
+`;
+
+  const messages: XaiMessage[] = [
+    { role: 'system', content: 'You are a precise medical educator. Output only JSON.' },
+    { role: 'user', content: prompt }
+  ];
+
+  const raw = await callXai(messages, DEFAULT_MODEL, 0.2, 120000);
+  const parsed = parseJsonFromText(raw);
+  const items = Array.isArray(parsed?.vignettes)
+    ? parsed.vignettes
+    : Array.isArray(parsed)
+      ? parsed
+      : [];
+  const result: Record<string, string> = {};
+  items.forEach((item: any) => {
+    const id = item?.id;
+    const vignette = typeof item?.vignette === 'string' ? item.vignette.trim() : '';
+    if (id && vignette) {
+      result[id] = vignette;
+    }
+  });
+  return result;
 };
 
 export const generateMentalMap = async (topic: string): Promise<string> => {

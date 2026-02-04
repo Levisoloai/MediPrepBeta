@@ -1,7 +1,7 @@
 import React from 'react';
-import { BeakerIcon, PencilSquareIcon, AcademicCapIcon, SparklesIcon, UserCircleIcon, ChartBarIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
+import { BeakerIcon, PencilSquareIcon, AcademicCapIcon, SparklesIcon, UserCircleIcon, ChartBarIcon, ArrowPathIcon, PhotoIcon } from '@heroicons/react/24/solid';
 
-type ViewMode = 'generate' | 'practice' | 'remediation' | 'deepdive' | 'analytics';
+type ViewMode = 'generate' | 'practice' | 'remediation' | 'deepdive' | 'histology' | 'analytics';
 
 interface NavigationProps {
   currentView: ViewMode;
@@ -30,6 +30,7 @@ const Navigation: React.FC<NavigationProps> = ({
     { id: 'generate', label: 'Generate', icon: BeakerIcon },
     { id: 'practice', label: 'Practice', icon: PencilSquareIcon, count: practiceCount },
     ...(showRemediation ? [{ id: 'remediation', label: 'Remediation', icon: ArrowPathIcon, count: remediationCount }] : []),
+    { id: 'histology', label: 'Histology', icon: PhotoIcon },
     { id: 'deepdive', label: 'Deep Dive', icon: AcademicCapIcon },
     ...(showAnalytics ? [{ id: 'analytics', label: 'Analytics', icon: ChartBarIcon }] : [])
   ];

@@ -13,6 +13,7 @@ interface QuestionCardProps {
   onDelete?: (id: string) => void;
   savedState?: QuestionState;
   onStateChange?: (state: QuestionState) => void;
+  defaultShowHistology?: boolean;
 }
 
 const LAB_VALUES = [
@@ -92,7 +93,16 @@ const CONTENT_TAGS: FeedbackTag[] = [
   'Other'
 ];
 
-const QuestionCard: React.FC<QuestionCardProps> = ({ question, index, userId, onChat, onDelete, savedState, onStateChange }) => {
+const QuestionCard: React.FC<QuestionCardProps> = ({
+  question,
+  index,
+  userId,
+  onChat,
+  onDelete,
+  savedState,
+  onStateChange,
+  defaultShowHistology
+}) => {
   // Initialize state from props (savedState) ONLY. 
   // We do not listen to prop changes for these values to avoid circular update loops (flickering).
   // The unique 'key' prop on the component ensures this resets when the question actually changes.
@@ -100,7 +110,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ question, index, userId, on
   const [selectedOption, setSelectedOption] = useState<string | null>(savedState?.selectedOption || null);
   const [struckOptions, setStruckOptions] = useState<Set<number>>(new Set(savedState?.struckOptions || []));
   const [showLabs, setShowLabs] = useState(false);
-  const [showHistology, setShowHistology] = useState(false);
+  const [showHistology, setShowHistology] = useState(Boolean(defaultShowHistology));
   const [rating, setRating] = useState<number | null>(null);
   const [highlightEnabled, setHighlightEnabled] = useState<boolean>(() => {
     try {
