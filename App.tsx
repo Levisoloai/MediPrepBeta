@@ -469,7 +469,7 @@ const App: React.FC = () => {
       setAbOverride('auto');
       return;
     }
-    const activeGuideHash = abDebug.guideHash || lastGuideContext?.guideHash;
+    const activeGuideHash = lastGuideContext?.guideHash;
     if (!activeGuideHash) {
       setAbOverride('auto');
       return;
@@ -480,7 +480,19 @@ const App: React.FC = () => {
     } else {
       setAbOverride('auto');
     }
-  }, [abDebug.guideHash, isAdmin, lastGuideContext?.guideHash]);
+  }, [isAdmin, lastGuideContext?.guideHash]);
+
+  const handleOverrideChange = (next: 'auto' | 'gold' | 'guide' | 'split') => {
+    setAbOverride(next);
+    const activeGuideHash = lastGuideContext?.guideHash;
+    if (!activeGuideHash) return;
+    const storageKey = `mediprep_ab_override_${activeGuideHash}`;
+    if (next === 'auto') {
+      localStorage.removeItem(storageKey);
+    } else {
+      localStorage.setItem(storageKey, next);
+    }
+  };
 
   useEffect(() => {
     if (!import.meta.env.VITE_XAI_API_KEY) {
@@ -1120,7 +1132,19 @@ const App: React.FC = () => {
           {view === 'analytics' && (
             <div className="animate-in fade-in duration-300">
               {canViewAnalytics ? (
-                <BetaAnalyticsView />
+                <BetaAnalyticsView
+                  abDebug={abDebug}
+                  prefabMeta={prefabMeta ? {
+                    guideHash: prefabMeta.guideHash,
+                    guideTitle: prefabMeta.guideTitle,
+                    totalPrefab: prefabMeta.totalPrefab,
+                    remainingPrefab: prefabMeta.remainingPrefab
+                  } : null}
+                  prefabExhausted={prefabExhausted}
+                  abOverride={abOverride}
+                  onOverrideChange={handleOverrideChange}
+                  lastGuideHash={lastGuideContext?.guideHash ?? null}
+                />
               ) : (
                 <div className="max-w-xl mx-auto mt-16 p-8 bg-white border border-slate-200 rounded-2xl text-center shadow-sm">
                   <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Access Restricted</div>
@@ -1199,62 +1223,34 @@ const App: React.FC = () => {
                   )}
                </div>
 
-               {isAdmin && questions.length > 0 && (
-                 <div className="mb-6 p-3 rounded-2xl border border-slate-200 bg-white/80 shadow-sm">
-                   <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">A/B Debug</div>
+               <div className="mb-6 p-4 rounded-2xl border border-slate-200 bg-white/80 shadow-sm">
+                 <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Performance</div>
+                 {performanceSummary.totalAnswered > 0 ? (
                    <div className="mt-2 flex flex-wrap gap-4 text-[11px] text-slate-600 font-semibold">
-                     <div>Variant: <span className="text-slate-900">{abDebug.variant || 'n/a'}</span></div>
                      <div>
-                       Guide: <span className="text-slate-900">{abDebug.guideTitle || 'n/a'}</span>
-                       {abDebug.guideHash && (
-                         <span className="text-slate-400"> • {shortHash(abDebug.guideHash)}</span>
-                       )}
+                       Accuracy: <span className="text-slate-900">{Math.round(performanceSummary.overallAccuracy * 100)}%</span>
                      </div>
                      <div>
-                       Sources: <span className="text-amber-700">gold {abDebug.counts.gold}</span> •{' '}
-                       <span className="text-indigo-700">prefab {abDebug.counts.prefab}</span> •{' '}
-                       <span className="text-slate-700">generated {abDebug.counts.generated}</span>
+                       Correct/Answered:{' '}
+                       <span className="text-slate-900">
+                         {performanceSummary.totalCorrect}/{performanceSummary.totalAnswered}
+                       </span>
                      </div>
-                     {prefabMeta && (
-                       <div>
-                         Prefab: <span className="text-slate-900">{prefabMeta.totalPrefab}</span>
-                         {typeof prefabMeta.remainingPrefab === 'number' && (
-                           <span className="text-slate-400"> • remaining {prefabMeta.remainingPrefab}</span>
-                         )}
-                         {prefabExhausted && <span className="text-amber-600"> • exhausted</span>}
-                       </div>
-                     )}
-                     <div className="flex items-center gap-2">
-                       <span className="text-slate-500">Override</span>
-                       <select
-                         value={abOverride}
-                         onChange={(e) => {
-                           const next = e.target.value as 'auto' | 'gold' | 'guide' | 'split';
-                           setAbOverride(next);
-                           const activeGuideHash = abDebug.guideHash || lastGuideContext?.guideHash;
-                           if (!activeGuideHash) return;
-                           const storageKey = `mediprep_ab_override_${activeGuideHash}`;
-                           if (next === 'auto') {
-                             localStorage.removeItem(storageKey);
-                           } else {
-                             localStorage.setItem(storageKey, next);
-                           }
-                         }}
-                         disabled={!(abDebug.guideHash || lastGuideContext?.guideHash)}
-                         className="px-2 py-1 rounded-lg border border-slate-200 text-[10px] uppercase tracking-widest text-slate-600 font-black bg-white"
-                       >
-                         <option value="auto">Auto</option>
-                         <option value="gold">Gold</option>
-                         <option value="guide">Guide</option>
-                         <option value="split">50/50</option>
-                       </select>
+                     <div>
+                       Weak concepts:{' '}
+                       <span className="text-slate-900">
+                         {performanceSummary.weakConcepts.length > 0
+                           ? performanceSummary.weakConcepts.slice(0, 3).map((concept) => concept.concept).join(' • ')
+                           : 'None yet'}
+                       </span>
                      </div>
                    </div>
-                   <div className="mt-2 text-[10px] text-slate-400">
-                     Override applies on the next generation for this guide.
+                 ) : (
+                   <div className="mt-2 text-[11px] text-slate-500 font-semibold">
+                     Answer a few questions to unlock performance metrics.
                    </div>
-                 </div>
-               )}
+                 )}
+               </div>
 
                {remediationMeta && (
                  <div className="mb-6 p-4 rounded-2xl border border-indigo-100 bg-indigo-50/60 text-indigo-800 shadow-sm">

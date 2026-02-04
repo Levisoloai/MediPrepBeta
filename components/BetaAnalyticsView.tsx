@@ -61,6 +61,34 @@ type DeepDiveSeedRow = {
   error?: string;
 };
 
+type AbDebugData = {
+  variant: string | null;
+  guideHash: string | null;
+  guideTitle: string | null;
+  counts: {
+    gold: number;
+    prefab: number;
+    generated: number;
+    other: number;
+  };
+};
+
+type AbOverrideOption = 'auto' | 'gold' | 'guide' | 'split';
+
+type AbDebugProps = {
+  abDebug?: AbDebugData | null;
+  prefabMeta?: {
+    guideHash: string;
+    guideTitle?: string;
+    totalPrefab: number;
+    remainingPrefab?: number;
+  } | null;
+  prefabExhausted?: boolean;
+  abOverride?: AbOverrideOption;
+  onOverrideChange?: (value: AbOverrideOption) => void;
+  lastGuideHash?: string | null;
+};
+
 const timeRanges: { id: TimeRange; label: string }[] = [
   { id: '7d', label: 'Last 7 days' },
   { id: '30d', label: 'Last 30 days' },
@@ -204,7 +232,18 @@ const extractPdfText = async (file: File, maxChars: number = 120000) => {
   return fullText.trim();
 };
 
-const BetaAnalyticsView: React.FC = () => {
+const BetaAnalyticsView: React.FC<AbDebugProps> = ({
+  abDebug,
+  prefabMeta,
+  prefabExhausted,
+  abOverride = 'auto',
+  onOverrideChange,
+  lastGuideHash
+}) => {
+  const debugCounts = abDebug?.counts ?? { gold: 0, prefab: 0, generated: 0, other: 0 };
+  const debugGuideTitle = abDebug?.guideTitle ?? 'n/a';
+  const debugGuideHash = abDebug?.guideHash ?? null;
+  const showDebugPanel = Boolean(abDebug || prefabMeta || onOverrideChange);
   const [rows, setRows] = useState<FeedbackRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1374,6 +1413,54 @@ const BetaAnalyticsView: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {showDebugPanel && (
+        <div className="mb-6 p-4 rounded-2xl border border-slate-200 bg-white/90 shadow-sm">
+          <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">A/B Debug</div>
+          <div className="mt-2 flex flex-wrap gap-4 text-[11px] text-slate-600 font-semibold">
+            <div>
+              Variant: <span className="text-slate-900">{abDebug?.variant || 'n/a'}</span>
+            </div>
+            <div>
+              Guide: <span className="text-slate-900">{debugGuideTitle}</span>
+              {debugGuideHash && (
+                <span className="text-slate-400"> • {maskId(debugGuideHash)}</span>
+              )}
+            </div>
+            <div>
+              Sources: <span className="text-amber-700">gold {debugCounts.gold}</span> •{' '}
+              <span className="text-indigo-700">prefab {debugCounts.prefab}</span> •{' '}
+              <span className="text-slate-700">generated {debugCounts.generated}</span>
+            </div>
+            {prefabMeta && (
+              <div>
+                Prefab: <span className="text-slate-900">{prefabMeta.totalPrefab}</span>
+                {typeof prefabMeta.remainingPrefab === 'number' && (
+                  <span className="text-slate-400"> • remaining {prefabMeta.remainingPrefab}</span>
+                )}
+                {prefabExhausted && <span className="text-amber-600"> • exhausted</span>}
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <span className="text-slate-500">Override</span>
+              <select
+                value={abOverride}
+                onChange={(e) => onOverrideChange?.(e.target.value as AbOverrideOption)}
+                disabled={!lastGuideHash || !onOverrideChange}
+                className="px-2 py-1 rounded-lg border border-slate-200 text-[10px] uppercase tracking-widest text-slate-600 font-black bg-white"
+              >
+                <option value="auto">Auto</option>
+                <option value="gold">Gold</option>
+                <option value="guide">Guide</option>
+                <option value="split">50/50</option>
+              </select>
+            </div>
+          </div>
+          <div className="mt-2 text-[10px] text-slate-400">
+            Override applies to the last guide used in Practice.
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="mb-6 p-4 rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 text-sm font-semibold flex items-center gap-3">
