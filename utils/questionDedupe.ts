@@ -11,7 +11,7 @@ const normalizeLegacy = (value: string) =>
     .replace(/\s+/g, ' ');
 
 export const stripOptionLabel = (value: string) =>
-  (value || '').replace(/^[A-E][\).:\-\s]+/i, '').trim();
+  String(value ?? '').replace(/^[A-E][\).:\-\s]+/i, '').trim();
 
 export const normalizeAggressive = (value: string) =>
   HISTOLOGY_SENTENCES.reduce((acc, regex) => acc.replace(regex, ''), value || '')

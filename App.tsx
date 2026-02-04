@@ -20,6 +20,59 @@ import { fetchSeenFingerprints, recordSeenQuestions } from './services/seenQuest
 
 type ViewMode = 'generate' | 'practice' | 'deepdive' | 'analytics';
 
+const normalizeOptions = (raw: any): string[] => {
+  if (Array.isArray(raw)) {
+    return raw.map((opt) => String(opt ?? '').trim()).filter((opt) => opt.length > 0);
+  }
+  if (raw && typeof raw === 'object') {
+    const orderedLetterKeys = ['A', 'B', 'C', 'D', 'E', 'a', 'b', 'c', 'd', 'e'];
+    const letterValues = orderedLetterKeys
+      .filter((key) => Object.prototype.hasOwnProperty.call(raw, key))
+      .map((key) => String(raw[key] ?? '').trim())
+      .filter((opt) => opt.length > 0);
+    if (letterValues.length > 0) {
+      return letterValues;
+    }
+    const numericKeys = Object.keys(raw)
+      .filter((key) => /^\d+$/.test(key))
+      .sort((a, b) => Number(a) - Number(b));
+    if (numericKeys.length > 0) {
+      return numericKeys
+        .map((key) => String(raw[key] ?? '').trim())
+        .filter((opt) => opt.length > 0);
+    }
+    return Object.values(raw)
+      .map((opt) => String(opt ?? '').trim())
+      .filter((opt) => opt.length > 0);
+  }
+  if (typeof raw === 'string') {
+    return raw
+      .split(/\r?\n/)
+      .map((opt) => String(opt ?? '').trim())
+      .filter((opt) => opt.length > 0);
+  }
+  return [];
+};
+
+const normalizeStudyConcepts = (raw: any): string[] => {
+  if (Array.isArray(raw)) {
+    return raw.map((concept) => String(concept ?? '').trim()).filter((concept) => concept.length > 0);
+  }
+  if (typeof raw === 'string') {
+    return raw
+      .split(/[|,]/)
+      .map((concept) => String(concept ?? '').trim())
+      .filter((concept) => concept.length > 0);
+  }
+  return [];
+};
+
+const normalizeQuestionShape = (question: Question): Question => ({
+  ...question,
+  options: normalizeOptions(question.options),
+  studyConcepts: normalizeStudyConcepts(question.studyConcepts)
+});
+
 const App: React.FC = () => {
   const allowedViews = new Set<ViewMode>(['generate', 'practice', 'deepdive', 'analytics']);
 
@@ -82,7 +135,8 @@ const App: React.FC = () => {
   const [questions, setQuestions] = useState<Question[]>(() => {
     try {
       const saved = localStorage.getItem('mediprep_active_questions');
-      return saved ? JSON.parse(saved) : [];
+      const parsed = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) ? parsed.map(normalizeQuestionShape) : [];
     } catch (e) {
       console.warn("Failed to restore questions from storage", e);
       return [];
@@ -316,7 +370,9 @@ const App: React.FC = () => {
       totalAnswered += 1;
       const isCorrect = state.selectedOption === question.correctAnswer;
       if (isCorrect) totalCorrect += 1;
-      const concepts = question.studyConcepts?.length ? question.studyConcepts : ['General'];
+      const concepts = Array.isArray(question.studyConcepts) && question.studyConcepts.length > 0
+        ? question.studyConcepts
+        : ['General'];
       concepts.forEach((concept) => {
         const key = concept?.trim() || 'General';
         const current = stats.get(key) || { attempts: 0, correct: 0 };
@@ -622,13 +678,14 @@ const App: React.FC = () => {
               guideHash
             }
           : q
-      );
+      ).map(normalizeQuestionShape);
       const withHistology = attachHistologyToQuestions(combined, guideModule || guideTitle || '');
-      setQuestions(withHistology);
+      const normalized = withHistology.map(normalizeQuestionShape);
+      setQuestions(normalized);
       setPrefabExhausted(prefabExhaustedNext);
       setRemediationMeta(null);
-      markQuestionsSeen(moduleId, withHistology);
-      await markQuestionsSeenByFingerprint(moduleId, withHistology);
+      markQuestionsSeen(moduleId, normalized);
+      await markQuestionsSeenByFingerprint(moduleId, normalized);
       setPracticeStates({});
       setPrefabMeta(prefabMetaNext);
       setView('practice');
@@ -671,9 +728,10 @@ const App: React.FC = () => {
           abVariant: sessionVariant,
           guideHash: lastGuideContext.guideHash
         }));
-        setQuestions(prev => [...prev, ...nextSlice]);
-        markQuestionsSeen(moduleId, nextSlice);
-        await markQuestionsSeenByFingerprint(moduleId, nextSlice);
+        const normalizedNext = nextSlice.map(normalizeQuestionShape);
+        setQuestions(prev => [...prev, ...normalizedNext]);
+        markQuestionsSeen(moduleId, normalizedNext);
+        await markQuestionsSeenByFingerprint(moduleId, normalizedNext);
         setPrefabExhausted(unseenQuestions.length <= limit);
         return;
       }
@@ -700,13 +758,14 @@ const App: React.FC = () => {
         guideHash: lastGuideContext.guideHash
       }));
       const withHistology = attachHistologyToQuestions(
-        generatedTagged,
+        generatedTagged.map(normalizeQuestionShape),
         lastGuideContext.moduleId || lastGuideContext.guideTitle || '',
         { existingQuestions: questions }
       );
-      setQuestions(prev => [...prev, ...withHistology]);
-      markQuestionsSeen(moduleId, withHistology);
-      await markQuestionsSeenByFingerprint(moduleId, withHistology);
+      const normalizedMore = withHistology.map(normalizeQuestionShape);
+      setQuestions(prev => [...prev, ...normalizedMore]);
+      markQuestionsSeen(moduleId, normalizedMore);
+      await markQuestionsSeenByFingerprint(moduleId, normalizedMore);
       if (prefabMeta) {
         setPrefabMeta({ ...prefabMeta, mode: 'mixed' });
       }
@@ -742,10 +801,11 @@ const App: React.FC = () => {
       const { unique } = filterDuplicateQuestions(remediation, union);
       const generatedTagged = unique.map((q) => ({ ...q, sourceType: 'generated' }));
       const withHistology = attachHistologyToQuestions(
-        generatedTagged,
+        generatedTagged.map(normalizeQuestionShape),
         lastGuideContext.moduleId || lastGuideContext.guideTitle || ''
       );
-      setQuestions(withHistology);
+      const normalizedRemediation = withHistology.map(normalizeQuestionShape);
+      setQuestions(normalizedRemediation);
       setPracticeStates({});
       setPrefabMeta(null);
       setPrefabExhausted(false);
@@ -753,8 +813,8 @@ const App: React.FC = () => {
         concepts: weakConcepts,
         generatedAt: new Date().toISOString()
       });
-      markQuestionsSeen(lastGuideContext.guideHash || 'custom', withHistology);
-      await markQuestionsSeenByFingerprint(lastGuideContext.guideHash || 'custom', withHistology);
+      markQuestionsSeen(lastGuideContext.guideHash || 'custom', normalizedRemediation);
+      await markQuestionsSeenByFingerprint(lastGuideContext.guideHash || 'custom', normalizedRemediation);
       setView('practice');
     } catch (err: any) {
       setError(err.message || 'Failed to generate remediation questions.');

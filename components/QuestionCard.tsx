@@ -481,16 +481,18 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ question, index, userId, on
     if (!parsed) return null;
 
     const normalizedCorrect = normalizeOptionText(question.correctAnswer);
-    const correctIndex = question.options
+    const correctIndex = Array.isArray(question.options)
       ? question.options.findIndex(opt => normalizeOptionText(opt) === normalizedCorrect)
       : -1;
     const answerLabel = correctIndex >= 0 ? String.fromCharCode(65 + correctIndex) : extractOptionLabel(question.correctAnswer);
     const labelOptionText =
-      correctIndex >= 0 && question.options && question.options[correctIndex]
+      correctIndex >= 0 && Array.isArray(question.options) && question.options[correctIndex]
         ? question.options[correctIndex]
         : '';
     const normalizedLabelOption = labelOptionText ? normalizeOptionText(labelOptionText) : '';
-    const optionOrder = question.options ? question.options.map(opt => normalizeOptionText(opt)) : [];
+    const optionOrder = Array.isArray(question.options)
+      ? question.options.map(opt => normalizeOptionText(opt))
+      : [];
 
     const splitIfInstead = (text: string) => {
       const marker = 'if it were instead:';
@@ -915,7 +917,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ question, index, userId, on
           </div>
         )}
 
-        {isMC && question.options && (
+        {isMC && Array.isArray(question.options) && question.options.length > 0 && (
           <div className="space-y-3 mb-10">
             <div className="text-[10px] text-slate-400 text-right font-black uppercase tracking-widest mb-3">Diagnostic Input</div>
             {question.options.map((option, idx) => {
@@ -976,7 +978,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ question, index, userId, on
             <div className="text-slate-900 font-black text-xl bg-green-100/50 border border-green-200 p-6 rounded-2xl text-green-900 shadow-sm">
                {(() => {
                  const normalizedCorrect = normalizeOptionText(question.correctAnswer);
-                 const correctIndex = question.options
+                 const correctIndex = Array.isArray(question.options)
                    ? question.options.findIndex(opt => normalizeOptionText(opt) === normalizedCorrect)
                    : -1;
                  const label = correctIndex >= 0 ? String.fromCharCode(65 + correctIndex) : '';
