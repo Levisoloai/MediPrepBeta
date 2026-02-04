@@ -5,6 +5,7 @@ export const histologyBank: HistologyEntry[] = [
     "id": "heme-auer-rods-aml",
     "module": "heme",
     "title": "Auer rods in AML",
+    "vignette": "Adult with fatigue, bruising, and pancytopenia; smear shows blasts with needle-like cytoplasmic inclusions. Which morphology best fits this finding?",
     "caption": "Myeloblasts with Auer rods (AML).",
     "keywords": [
       "auer",
@@ -40,6 +41,7 @@ export const histologyBank: HistologyEntry[] = [
     "id": "heme-smudge-cells-cll",
     "module": "heme",
     "title": "Smudge cells (CLL)",
+    "vignette": "Older adult with asymptomatic lymphocytosis; smear shows fragile lymphocytes that rupture during slide prep. Which morphology is most likely?",
     "caption": "Smudge cells in peripheral blood smear (CLL).",
     "keywords": [
       "smudge",
@@ -71,6 +73,7 @@ export const histologyBank: HistologyEntry[] = [
     "id": "heme-sickle-cells",
     "module": "heme",
     "title": "Sickle cell blood smear",
+    "vignette": "Young patient with episodic pain crises and anemia; smear shows crescent-shaped RBCs. Which morphology is shown?",
     "caption": "Blood smear showing sickle cells and target cells.",
     "keywords": [
       "sickle",
@@ -101,6 +104,7 @@ export const histologyBank: HistologyEntry[] = [
     "id": "heme-spherocyte",
     "module": "heme",
     "title": "Spherocyte",
+    "vignette": "Hemolytic anemia with increased MCHC; smear shows small dense RBCs lacking central pallor. Which morphology is shown?",
     "caption": "Micrograph of a spherocyte.",
     "keywords": [
       "spherocyte",
@@ -133,6 +137,7 @@ export const histologyBank: HistologyEntry[] = [
     "id": "heme-schistocytes",
     "module": "heme",
     "title": "Schistocytes",
+    "vignette": "Patient with microangiopathic hemolytic anemia; smear shows fragmented RBCs. Which morphology is shown?",
     "caption": "Schistocytes (fragmented red cells).",
     "keywords": [
       "schistocytes",
@@ -170,6 +175,7 @@ export const histologyBank: HistologyEntry[] = [
     "id": "heme-target-cells",
     "module": "heme",
     "title": "Target cells",
+    "vignette": "Patient with thalassemia or liver disease; smear shows RBCs with a bull's-eye appearance. Which morphology is shown?",
     "caption": "Target cells (codocytes) on peripheral smear.",
     "keywords": [
       "target",
@@ -207,6 +213,7 @@ export const histologyBank: HistologyEntry[] = [
     "id": "heme-howell-jolly",
     "module": "heme",
     "title": "Howell-Jolly bodies",
+    "vignette": "Post-splenectomy patient; smear shows basophilic nuclear remnants within RBCs. Which morphology is shown?",
     "caption": "Howell-Jolly bodies in erythrocytes.",
     "keywords": [
       "howell",
@@ -241,6 +248,7 @@ export const histologyBank: HistologyEntry[] = [
     "id": "heme-basophilic-stippling",
     "module": "heme",
     "title": "Basophilic stippling",
+    "vignette": "Patient with lead exposure or thalassemia; smear shows coarse blue granules in RBCs. Which morphology is shown?",
     "caption": "Micrograph showing basophilic stippling.",
     "keywords": [
       "basophilic",
@@ -274,6 +282,7 @@ export const histologyBank: HistologyEntry[] = [
     "id": "heme-hypersegmented-neutrophil",
     "module": "heme",
     "title": "Hypersegmented neutrophil",
+    "vignette": "Macrocytic anemia with B12/folate deficiency; neutrophils with >=5 lobes are present. Which morphology is shown?",
     "caption": "Hypersegmented neutrophil on peripheral smear.",
     "keywords": [
       "hypersegmented",
@@ -307,6 +316,7 @@ export const histologyBank: HistologyEntry[] = [
     "id": "heme-rouleaux",
     "module": "heme",
     "title": "Rouleaux formation",
+    "vignette": "Patient with plasma cell dyscrasia; smear shows RBCs stacked like coins. Which morphology is shown?",
     "caption": "Rouleaux formation in peripheral blood smear.",
     "keywords": [
       "rouleaux",
@@ -337,6 +347,7 @@ export const histologyBank: HistologyEntry[] = [
     "id": "heme-reed-sternberg",
     "module": "heme",
     "title": "Reed-Sternberg cell",
+    "vignette": "Painless lymphadenopathy with B symptoms; biopsy shows a binucleate \"owl-eye\" cell. Which morphology is shown?",
     "caption": "Reed-Sternberg cell in Hodgkin lymphoma.",
     "keywords": [
       "reed",
@@ -364,6 +375,7 @@ export const histologyBank: HistologyEntry[] = [
     "id": "heme-hairy-cell-leukemia",
     "module": "heme",
     "title": "Hairy cell leukemia smear",
+    "vignette": "Middle-aged man with splenomegaly and pancytopenia; smear shows lymphocytes with cytoplasmic projections. Which morphology is shown?",
     "caption": "Hairy cell leukemia on peripheral blood smear.",
     "keywords": [
       "hairy",
@@ -394,6 +406,7 @@ export const histologyBank: HistologyEntry[] = [
     "id": "heme-teardrop-cells",
     "module": "heme",
     "title": "Teardrop cells (dacrocytes)",
+    "vignette": "Patient with myelofibrosis; smear shows tear-shaped RBCs. Which morphology is shown?",
     "caption": "Micrograph of a teardrop cell (dacrocyte).",
     "keywords": [
       "teardrop",

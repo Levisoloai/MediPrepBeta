@@ -192,6 +192,7 @@ export interface HistologyEntry {
   id: string;
   module: 'heme' | 'pulm';
   title: string;
+  vignette?: string;
   caption: string;
   keywords: string[];
   conceptTags: string[];
