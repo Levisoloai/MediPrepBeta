@@ -171,7 +171,7 @@ const App: React.FC = () => {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(0);
 
-  const [questions, setQuestions] = useState<Question[]>(() => {
+  const [practiceQuestions, setPracticeQuestions] = useState<Question[]>(() => {
     try {
       const saved = localStorage.getItem('mediprep_active_questions');
       const parsed = saved ? JSON.parse(saved) : [];
@@ -182,9 +182,29 @@ const App: React.FC = () => {
     }
   });
 
+  const [remediationQuestions, setRemediationQuestions] = useState<Question[]>(() => {
+    try {
+      const saved = localStorage.getItem('mediprep_remediation_questions');
+      const parsed = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) ? parsed.map(normalizeQuestionShape) : [];
+    } catch (e) {
+      console.warn("Failed to restore remediation from storage", e);
+      return [];
+    }
+  });
+
   const [practiceStates, setPracticeStates] = useState<Record<string, QuestionState>>(() => {
     try {
       const saved = localStorage.getItem('mediprep_practice_states');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+
+  const [remediationStates, setRemediationStates] = useState<Record<string, QuestionState>>(() => {
+    try {
+      const saved = localStorage.getItem('mediprep_remediation_states');
       return saved ? JSON.parse(saved) : {};
     } catch (e) {
       return {};
@@ -425,12 +445,20 @@ const App: React.FC = () => {
   }, [view]);
 
   useEffect(() => {
-    localStorage.setItem('mediprep_active_questions', JSON.stringify(questions));
-  }, [questions]);
+    localStorage.setItem('mediprep_active_questions', JSON.stringify(practiceQuestions));
+  }, [practiceQuestions]);
+
+  useEffect(() => {
+    localStorage.setItem('mediprep_remediation_questions', JSON.stringify(remediationQuestions));
+  }, [remediationQuestions]);
 
   useEffect(() => {
     localStorage.setItem('mediprep_practice_states', JSON.stringify(practiceStates));
   }, [practiceStates]);
+
+  useEffect(() => {
+    localStorage.setItem('mediprep_remediation_states', JSON.stringify(remediationStates));
+  }, [remediationStates]);
 
   useEffect(() => {
     localStorage.setItem('mediprep_chat_history_by_question', JSON.stringify(chatHistoryByQuestion));
@@ -438,11 +466,14 @@ const App: React.FC = () => {
 
   useEffect(() => {
     setChatHistoryByQuestion(prev => {
-      if (questions.length === 0) {
+      if (practiceQuestions.length === 0 && remediationQuestions.length === 0) {
         return Object.keys(prev).length > 0 ? {} : prev;
       }
 
-      const activeIds = new Set(questions.map(q => q.id));
+      const activeIds = new Set([
+        ...practiceQuestions.map(q => q.id),
+        ...remediationQuestions.map(q => q.id)
+      ]);
       let changed = false;
       const next: Record<string, ChatMessage[]> = {};
       Object.entries(prev).forEach(([id, history]) => {
@@ -454,15 +485,15 @@ const App: React.FC = () => {
       });
       return changed ? next : prev;
     });
-  }, [questions]);
+  }, [practiceQuestions, remediationQuestions]);
 
-  const performanceSummary = React.useMemo(() => {
+  const buildPerformanceSummary = (items: Question[], states: Record<string, QuestionState>) => {
     const stats = new Map<string, { attempts: number; correct: number }>();
     let totalAnswered = 0;
     let totalCorrect = 0;
 
-    questions.forEach((question) => {
-      const state = practiceStates[question.id];
+    items.forEach((question) => {
+      const state = states[question.id];
       if (!state?.selectedOption) return;
       totalAnswered += 1;
       const isCorrect = state.selectedOption === question.correctAnswer;
@@ -504,7 +535,17 @@ const App: React.FC = () => {
       conceptStats,
       weakConcepts
     };
-  }, [questions, practiceStates]);
+  };
+
+  const practiceSummary = React.useMemo(
+    () => buildPerformanceSummary(practiceQuestions, practiceStates),
+    [practiceQuestions, practiceStates]
+  );
+
+  const remediationSummary = React.useMemo(
+    () => buildPerformanceSummary(remediationQuestions, remediationStates),
+    [remediationQuestions, remediationStates]
+  );
 
   const abDebug = React.useMemo(() => {
     const counts = {
@@ -513,7 +554,7 @@ const App: React.FC = () => {
       generated: 0,
       other: 0
     };
-    questions.forEach((question) => {
+    practiceQuestions.forEach((question) => {
       const src = question.sourceType || 'generated';
       if (src === 'gold') counts.gold += 1;
       else if (src === 'prefab') counts.prefab += 1;
@@ -521,8 +562,8 @@ const App: React.FC = () => {
       else counts.other += 1;
     });
 
-    const variant = questions.find((q) => q.abVariant)?.abVariant || null;
-    const guideHash = questions.find((q) => q.guideHash)?.guideHash || lastGuideContext?.guideHash || null;
+    const variant = practiceQuestions.find((q) => q.abVariant)?.abVariant || null;
+    const guideHash = practiceQuestions.find((q) => q.guideHash)?.guideHash || lastGuideContext?.guideHash || null;
     const guideTitle = lastGuideContext?.guideTitle || null;
 
     return {
@@ -531,7 +572,7 @@ const App: React.FC = () => {
       guideTitle,
       counts
     };
-  }, [questions, lastGuideContext?.guideHash, lastGuideContext?.guideTitle]);
+  }, [practiceQuestions, lastGuideContext?.guideHash, lastGuideContext?.guideTitle]);
 
   const [abOverride, setAbOverride] = useState<'auto' | 'gold' | 'guide' | 'split'>('auto');
 
@@ -591,10 +632,10 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (view === 'remediation' && !remediationMeta) {
+    if (view === 'remediation' && remediationQuestions.length === 0) {
       setView('practice');
     }
-  }, [remediationMeta, view]);
+  }, [remediationQuestions.length, view]);
 
   const closeOnboarding = () => {
     setShowOnboarding(false);
@@ -892,7 +933,9 @@ const App: React.FC = () => {
       ).map(normalizeQuestionShape);
       const withHistology = attachHistologyToQuestions(combined, guideModule || guideTitle || '');
       const normalized = withHistology.map(normalizeQuestionShape);
-      setQuestions(normalized);
+      setPracticeQuestions(normalized);
+      setRemediationQuestions([]);
+      setRemediationStates({});
       setPrefabExhausted(prefabExhaustedNext);
       setRemediationMeta(null);
       markQuestionsSeen(moduleId, normalized);
@@ -908,8 +951,10 @@ const App: React.FC = () => {
   };
 
   const handleFinishPractice = () => {
-    setQuestions([]);
+    setPracticeQuestions([]);
+    setRemediationQuestions([]);
     setPracticeStates({});
+    setRemediationStates({});
     setChatHistory([]);
     setChatHistoryByQuestion({});
     setActiveQuestionForChat(null);
@@ -925,7 +970,7 @@ const App: React.FC = () => {
     if (!lastGuideContext) return;
     const moduleId = lastGuideContext.guideHash || 'custom';
     const seenFingerprintSet = await ensureSeenFingerprints(moduleId);
-    const sessionVariant = questions.find((q) => q.abVariant)?.abVariant;
+    const sessionVariant = practiceQuestions.find((q) => q.abVariant)?.abVariant;
     if (prefabMeta?.mode === 'prefab' && lastGuideContext.guideHash) {
       const cached = await getPrefabSet(lastGuideContext.guideHash);
       const activeQuestions = cached ? getActivePrefabQuestions(cached.questions) : [];
@@ -940,7 +985,7 @@ const App: React.FC = () => {
           guideHash: lastGuideContext.guideHash
         }));
         const normalizedNext = nextSlice.map(normalizeQuestionShape);
-        setQuestions(prev => [...prev, ...normalizedNext]);
+        setPracticeQuestions(prev => [...prev, ...normalizedNext]);
         markQuestionsSeen(moduleId, normalizedNext);
         await markQuestionsSeenByFingerprint(moduleId, normalizedNext);
         if (prefabMeta) {
@@ -966,7 +1011,7 @@ const App: React.FC = () => {
         null,
         lastGuideContext.prefs
       );
-      const existingSet = buildFingerprintSet(questions);
+      const existingSet = buildFingerprintSet(practiceQuestions);
       const union = new Set<string>([...existingSet, ...seenFingerprintSet]);
       const { unique } = filterDuplicateQuestions(more, union);
       const generatedTagged = unique.map((q) => ({
@@ -978,10 +1023,10 @@ const App: React.FC = () => {
       const withHistology = attachHistologyToQuestions(
         generatedTagged.map(normalizeQuestionShape),
         lastGuideContext.moduleId || lastGuideContext.guideTitle || '',
-        { existingQuestions: questions }
+        { existingQuestions: practiceQuestions }
       );
       const normalizedMore = withHistology.map(normalizeQuestionShape);
-      setQuestions(prev => [...prev, ...normalizedMore]);
+      setPracticeQuestions(prev => [...prev, ...normalizedMore]);
       markQuestionsSeen(moduleId, normalizedMore);
       await markQuestionsSeenByFingerprint(moduleId, normalizedMore);
       if (prefabMeta) {
@@ -996,8 +1041,8 @@ const App: React.FC = () => {
 
   const handleGenerateRemediation = async () => {
     if (!lastGuideContext) return;
-    const weakConcepts = performanceSummary.weakConcepts.map(stat => stat.concept);
-    if (weakConcepts.length === 0) return;
+    const weakConcepts = practiceSummary.weakConcepts.map(stat => stat.concept);
+    if (practiceSummary.totalAnswered === 0 || weakConcepts.length === 0) return;
 
     setIsLoading(true);
     setError(null);
@@ -1014,7 +1059,7 @@ const App: React.FC = () => {
         updatedPrefs
       );
       const seenFingerprintSet = await ensureSeenFingerprints(lastGuideContext.guideHash || 'custom');
-      const existingSet = buildFingerprintSet(questions);
+      const existingSet = buildFingerprintSet(practiceQuestions);
       const union = new Set<string>([...existingSet, ...seenFingerprintSet]);
       const { unique } = filterDuplicateQuestions(remediation, union);
       const generatedTagged = unique.map((q) => ({ ...q, sourceType: 'generated' }));
@@ -1023,10 +1068,8 @@ const App: React.FC = () => {
         lastGuideContext.moduleId || lastGuideContext.guideTitle || ''
       );
       const normalizedRemediation = withHistology.map(normalizeQuestionShape);
-      setQuestions(normalizedRemediation);
-      setPracticeStates({});
-      setPrefabMeta(null);
-      setPrefabExhausted(false);
+      setRemediationQuestions(normalizedRemediation);
+      setRemediationStates({});
       setRemediationMeta({
         concepts: weakConcepts,
         generatedAt: new Date().toISOString()
@@ -1042,7 +1085,11 @@ const App: React.FC = () => {
   };
 
   const handleDeleteCurrentQuestion = (id: string) => {
-    setQuestions(prev => prev.filter(q => q.id !== id));
+    if (view === 'remediation') {
+      setRemediationQuestions(prev => prev.filter(q => q.id !== id));
+    } else {
+      setPracticeQuestions(prev => prev.filter(q => q.id !== id));
+    }
     setChatHistoryByQuestion(prev => {
       if (!prev[id]) return prev;
       const next = { ...prev };
@@ -1062,10 +1109,13 @@ const App: React.FC = () => {
     setIsChatOpen(true);
   };
 
-  const getTutorTargetQuestion = () => {
-    if (questions.length === 0) return null;
-    const unanswered = questions.find((q) => !practiceStates[q.id]?.selectedOption);
-    return unanswered || questions[0];
+  const getTutorTargetQuestion = (
+    sourceQuestions: Question[],
+    sourceStates: Record<string, QuestionState>
+  ) => {
+    if (sourceQuestions.length === 0) return null;
+    const unanswered = sourceQuestions.find((q) => !sourceStates[q.id]?.selectedOption);
+    return unanswered || sourceQuestions[0];
   };
 
   const handleSendChatMessage = async (e?: React.FormEvent) => {
@@ -1169,6 +1219,10 @@ const App: React.FC = () => {
 
   const isRemediationView = view === 'remediation';
   const isImmersiveView = view === 'practice' || view === 'deepdive' || view === 'remediation';
+  const activeQuestions = isRemediationView ? remediationQuestions : practiceQuestions;
+  const activeStates = isRemediationView ? remediationStates : practiceStates;
+  const activeSummary = isRemediationView ? remediationSummary : practiceSummary;
+  const setActiveStates = isRemediationView ? setRemediationStates : setPracticeStates;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col md:flex-row overflow-hidden relative selection:bg-teal-100">
@@ -1218,9 +1272,9 @@ const App: React.FC = () => {
       <Navigation 
         currentView={view} 
         setView={(v) => { setView(v as ViewMode); setIsChatOpen(false); }} 
-        practiceCount={remediationMeta ? 0 : questions.length}
-        remediationCount={remediationMeta ? questions.length : 0}
-        showRemediation={Boolean(remediationMeta)}
+        practiceCount={practiceQuestions.length}
+        remediationCount={remediationQuestions.length}
+        showRemediation={remediationQuestions.length > 0 || Boolean(remediationMeta)}
         user={user}
         showAnalytics={canViewAnalytics}
         onLoginClick={() => setIsAuthModalOpen(true)}
@@ -1325,7 +1379,7 @@ const App: React.FC = () => {
                         : 'Questions generated from the selected module.'}
                     </p>
                   </div>
-                  {performanceSummary.totalAnswered > 0 && (
+                  {activeSummary.totalAnswered > 0 && (
                     <div className="group w-full lg:w-auto lg:self-start flex flex-col items-end">
                       <button
                         type="button"
@@ -1333,9 +1387,9 @@ const App: React.FC = () => {
                         className="w-full lg:w-auto inline-flex items-center gap-3 px-4 py-2 rounded-full border border-slate-200 bg-white shadow-sm text-[11px] font-bold text-slate-600 hover:border-indigo-200 hover:shadow-md transition-all"
                       >
                         <span className="text-[10px] uppercase tracking-widest text-slate-400">Performance</span>
-                        <span className="text-slate-900 font-black">{Math.round(performanceSummary.overallAccuracy * 100)}%</span>
+                        <span className="text-slate-900 font-black">{Math.round(activeSummary.overallAccuracy * 100)}%</span>
                         <span className="text-slate-400">
-                          {performanceSummary.totalCorrect}/{performanceSummary.totalAnswered}
+                          {activeSummary.totalCorrect}/{activeSummary.totalAnswered}
                         </span>
                         <span className="text-[10px] text-indigo-600 font-black uppercase tracking-widest">Hover</span>
                       </button>
@@ -1344,44 +1398,48 @@ const App: React.FC = () => {
                         <div className="rounded-2xl border border-slate-200 bg-white shadow-xl p-4">
                           <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Performance Snapshot</div>
                           <div className="mt-1 text-2xl font-black text-slate-800">
-                            {Math.round(performanceSummary.overallAccuracy * 100)}%
+                            {Math.round(activeSummary.overallAccuracy * 100)}%
                           </div>
                           <div className="text-[11px] text-slate-500 mt-0.5">
-                            {performanceSummary.totalCorrect} correct out of {performanceSummary.totalAnswered} answered
+                            {activeSummary.totalCorrect} correct out of {activeSummary.totalAnswered} answered
                           </div>
-                          <div className="mt-2">
-                            <button
-                              onClick={handleGenerateRemediation}
-                              disabled={isLoading || performanceSummary.weakConcepts.length === 0}
-                              className="w-full px-2 py-2 rounded-xl bg-indigo-600 text-white text-[9px] font-black uppercase tracking-widest disabled:opacity-50"
-                            >
-                              Generate remediation
-                            </button>
-                          </div>
-                          <div className="mt-3">
-                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Needs Review</div>
-                            {performanceSummary.weakConcepts.length === 0 ? (
-                              <div className="text-[11px] text-slate-500">Keep going to unlock targeted remediation.</div>
-                            ) : (
-                              <div className="space-y-1.5 max-h-28 overflow-y-auto pr-1 custom-scrollbar">
-                                {performanceSummary.weakConcepts.map((concept) => (
-                                  <div key={concept.concept} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
-                                    <div className="text-[11px] font-semibold text-slate-700">{concept.concept}</div>
-                                    <div className="text-[10px] text-slate-500">
-                                      {Math.round(concept.accuracy * 100)}% • {concept.correct}/{concept.attempts}
-                                    </div>
-                                  </div>
-                                ))}
+                          {!isRemediationView && (
+                            <>
+                              <div className="mt-2">
+                                <button
+                                  onClick={handleGenerateRemediation}
+                                  disabled={isLoading || practiceSummary.totalAnswered === 0}
+                                  className="w-full px-2 py-2 rounded-xl bg-indigo-600 text-white text-[9px] font-black uppercase tracking-widest disabled:opacity-50"
+                                >
+                                  Generate remediation
+                                </button>
                               </div>
-                            )}
-                          </div>
+                              <div className="mt-3">
+                                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Needs Review</div>
+                                {practiceSummary.weakConcepts.length === 0 ? (
+                                  <div className="text-[11px] text-slate-500">Keep going to unlock targeted remediation.</div>
+                                ) : (
+                                  <div className="space-y-1.5 max-h-28 overflow-y-auto pr-1 custom-scrollbar">
+                                    {practiceSummary.weakConcepts.map((concept) => (
+                                      <div key={concept.concept} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
+                                        <div className="text-[11px] font-semibold text-slate-700">{concept.concept}</div>
+                                        <div className="text-[10px] text-slate-500">
+                                          {Math.round(concept.accuracy * 100)}% • {concept.correct}/{concept.attempts}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
                   )}
                </div>
 
-               {questions.length > 0 && (
+               {activeQuestions.length > 0 && (
                  <div className="mb-6 p-4 rounded-2xl border border-slate-200 bg-white/90 shadow-sm">
                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
                      <div className="flex-1">
@@ -1390,12 +1448,12 @@ const App: React.FC = () => {
                          <div>
                            Completed:{' '}
                            <span className="text-slate-900">
-                             {performanceSummary.totalAnswered}/{questions.length}
+                             {activeSummary.totalAnswered}/{activeQuestions.length}
                            </span>
                          </div>
                          <div className="text-slate-400">
-                           {questions.length > 0
-                             ? `${Math.round((performanceSummary.totalAnswered / Math.max(questions.length, 1)) * 100)}%`
+                           {activeQuestions.length > 0
+                             ? `${Math.round((activeSummary.totalAnswered / Math.max(activeQuestions.length, 1)) * 100)}%`
                              : '0%'}
                          </div>
                        </div>
@@ -1403,8 +1461,8 @@ const App: React.FC = () => {
                          <div
                            className="h-full bg-gradient-to-r from-teal-500 to-indigo-500"
                            style={{
-                             width: `${questions.length > 0
-                               ? Math.min(100, Math.round((performanceSummary.totalAnswered / Math.max(questions.length, 1)) * 100))
+                             width: `${activeQuestions.length > 0
+                               ? Math.min(100, Math.round((activeSummary.totalAnswered / Math.max(activeQuestions.length, 1)) * 100))
                                : 0}%`
                            }}
                          />
@@ -1421,13 +1479,13 @@ const App: React.FC = () => {
                        <div className="mt-1 text-[11px] text-slate-500">
                          Ask for hints, next steps, or a deeper explanation.
                        </div>
-                       <button
-                         onClick={() => {
-                           const target = getTutorTargetQuestion();
-                           if (target) openChatForQuestion(target);
-                         }}
-                         className="mt-3 w-full px-4 py-2 rounded-xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest shadow-sm hover:bg-indigo-700"
-                       >
+                         <button
+                           onClick={() => {
+                             const target = getTutorTargetQuestion(activeQuestions, activeStates);
+                             if (target) openChatForQuestion(target);
+                           }}
+                           className="mt-3 w-full px-4 py-2 rounded-xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest shadow-sm hover:bg-indigo-700"
+                         >
                          Open Socratic Tutor
                        </button>
                      </div>
@@ -1435,7 +1493,7 @@ const App: React.FC = () => {
                  </div>
                )}
 
-               {remediationMeta && (
+               {isRemediationView && remediationMeta && (
                  <div className="mb-6 p-4 rounded-2xl border border-indigo-100 bg-indigo-50/60 text-indigo-800 shadow-sm">
                    <div className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Remediation Mode</div>
                    <div className="text-sm font-semibold mt-1">
@@ -1444,9 +1502,9 @@ const App: React.FC = () => {
                  </div>
                )}
 
-               {performanceSummary.totalAnswered > 0 && <div className="mb-2" />}
+               {activeSummary.totalAnswered > 0 && <div className="mb-2" />}
 
-               {prefabExhausted && (
+               {!isRemediationView && prefabExhausted && (
                  <div className="mb-6 p-4 rounded-2xl border border-amber-200 bg-amber-50/80 text-amber-800 shadow-sm">
                    <div className="text-[10px] font-black uppercase tracking-widest text-amber-600">Prefab Pool Exhausted</div>
                    <div className="text-sm font-semibold mt-1">
@@ -1463,9 +1521,9 @@ const App: React.FC = () => {
                  </div>
                )}
                
-               {questions.length > 0 ? (
+               {activeQuestions.length > 0 ? (
                  <div className="flex-1 overflow-y-auto space-y-8 pb-32 pr-2 custom-scrollbar">
-                   {questions.map((q, idx) => (
+                   {activeQuestions.map((q, idx) => (
                      <QuestionCard 
                        key={q.id} 
                        question={q} 
@@ -1473,8 +1531,8 @@ const App: React.FC = () => {
                        userId={user?.id}
                        onChat={openChatForQuestion} 
                        onDelete={handleDeleteCurrentQuestion}
-                       savedState={practiceStates[q.id]}
-                       onStateChange={(s) => setPracticeStates(prev => ({...prev, [q.id]: s}))}
+                       savedState={activeStates[q.id]}
+                       onStateChange={(s) => setActiveStates(prev => ({...prev, [q.id]: s}))}
                      />
                    ))}
                    
@@ -1482,14 +1540,28 @@ const App: React.FC = () => {
                       <div className="w-16 h-16 bg-slate-900 text-white rounded-full flex items-center justify-center mb-4 shadow-lg">
                          <CheckIcon className="w-8 h-8" />
                       </div>
-                      <h3 className="text-xl font-black text-slate-800 mb-2">Session Complete</h3>
-                      <p className="text-slate-500 text-sm mb-6 max-w-sm text-center">Ready for another set? Choose another module or tweak your focus.</p>
-                      {prefabMeta?.mode === 'prefab' && lastGuideContext && (
+                      <h3 className="text-xl font-black text-slate-800 mb-2">
+                        {isRemediationView ? 'Remediation Complete' : 'Session Complete'}
+                      </h3>
+                      <p className="text-slate-500 text-sm mb-6 max-w-sm text-center">
+                        {isRemediationView
+                          ? 'Nice work — switch back to Practice or start a new module.'
+                          : 'Ready for another set? Choose another module or tweak your focus.'}
+                      </p>
+                      {!isRemediationView && prefabMeta?.mode === 'prefab' && lastGuideContext && (
                         <button
                           onClick={handleGenerateMore}
                           className="px-6 py-3 rounded-xl font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 transition-colors flex items-center gap-2 mb-4"
                         >
                           Generate more (uses credits)
+                        </button>
+                      )}
+                      {isRemediationView && (
+                        <button
+                          onClick={() => setView('practice')}
+                          className="px-6 py-3 rounded-xl font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition-colors flex items-center gap-2 mb-4"
+                        >
+                          Return to Practice
                         </button>
                       )}
                       <button 
