@@ -44,6 +44,8 @@ export interface Question {
   studyConcepts: string[];
   difficulty: string;
   sourceType?: 'generated' | 'gold' | 'prefab' | 'deep-dive';
+  abVariant?: 'gold' | 'guide' | 'mixed';
+  guideHash?: string;
   histology?: {
     id: string;
     title: string;
@@ -110,6 +112,11 @@ export interface QuestionFeedbackPayload {
   meta: {
     questionIndex: number;
     capturedAt: string;
+    experiment?: {
+      name: string;
+      variant: string;
+      guideHash?: string;
+    };
   };
 }
 

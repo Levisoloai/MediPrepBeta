@@ -206,20 +206,31 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ question, index, userId, on
     };
   };
 
-  const buildFeedbackPayload = (metrics: ReturnType<typeof computeMetrics>): QuestionFeedbackPayload => ({
-    question,
-    state: {
-      selectedOption,
-      showAnswer,
-      struckOptions: Array.from(struckOptions),
-      highlights
-    },
-    metrics,
-    meta: {
-      questionIndex: index + 1,
-      capturedAt: new Date().toISOString()
-    }
-  });
+  const buildFeedbackPayload = (metrics: ReturnType<typeof computeMetrics>): QuestionFeedbackPayload => {
+    const experiment = question.abVariant
+      ? {
+          name: 'gold_vs_guide',
+          variant: question.abVariant,
+          guideHash: question.guideHash
+        }
+      : undefined;
+
+    return {
+      question,
+      state: {
+        selectedOption,
+        showAnswer,
+        struckOptions: Array.from(struckOptions),
+        highlights
+      },
+      metrics,
+      meta: {
+        questionIndex: index + 1,
+        capturedAt: new Date().toISOString(),
+        ...(experiment ? { experiment } : {})
+      }
+    };
+  };
 
   const getIsCorrect = () => {
     if (!selectedOption) return null;

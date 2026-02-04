@@ -11,7 +11,7 @@ import { flushFeedbackQueue } from './services/feedbackService';
 import { getPrefabSet, getActivePrefabQuestions } from './services/prefabService';
 import { getApprovedGoldQuestions } from './services/goldQuestionService';
 import { Question, UserPreferences, StudyFile, ChatMessage, QuestionState, StudyGuideItem } from './types';
-import { buildFingerprintSet, buildQuestionFingerprint, filterDuplicateQuestions } from './utils/questionDedupe';
+import { buildFingerprintSet, buildFingerprintVariants, filterDuplicateQuestions } from './utils/questionDedupe';
 import { attachHistologyToQuestions } from './utils/histology';
 import { SparklesIcon, XMarkIcon, ChatBubbleLeftRightIcon, PaperAirplaneIcon, ExclamationTriangleIcon, CheckIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/solid';
 import katex from 'katex';
@@ -31,6 +31,48 @@ const App: React.FC = () => {
     }
     return arr;
   };
+
+  const hashString = (value: string) => {
+    let hash = 0;
+    for (let i = 0; i < value.length; i += 1) {
+      hash = (hash << 5) - hash + value.charCodeAt(i);
+      hash |= 0;
+    }
+    return Math.abs(hash);
+  };
+
+  const getGuideVariant = useCallback(
+    (guideHash: string) => {
+      const storageKey = `mediprep_ab_variant_${guideHash}`;
+      if (!user?.id) {
+        const stored = localStorage.getItem(storageKey);
+        if (stored === 'gold' || stored === 'guide') return stored;
+      }
+      const seed = `${user?.id || 'anon'}:${guideHash}`;
+      const variant = hashString(seed) % 2 === 0 ? 'gold' : 'guide';
+      if (!user?.id) {
+        localStorage.setItem(storageKey, variant);
+      }
+      return variant;
+    },
+    [user?.id]
+  );
+
+  const shortHash = (value?: string | null) => {
+    if (!value) return 'n/a';
+    if (value.length <= 10) return value;
+    return `${value.slice(0, 6)}…${value.slice(-4)}`;
+  };
+
+  const hasSeenFingerprint = useCallback((question: Question, set: Set<string>) => {
+    const variants = buildFingerprintVariants(question);
+    return variants.some((variant) => set.has(variant));
+  }, []);
+
+  const addFingerprintsToSet = useCallback((question: Question, set: Set<string>) => {
+    const variants = buildFingerprintVariants(question);
+    variants.forEach((variant) => set.add(variant));
+  }, []);
 
   const [view, setView] = useState<ViewMode>(() => {
     const saved = localStorage.getItem('mediprep_current_view') as ViewMode | null;
@@ -185,9 +227,9 @@ const App: React.FC = () => {
       const set = await ensureSeenFingerprints(moduleId);
       const fresh: Question[] = [];
       list.forEach((q) => {
-        const fingerprint = buildQuestionFingerprint(q);
-        if (set.has(fingerprint)) return;
-        set.add(fingerprint);
+        const variants = buildFingerprintVariants(q);
+        if (variants.some((variant) => set.has(variant))) return;
+        variants.forEach((variant) => set.add(variant));
         fresh.push(q);
       });
       saveSeenFingerprintSet(moduleId, set);
@@ -311,6 +353,33 @@ const App: React.FC = () => {
     };
   }, [questions, practiceStates]);
 
+  const abDebug = React.useMemo(() => {
+    const counts = {
+      gold: 0,
+      prefab: 0,
+      generated: 0,
+      other: 0
+    };
+    questions.forEach((question) => {
+      const src = question.sourceType || 'generated';
+      if (src === 'gold') counts.gold += 1;
+      else if (src === 'prefab') counts.prefab += 1;
+      else if (src === 'generated') counts.generated += 1;
+      else counts.other += 1;
+    });
+
+    const variant = questions.find((q) => q.abVariant)?.abVariant || null;
+    const guideHash = questions.find((q) => q.guideHash)?.guideHash || lastGuideContext?.guideHash || null;
+    const guideTitle = lastGuideContext?.guideTitle || null;
+
+    return {
+      variant,
+      guideHash,
+      guideTitle,
+      counts
+    };
+  }, [questions, lastGuideContext?.guideHash, lastGuideContext?.guideTitle]);
+
   useEffect(() => {
     if (!import.meta.env.VITE_XAI_API_KEY) {
       console.warn("xAI API Key missing in environment variables.");
@@ -395,8 +464,6 @@ const App: React.FC = () => {
     const moduleId = guideHash || 'custom';
 
     const seenFingerprintSet = await ensureSeenFingerprints(moduleId);
-    const filterByFingerprint = (list: Question[]) =>
-      list.filter((q) => !seenFingerprintSet.has(buildQuestionFingerprint(q)));
 
     const histologyInstruction =
       guideModule ? 'Include histology/morphology questions where appropriate. If you reference an image, say "A representative histology image is provided below.".' : '';
@@ -417,47 +484,153 @@ const App: React.FC = () => {
     });
 
     try {
-      let goldQuestions: Question[] = [];
-      let generatedCount = effectivePrefs.questionCount;
-
-      if (guideModule) {
-        try {
-          const approvedGold = await getApprovedGoldQuestions(guideModule);
-          const unseenGold = filterByFingerprint(approvedGold);
-          const targetGold = Math.min(Math.round(effectivePrefs.questionCount / 2), unseenGold.length);
-          goldQuestions = shuffleList(unseenGold)
-            .slice(0, targetGold)
-            .map((q) => ({
-              ...q,
-              sourceType: 'gold',
-              cardStyle: effectivePrefs.cardStyle || q.cardStyle
-            }));
-          generatedCount = Math.max(effectivePrefs.questionCount - goldQuestions.length, 0);
-        } catch {
-          goldQuestions = [];
-          generatedCount = effectivePrefs.questionCount;
+      const workingFingerprints = new Set(seenFingerprintSet);
+      const pickFromPool = (pool: Question[], count: number, shouldShuffle: boolean) => {
+        const list = shouldShuffle ? shuffleList(pool) : pool;
+        const picked: Question[] = [];
+        for (const q of list) {
+          if (hasSeenFingerprint(q, workingFingerprints)) continue;
+          picked.push(q);
+          addFingerprintsToSet(q, workingFingerprints);
+          if (picked.length >= count) break;
         }
+        return picked;
+      };
+
+      const takeGold = async (count: number) => {
+        if (!guideModule || count <= 0) return [];
+        const approvedGold = await getApprovedGoldQuestions(guideModule);
+        const picked = pickFromPool(approvedGold, count, true);
+        return picked.map((q) => ({
+          ...q,
+          sourceType: 'gold',
+          cardStyle: effectivePrefs.cardStyle || q.cardStyle,
+          guideHash
+        }));
+      };
+
+      const takePrefab = async (count: number) => {
+        if (!guideHash || count <= 0) {
+          return { picked: [] as Question[], total: 0, exhausted: false };
+        }
+        const prefab = await getPrefabSet(guideHash);
+        if (!prefab) {
+          return { picked: [] as Question[], total: 0, exhausted: false };
+        }
+        const active = getActivePrefabQuestions(prefab.questions || []);
+        const unseenActive = active.filter((q) => !hasSeenFingerprint(q, workingFingerprints));
+        const picked = unseenActive.slice(0, count);
+        picked.forEach((q) => addFingerprintsToSet(q, workingFingerprints));
+        return {
+          picked: picked.map((q) => ({ ...q, sourceType: 'prefab', guideHash })),
+          total: active.length,
+          exhausted: unseenActive.length <= picked.length
+        };
+      };
+
+      const takeGenerated = async (count: number) => {
+        if (count <= 0) return [];
+        const generated = await generateQuestions(content, [], null, { ...effectivePrefs, questionCount: count });
+        const { unique } = filterDuplicateQuestions(generated, workingFingerprints);
+        const selected = unique.slice(0, count);
+        selected.forEach((q) => addFingerprintsToSet(q, workingFingerprints));
+        return selected.map((q) => ({ ...q, sourceType: 'generated', guideHash }));
+      };
+
+      let goldQuestions: Question[] = [];
+      let guideQuestions: Question[] = [];
+      let sessionVariant: 'gold' | 'guide' | 'mixed' | undefined;
+      let prefabMetaNext: typeof prefabMeta = null;
+      let prefabExhaustedNext = false;
+      let usedFallback = false;
+
+      if (guideModule && guideHash) {
+        const primaryVariant = getGuideVariant(guideHash) as 'gold' | 'guide';
+
+        if (primaryVariant === 'gold') {
+          goldQuestions = await takeGold(effectivePrefs.questionCount);
+          let remaining = effectivePrefs.questionCount - goldQuestions.length;
+          if (remaining > 0) {
+            const prefabResult = await takePrefab(remaining);
+            guideQuestions = prefabResult.picked;
+            remaining -= guideQuestions.length;
+            if (remaining > 0) {
+              const generatedFallback = await takeGenerated(remaining);
+              if (generatedFallback.length > 0) {
+                guideQuestions = [...guideQuestions, ...generatedFallback];
+              }
+            }
+            usedFallback = guideQuestions.length > 0;
+            if (prefabResult.total > 0) {
+              prefabExhaustedNext = prefabResult.exhausted;
+              prefabMetaNext = {
+                mode: usedFallback ? 'mixed' : 'prefab',
+                guideHash,
+                guideTitle,
+                totalPrefab: prefabResult.total
+              };
+            }
+          }
+        } else {
+          const prefabResult = await takePrefab(effectivePrefs.questionCount);
+          guideQuestions = prefabResult.picked;
+          let remaining = effectivePrefs.questionCount - guideQuestions.length;
+          if (remaining > 0) {
+            const generatedFallback = await takeGenerated(remaining);
+            if (generatedFallback.length > 0) {
+              guideQuestions = [...guideQuestions, ...generatedFallback];
+              usedFallback = true;
+            }
+            remaining = effectivePrefs.questionCount - guideQuestions.length;
+          }
+          if (remaining > 0) {
+            const goldFallback = await takeGold(remaining);
+            if (goldFallback.length > 0) {
+              goldQuestions = goldFallback;
+              usedFallback = true;
+            }
+          }
+          if (prefabResult.total > 0) {
+            prefabExhaustedNext = prefabResult.exhausted;
+            prefabMetaNext = {
+              mode: usedFallback ? 'mixed' : 'prefab',
+              guideHash,
+              guideTitle,
+              totalPrefab: prefabResult.total
+            };
+          }
+          sessionVariant = usedFallback ? 'mixed' : primaryVariant;
+        }
+
+        if (!sessionVariant) {
+          sessionVariant = usedFallback ? 'mixed' : primaryVariant;
+        }
+      } else {
+        const generated = await generateQuestions(content, [], null, { ...effectivePrefs, questionCount: effectivePrefs.questionCount });
+        const { unique } = filterDuplicateQuestions(generated, workingFingerprints);
+        guideQuestions = unique.slice(0, effectivePrefs.questionCount).map((q) => ({
+          ...q,
+          sourceType: 'generated'
+        }));
       }
 
-      const generatedQuestions =
-        generatedCount > 0
-          ? await generateQuestions(content, [], null, { ...effectivePrefs, questionCount: generatedCount })
-          : [];
-      const goldFingerprints = buildFingerprintSet(goldQuestions);
-      const unionFingerprints = new Set<string>([...goldFingerprints, ...seenFingerprintSet]);
-      const { unique } = filterDuplicateQuestions(generatedQuestions, unionFingerprints);
-      const combined = shuffleList([
-        ...goldQuestions,
-        ...unique.map((q) => ({ ...q, sourceType: 'generated' }))
-      ]);
+      const combined = shuffleList([...goldQuestions, ...guideQuestions]).map((q) =>
+        sessionVariant
+          ? {
+              ...q,
+              abVariant: sessionVariant,
+              guideHash
+            }
+          : q
+      );
       const withHistology = attachHistologyToQuestions(combined, guideModule || guideTitle || '');
       setQuestions(withHistology);
-      setPrefabExhausted(false);
+      setPrefabExhausted(prefabExhaustedNext);
       setRemediationMeta(null);
       markQuestionsSeen(moduleId, withHistology);
       await markQuestionsSeenByFingerprint(moduleId, withHistology);
       setPracticeStates({});
-      setPrefabMeta(null);
+      setPrefabMeta(prefabMetaNext);
       setView('practice');
     } catch (err: any) {
       setError(err.message || "Failed to generate questions.");
@@ -484,6 +657,7 @@ const App: React.FC = () => {
     if (!lastGuideContext) return;
     const moduleId = lastGuideContext.guideHash || 'custom';
     const seenFingerprintSet = await ensureSeenFingerprints(moduleId);
+    const sessionVariant = questions.find((q) => q.abVariant)?.abVariant;
     if (prefabMeta?.mode === 'prefab' && lastGuideContext.guideHash) {
       const cached = await getPrefabSet(lastGuideContext.guideHash);
       const activeQuestions = cached ? getActivePrefabQuestions(cached.questions) : [];
@@ -492,9 +666,14 @@ const App: React.FC = () => {
         const limit = lastGuideContext.prefs.autoQuestionCount
           ? unseenQuestions.length
           : lastGuideContext.prefs.questionCount;
-        const nextSlice = unseenQuestions.slice(0, limit);
+        const nextSlice = unseenQuestions.slice(0, limit).map((q) => ({
+          ...q,
+          abVariant: sessionVariant,
+          guideHash: lastGuideContext.guideHash
+        }));
         setQuestions(prev => [...prev, ...nextSlice]);
         markQuestionsSeen(moduleId, nextSlice);
+        await markQuestionsSeenByFingerprint(moduleId, nextSlice);
         setPrefabExhausted(unseenQuestions.length <= limit);
         return;
       }
@@ -514,7 +693,12 @@ const App: React.FC = () => {
       const existingSet = buildFingerprintSet(questions);
       const union = new Set<string>([...existingSet, ...seenFingerprintSet]);
       const { unique } = filterDuplicateQuestions(more, union);
-      const generatedTagged = unique.map((q) => ({ ...q, sourceType: 'generated' }));
+      const generatedTagged = unique.map((q) => ({
+        ...q,
+        sourceType: 'generated',
+        abVariant: sessionVariant,
+        guideHash: lastGuideContext.guideHash
+      }));
       const withHistology = attachHistologyToQuestions(
         generatedTagged,
         lastGuideContext.moduleId || lastGuideContext.guideTitle || '',
@@ -860,6 +1044,32 @@ const App: React.FC = () => {
                     </div>
                   )}
                </div>
+
+               {isAdmin && questions.length > 0 && (
+                 <div className="mb-6 p-3 rounded-2xl border border-slate-200 bg-white/80 shadow-sm">
+                   <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">A/B Debug</div>
+                   <div className="mt-2 flex flex-wrap gap-4 text-[11px] text-slate-600 font-semibold">
+                     <div>Variant: <span className="text-slate-900">{abDebug.variant || 'n/a'}</span></div>
+                     <div>
+                       Guide: <span className="text-slate-900">{abDebug.guideTitle || 'n/a'}</span>
+                       {abDebug.guideHash && (
+                         <span className="text-slate-400"> • {shortHash(abDebug.guideHash)}</span>
+                       )}
+                     </div>
+                     <div>
+                       Sources: <span className="text-amber-700">gold {abDebug.counts.gold}</span> •{' '}
+                       <span className="text-indigo-700">prefab {abDebug.counts.prefab}</span> •{' '}
+                       <span className="text-slate-700">generated {abDebug.counts.generated}</span>
+                     </div>
+                     {prefabMeta && (
+                       <div>
+                         Prefab: <span className="text-slate-900">{prefabMeta.totalPrefab}</span>
+                         {prefabExhausted && <span className="text-amber-600"> • exhausted</span>}
+                       </div>
+                     )}
+                   </div>
+                 </div>
+               )}
 
                {remediationMeta && (
                  <div className="mb-6 p-4 rounded-2xl border border-indigo-100 bg-indigo-50/60 text-indigo-800 shadow-sm">

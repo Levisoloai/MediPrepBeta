@@ -1,7 +1,7 @@
 import { supabase } from './supabaseClient';
 import { PrefabQuestionSet, StudyGuideItem, UserPreferences, Question, QuestionType, DifficultyLevel, ExamFormat, CardStyle } from '../types';
 import { generateQuestionsStaged } from './geminiService';
-import { buildFingerprintSet, buildQuestionFingerprint, filterDuplicateQuestions } from '../utils/questionDedupe';
+import { buildFingerprintSet, buildFingerprintVariants, filterDuplicateQuestions } from '../utils/questionDedupe';
 
 type PrefabRow = {
   guide_hash: string;
@@ -364,8 +364,8 @@ export const replacePrefabQuestion = async (
 
   const replacement = generated[0];
   const existingFingerprints = buildFingerprintSet(normalized);
-  const replacementFingerprint = buildQuestionFingerprint(replacement);
-  if (existingFingerprints.has(replacementFingerprint)) {
+  const replacementVariants = buildFingerprintVariants(replacement);
+  if (replacementVariants.some((variant) => existingFingerprints.has(variant))) {
     throw new Error('Replacement matched an existing question. Please try again.');
   }
   const replacementQuestion: Question = {
