@@ -40,7 +40,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSuccess }
           email, 
           password,
           options: {
-            data: { full_name: email.split('@')[0] } 
+            data: { full_name: email.split('@')[0] },
+            emailRedirectTo: `${window.location.origin}/auth/confirm`
           }
         });
         if (error) throw error;

@@ -130,6 +130,10 @@ const App: React.FC = () => {
       return true;
     }
   });
+  const [emailConfirmState, setEmailConfirmState] = useState<{
+    status: 'verifying' | 'success' | 'error';
+    message?: string;
+  } | null>(null);
 
   const [practiceQuestions, setPracticeQuestions] = useState<Question[]>(() => {
     try {
@@ -450,6 +454,55 @@ const App: React.FC = () => {
       // ignore storage errors
     }
   }, [sessionToolsOpen]);
+
+  useEffect(() => {
+    const { pathname, search, hash } = window.location;
+    const searchParams = new URLSearchParams(search);
+    const hashParams = new URLSearchParams(hash.replace(/^#/, ''));
+    const type = searchParams.get('type') || hashParams.get('type');
+    const tokenHash = searchParams.get('token_hash') || hashParams.get('token_hash');
+    const code = searchParams.get('code');
+    const accessToken = hashParams.get('access_token');
+    const refreshToken = hashParams.get('refresh_token');
+    const isConfirmRoute =
+      pathname === '/auth/confirm' ||
+      type === 'signup' ||
+      Boolean(tokenHash) ||
+      Boolean(code);
+
+    if (!isConfirmRoute) return;
+
+    setEmailConfirmState({ status: 'verifying' });
+
+    const verify = async () => {
+      try {
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+        } else if (tokenHash && type) {
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: type as any
+          });
+          if (error) throw error;
+        } else if (accessToken && refreshToken) {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+          if (error) throw error;
+        }
+        setEmailConfirmState({ status: 'success' });
+      } catch (err: any) {
+        setEmailConfirmState({
+          status: 'error',
+          message: err?.message || 'Verification failed. Please try again from the email link.'
+        });
+      }
+    };
+
+    verify();
+  }, []);
 
   useEffect(() => {
     setChatHistoryByQuestion(prev => {
@@ -1207,6 +1260,40 @@ const App: React.FC = () => {
       }
     });
   };
+
+  if (emailConfirmState) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-900 p-6">
+        <div className="max-w-lg w-full bg-white border border-slate-200 rounded-3xl p-8 shadow-xl text-center">
+          <div className={`mx-auto w-16 h-16 rounded-2xl flex items-center justify-center ${emailConfirmState.status === 'success' ? 'bg-emerald-50 text-emerald-600' : emailConfirmState.status === 'error' ? 'bg-rose-50 text-rose-600' : 'bg-slate-100 text-slate-500'}`}>
+            {emailConfirmState.status === 'success' ? (
+              <CheckIcon className="w-8 h-8" />
+            ) : (
+              <ExclamationTriangleIcon className="w-8 h-8" />
+            )}
+          </div>
+          <h1 className="mt-5 text-2xl font-black text-slate-800">
+            {emailConfirmState.status === 'success' ? 'Email verified!' : emailConfirmState.status === 'error' ? 'Verification issue' : 'Verifying...'}
+          </h1>
+          <p className="mt-3 text-sm text-slate-500">
+            {emailConfirmState.status === 'success'
+              ? 'You can now log in and continue using MediPrep.'
+              : emailConfirmState.message || 'Hang tight while we confirm your email.'}
+          </p>
+          <button
+            onClick={() => {
+              window.history.replaceState({}, '', '/');
+              setEmailConfirmState(null);
+              setIsAuthModalOpen(true);
+            }}
+            className="mt-6 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest hover:bg-slate-800"
+          >
+            Continue to app
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!user && !isAuthModalOpen) {
     return (
