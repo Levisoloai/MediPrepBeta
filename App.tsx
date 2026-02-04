@@ -1366,35 +1366,59 @@ const App: React.FC = () => {
                   )}
                </div>
 
-               <div className="mb-6 p-4 rounded-2xl border border-slate-200 bg-white/80 shadow-sm">
-                 <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Practice Tracker</div>
-                 <div className="mt-2 flex flex-wrap items-center gap-4 text-[11px] text-slate-600 font-semibold">
-                   <div>
-                     Completed:{' '}
-                     <span className="text-slate-900">
-                       {performanceSummary.totalAnswered}/{questions.length}
-                     </span>
+               {questions.length > 0 && (
+                 <div className="mb-6 p-4 rounded-2xl border border-slate-200 bg-white/90 shadow-sm">
+                   <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                     <div className="flex-1">
+                       <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Practice Tracker</div>
+                       <div className="mt-2 flex flex-wrap items-center gap-4 text-[11px] text-slate-600 font-semibold">
+                         <div>
+                           Completed:{' '}
+                           <span className="text-slate-900">
+                             {performanceSummary.totalAnswered}/{questions.length}
+                           </span>
+                         </div>
+                         <div className="text-slate-400">
+                           {questions.length > 0
+                             ? `${Math.round((performanceSummary.totalAnswered / Math.max(questions.length, 1)) * 100)}%`
+                             : '0%'}
+                         </div>
+                       </div>
+                       <div className="mt-3 h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                         <div
+                           className="h-full bg-gradient-to-r from-teal-500 to-indigo-500"
+                           style={{
+                             width: `${questions.length > 0
+                               ? Math.min(100, Math.round((performanceSummary.totalAnswered / Math.max(questions.length, 1)) * 100))
+                               : 0}%`
+                           }}
+                         />
+                       </div>
+                       <div className="mt-2 text-[11px] text-slate-500 font-semibold">
+                         Keep going — every question sharpens your pattern recognition.
+                       </div>
+                     </div>
+                     <div className="w-full lg:w-[320px]">
+                       <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">AI Tutor</div>
+                       <div className="mt-1 text-sm font-semibold text-slate-700">
+                         Socratic tutor with full question context.
+                       </div>
+                       <div className="mt-1 text-[11px] text-slate-500">
+                         Ask for hints, next steps, or a deeper explanation.
+                       </div>
+                       <button
+                         onClick={() => {
+                           const target = getTutorTargetQuestion();
+                           if (target) openChatForQuestion(target);
+                         }}
+                         className="mt-3 w-full px-4 py-2 rounded-xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest shadow-sm hover:bg-indigo-700"
+                       >
+                         Open Socratic Tutor
+                       </button>
+                     </div>
                    </div>
-                   <div className="text-slate-400">
-                     {questions.length > 0
-                       ? `${Math.round((performanceSummary.totalAnswered / Math.max(questions.length, 1)) * 100)}%`
-                       : '0%'}
-                   </div>
                  </div>
-                 <div className="mt-3 h-2 w-full rounded-full bg-slate-100 overflow-hidden">
-                   <div
-                     className="h-full bg-gradient-to-r from-teal-500 to-indigo-500"
-                     style={{
-                       width: `${questions.length > 0
-                         ? Math.min(100, Math.round((performanceSummary.totalAnswered / Math.max(questions.length, 1)) * 100))
-                         : 0}%`
-                     }}
-                   />
-                 </div>
-                 <div className="mt-2 text-[11px] text-slate-500 font-semibold">
-                   Keep going — every question sharpens your pattern recognition.
-                 </div>
-               </div>
+               )}
 
                {remediationMeta && (
                  <div className="mb-6 p-4 rounded-2xl border border-indigo-100 bg-indigo-50/60 text-indigo-800 shadow-sm">
@@ -1406,29 +1430,6 @@ const App: React.FC = () => {
                )}
 
                {performanceSummary.totalAnswered > 0 && <div className="mb-2" />}
-
-               {questions.length > 0 && (
-                 <div className="mb-6 p-4 rounded-2xl border border-slate-200 bg-white/90 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                   <div>
-                     <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">AI Tutor</div>
-                     <div className="mt-1 text-sm font-semibold text-slate-700">
-                       The tutor has full context of the current question and guides you Socratically.
-                     </div>
-                     <div className="mt-1 text-[11px] text-slate-500">
-                       Ask for hints, next steps, or a deeper explanation.
-                     </div>
-                   </div>
-                   <button
-                     onClick={() => {
-                       const target = getTutorTargetQuestion();
-                       if (target) openChatForQuestion(target);
-                     }}
-                     className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest shadow-sm hover:bg-indigo-700"
-                   >
-                     Open Socratic Tutor
-                   </button>
-                 </div>
-               )}
 
                {prefabExhausted && (
                  <div className="mb-6 p-4 rounded-2xl border border-amber-200 bg-amber-50/80 text-amber-800 shadow-sm">
