@@ -194,7 +194,7 @@ const App: React.FC = () => {
     (guideHash: string) => {
       if (!isAdmin) return null;
       const stored = localStorage.getItem(`mediprep_ab_override_${guideHash}`);
-      if (stored === 'gold' || stored === 'guide') return stored;
+      if (stored === 'gold' || stored === 'guide' || stored === 'split') return stored;
       return null;
     },
     [isAdmin]
@@ -462,7 +462,7 @@ const App: React.FC = () => {
     };
   }, [questions, lastGuideContext?.guideHash, lastGuideContext?.guideTitle]);
 
-  const [abOverride, setAbOverride] = useState<'auto' | 'gold' | 'guide'>('auto');
+  const [abOverride, setAbOverride] = useState<'auto' | 'gold' | 'guide' | 'split'>('auto');
 
   useEffect(() => {
     if (!isAdmin) {
@@ -475,7 +475,7 @@ const App: React.FC = () => {
       return;
     }
     const stored = localStorage.getItem(`mediprep_ab_override_${activeGuideHash}`);
-    if (stored === 'gold' || stored === 'guide') {
+    if (stored === 'gold' || stored === 'guide' || stored === 'split') {
       setAbOverride(stored);
     } else {
       setAbOverride('auto');
@@ -649,9 +649,58 @@ const App: React.FC = () => {
       let usedFallback = false;
 
       if (guideModule && guideHash) {
-        const primaryVariant = getGuideVariant(guideHash) as 'gold' | 'guide';
+        const primaryVariant = getGuideVariant(guideHash) as 'gold' | 'guide' | 'split';
 
-        if (primaryVariant === 'gold') {
+        if (primaryVariant === 'split') {
+          const goldTarget = Math.ceil(effectivePrefs.questionCount / 2);
+          const prefabTarget = Math.max(0, effectivePrefs.questionCount - goldTarget);
+          goldQuestions = await takeGold(goldTarget);
+          const prefabResult = await takePrefab(prefabTarget);
+          guideQuestions = prefabResult.picked;
+          let remaining = effectivePrefs.questionCount - goldQuestions.length - guideQuestions.length;
+          if (remaining > 0 && guideQuestions.length < prefabTarget) {
+            const goldFallback = await takeGold(Math.min(remaining, goldTarget - goldQuestions.length));
+            if (goldFallback.length > 0) {
+              goldQuestions = [...goldQuestions, ...goldFallback];
+              remaining = effectivePrefs.questionCount - goldQuestions.length - guideQuestions.length;
+            }
+          }
+          if (remaining > 0 && goldQuestions.length < goldTarget) {
+            const prefabFallback = await takePrefab(remaining);
+            if (prefabFallback.picked.length > 0) {
+              guideQuestions = [...guideQuestions, ...prefabFallback.picked];
+              remaining = effectivePrefs.questionCount - goldQuestions.length - guideQuestions.length;
+              if (prefabFallback.total > 0) {
+                prefabExhaustedNext = prefabFallback.exhausted;
+                prefabMetaNext = {
+                  mode: 'mixed',
+                  guideHash,
+                  guideTitle,
+                  totalPrefab: prefabFallback.total,
+                  remainingPrefab: prefabFallback.remaining
+                };
+              }
+            }
+          }
+          if (remaining > 0) {
+            const generatedFallback = await takeGenerated(remaining);
+            if (generatedFallback.length > 0) {
+              guideQuestions = [...guideQuestions, ...generatedFallback];
+            }
+          }
+          usedFallback = goldQuestions.length !== goldTarget || guideQuestions.length !== prefabTarget;
+          if (prefabResult.total > 0) {
+            prefabExhaustedNext = prefabResult.exhausted;
+            prefabMetaNext = {
+              mode: 'mixed',
+              guideHash,
+              guideTitle,
+              totalPrefab: prefabResult.total,
+              remainingPrefab: prefabResult.remaining
+            };
+          }
+          sessionVariant = 'mixed';
+        } else if (primaryVariant === 'gold') {
           goldQuestions = await takeGold(effectivePrefs.questionCount);
           let remaining = effectivePrefs.questionCount - goldQuestions.length;
           if (remaining > 0) {
@@ -1180,7 +1229,7 @@ const App: React.FC = () => {
                        <select
                          value={abOverride}
                          onChange={(e) => {
-                           const next = e.target.value as 'auto' | 'gold' | 'guide';
+                           const next = e.target.value as 'auto' | 'gold' | 'guide' | 'split';
                            setAbOverride(next);
                            const activeGuideHash = abDebug.guideHash || lastGuideContext?.guideHash;
                            if (!activeGuideHash) return;
@@ -1197,6 +1246,7 @@ const App: React.FC = () => {
                          <option value="auto">Auto</option>
                          <option value="gold">Gold</option>
                          <option value="guide">Guide</option>
+                         <option value="split">50/50</option>
                        </select>
                      </div>
                    </div>
