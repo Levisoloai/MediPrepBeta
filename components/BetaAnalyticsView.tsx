@@ -584,16 +584,40 @@ const BetaAnalyticsView: React.FC = () => {
 
   const openGoldEditor = (row: GoldQuestionRow) => {
     const q = row.question || ({} as Question);
-    const optionsText = (q.options || [])
+    const rawOptions = q.options;
+    const optionsList = Array.isArray(rawOptions)
+      ? rawOptions
+      : typeof rawOptions === 'string'
+        ? rawOptions
+            .split(/\r?\n/)
+            .map((line) => String(line ?? '').trim())
+            .filter((line) => line.length > 0)
+        : rawOptions && typeof rawOptions === 'object'
+          ? Object.values(rawOptions)
+              .map((opt) => String(opt ?? '').trim())
+              .filter((opt) => opt.length > 0)
+          : [];
+    const optionsText = optionsList
       .map((opt, idx) => `${String.fromCharCode(65 + idx)}. ${opt}`)
       .join('\n');
+    const rawConcepts = q.studyConcepts;
+    const studyConceptsText = (
+      Array.isArray(rawConcepts)
+        ? rawConcepts
+        : typeof rawConcepts === 'string'
+          ? rawConcepts.split(/[|,]/)
+          : []
+    )
+      .map((concept) => String(concept ?? '').trim())
+      .filter((concept) => concept.length > 0)
+      .join(', ');
     setGoldForm({
       module: row.module,
       questionText: q.questionText || '',
       optionsText,
       correctAnswer: q.correctAnswer || '',
       explanation: q.explanation || '',
-      studyConceptsText: (q.studyConcepts || []).join(', '),
+      studyConceptsText,
       difficulty: q.difficulty || 'Clinical vignette',
       status: row.status
     });
