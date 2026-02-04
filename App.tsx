@@ -1379,62 +1379,74 @@ const App: React.FC = () => {
                         : 'Questions generated from the selected module.'}
                     </p>
                   </div>
-                  {activeSummary.totalAnswered > 0 && (
-                    <div className="group w-full lg:w-auto lg:self-start flex flex-col items-end">
-                      <button
-                        type="button"
-                        tabIndex={0}
-                        className="w-full lg:w-auto inline-flex items-center gap-3 px-4 py-2 rounded-full border border-slate-200 bg-white shadow-sm text-[11px] font-bold text-slate-600 hover:border-indigo-200 hover:shadow-md transition-all"
-                      >
-                        <span className="text-[10px] uppercase tracking-widest text-slate-400">Performance</span>
-                        <span className="text-slate-900 font-black">{Math.round(activeSummary.overallAccuracy * 100)}%</span>
-                        <span className="text-slate-400">
-                          {activeSummary.totalCorrect}/{activeSummary.totalAnswered}
-                        </span>
-                        <span className="text-[10px] text-indigo-600 font-black uppercase tracking-widest">Hover</span>
-                      </button>
+                  {(isRemediationView || activeSummary.totalAnswered > 0) && (
+                    <div className="flex flex-col items-end gap-2 w-full lg:w-auto lg:self-start">
+                      {isRemediationView && (
+                        <button
+                          onClick={() => setView('practice')}
+                          className="px-3 py-2 rounded-full border border-slate-200 bg-white text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-indigo-600 hover:border-indigo-200"
+                        >
+                          Back to Practice
+                        </button>
+                      )}
+                      {activeSummary.totalAnswered > 0 && (
+                        <div className="group w-full lg:w-auto flex flex-col items-end">
+                          <button
+                            type="button"
+                            tabIndex={0}
+                            className="w-full lg:w-auto inline-flex items-center gap-3 px-4 py-2 rounded-full border border-slate-200 bg-white shadow-sm text-[11px] font-bold text-slate-600 hover:border-indigo-200 hover:shadow-md transition-all"
+                          >
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Performance</span>
+                            <span className="text-slate-900 font-black">{Math.round(activeSummary.overallAccuracy * 100)}%</span>
+                            <span className="text-slate-400">
+                              {activeSummary.totalCorrect}/{activeSummary.totalAnswered}
+                            </span>
+                            <span className="text-[10px] text-indigo-600 font-black uppercase tracking-widest">Hover</span>
+                          </button>
 
-                      <div className="w-full lg:w-[340px] mt-0 group-hover:mt-3 group-focus-within:mt-3 max-h-0 opacity-0 pointer-events-none overflow-hidden transition-all duration-200 group-hover:max-h-[480px] group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:max-h-[480px] group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
-                        <div className="rounded-2xl border border-slate-200 bg-white shadow-xl p-4">
-                          <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Performance Snapshot</div>
-                          <div className="mt-1 text-2xl font-black text-slate-800">
-                            {Math.round(activeSummary.overallAccuracy * 100)}%
-                          </div>
-                          <div className="text-[11px] text-slate-500 mt-0.5">
-                            {activeSummary.totalCorrect} correct out of {activeSummary.totalAnswered} answered
-                          </div>
-                          {!isRemediationView && (
-                            <>
-                              <div className="mt-2">
-                                <button
-                                  onClick={handleGenerateRemediation}
-                                  disabled={isLoading || practiceSummary.totalAnswered === 0}
-                                  className="w-full px-2 py-2 rounded-xl bg-indigo-600 text-white text-[9px] font-black uppercase tracking-widest disabled:opacity-50"
-                                >
-                                  Generate remediation
-                                </button>
+                          <div className="w-full lg:w-[340px] mt-0 group-hover:mt-3 group-focus-within:mt-3 max-h-0 opacity-0 pointer-events-none overflow-hidden transition-all duration-200 group-hover:max-h-[480px] group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:max-h-[480px] group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
+                            <div className="rounded-2xl border border-slate-200 bg-white shadow-xl p-4">
+                              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Performance Snapshot</div>
+                              <div className="mt-1 text-2xl font-black text-slate-800">
+                                {Math.round(activeSummary.overallAccuracy * 100)}%
                               </div>
-                              <div className="mt-3">
-                                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Needs Review</div>
-                                {practiceSummary.weakConcepts.length === 0 ? (
-                                  <div className="text-[11px] text-slate-500">Keep going to unlock targeted remediation.</div>
-                                ) : (
-                                  <div className="space-y-1.5 max-h-28 overflow-y-auto pr-1 custom-scrollbar">
-                                    {practiceSummary.weakConcepts.map((concept) => (
-                                      <div key={concept.concept} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
-                                        <div className="text-[11px] font-semibold text-slate-700">{concept.concept}</div>
-                                        <div className="text-[10px] text-slate-500">
-                                          {Math.round(concept.accuracy * 100)}% • {concept.correct}/{concept.attempts}
-                                        </div>
-                                      </div>
-                                    ))}
+                              <div className="text-[11px] text-slate-500 mt-0.5">
+                                {activeSummary.totalCorrect} correct out of {activeSummary.totalAnswered} answered
+                              </div>
+                              {!isRemediationView && (
+                                <>
+                                  <div className="mt-2">
+                                    <button
+                                      onClick={handleGenerateRemediation}
+                                      disabled={isLoading || practiceSummary.totalAnswered === 0}
+                                      className="w-full px-2 py-2 rounded-xl bg-indigo-600 text-white text-[9px] font-black uppercase tracking-widest disabled:opacity-50"
+                                    >
+                                      Generate remediation
+                                    </button>
                                   </div>
-                                )}
-                              </div>
-                            </>
-                          )}
+                                  <div className="mt-3">
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Needs Review</div>
+                                    {practiceSummary.weakConcepts.length === 0 ? (
+                                      <div className="text-[11px] text-slate-500">Keep going to unlock targeted remediation.</div>
+                                    ) : (
+                                      <div className="space-y-1.5 max-h-28 overflow-y-auto pr-1 custom-scrollbar">
+                                        {practiceSummary.weakConcepts.map((concept) => (
+                                          <div key={concept.concept} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
+                                            <div className="text-[11px] font-semibold text-slate-700">{concept.concept}</div>
+                                            <div className="text-[10px] text-slate-500">
+                                              {Math.round(concept.accuracy * 100)}% • {concept.correct}/{concept.attempts}
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   )}
                </div>

@@ -4,7 +4,7 @@ import { Subject, Question, QuestionState, ChatMessage } from '../types';
 import { getSubjects } from '../services/storageService';
 import { startDeepDive, extendDeepDiveQuiz, chatWithTutor, normalizeDeepDiveQuiz } from '../services/geminiService';
 import { buildFingerprintSet, filterDuplicateQuestions } from '../utils/questionDedupe';
-import { AcademicCapIcon, ArrowRightIcon, BookOpenIcon, TrophyIcon, ArrowDownTrayIcon, PlusIcon, ArrowPathIcon, ChatBubbleLeftRightIcon, PaperAirplaneIcon, XMarkIcon } from '@heroicons/react/24/solid';
+import { AcademicCapIcon, ArrowRightIcon, BookOpenIcon, TrophyIcon, ArrowDownTrayIcon, PlusIcon, ArrowPathIcon, ChatBubbleLeftRightIcon, PaperAirplaneIcon, XMarkIcon, ArrowLeftIcon } from '@heroicons/react/24/solid';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import katex from 'katex';
 import { jsPDF } from "jspdf";
@@ -234,6 +234,11 @@ const DeepDiveView: React.FC<DeepDiveViewProps> = ({ prefilledTopic, clearPrefil
     deepDiveAbortRef.current = null;
     setState('select');
     setError('Request cancelled.');
+  };
+
+  const handleBackToSelect = () => {
+    setState('select');
+    setIsChatOpen(false);
   };
 
   const normalizeOptionText = (text: string) =>
@@ -581,10 +586,21 @@ const DeepDiveView: React.FC<DeepDiveViewProps> = ({ prefilledTopic, clearPrefil
     return (
       <div className="h-full flex flex-col max-w-5xl mx-auto w-full p-6 animate-in slide-in-from-right-8">
          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-black text-slate-800 flex items-center gap-3">
-              <BookOpenIcon className="w-8 h-8 text-indigo-500" />
-              Primer: <span className="text-indigo-600">{concept}</span>
-            </h2>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleBackToSelect}
+                className="px-3 py-2 rounded-xl border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-indigo-600 hover:border-indigo-200"
+              >
+                <span className="inline-flex items-center gap-1">
+                  <ArrowLeftIcon className="w-4 h-4" />
+                  Back
+                </span>
+              </button>
+              <h2 className="text-2xl font-black text-slate-800 flex items-center gap-3">
+                <BookOpenIcon className="w-8 h-8 text-indigo-500" />
+                Primer: <span className="text-indigo-600">{concept}</span>
+              </h2>
+            </div>
             <div className="flex items-center gap-4">
               <button 
                 onClick={handleExportPDF} 
@@ -644,7 +660,18 @@ const DeepDiveView: React.FC<DeepDiveViewProps> = ({ prefilledTopic, clearPrefil
                    <div className="h-full bg-indigo-600 transition-all duration-700" style={{ width: `${progress}%` }}></div>
                 </div>
              </div>
-             <div className="text-slate-400 font-bold text-sm tracking-tight">Q{currentQuestionIndex + 1} / {quiz.length}</div>
+             <div className="flex items-center gap-3">
+               <button
+                 onClick={handleBackToSelect}
+                 className="px-3 py-1.5 rounded-xl border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-indigo-600 hover:border-indigo-200"
+               >
+                 <span className="inline-flex items-center gap-1">
+                   <ArrowLeftIcon className="w-4 h-4" />
+                   Back
+                 </span>
+               </button>
+               <div className="text-slate-400 font-bold text-sm tracking-tight">Q{currentQuestionIndex + 1} / {quiz.length}</div>
+             </div>
           </div>
 
           <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-6">
@@ -749,6 +776,17 @@ const DeepDiveView: React.FC<DeepDiveViewProps> = ({ prefilledTopic, clearPrefil
      return (
        <div className="flex flex-col items-center justify-center h-full animate-in zoom-in-95 duration-500 overflow-y-auto">
           <div className="text-center p-14 bg-white rounded-[3rem] shadow-2xl border border-white max-w-xl w-full my-4">
+             <div className="flex justify-center mb-6">
+               <button
+                 onClick={handleBackToSelect}
+                 className="px-3 py-1.5 rounded-xl border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-indigo-600 hover:border-indigo-200"
+               >
+                 <span className="inline-flex items-center gap-1">
+                   <ArrowLeftIcon className="w-4 h-4" />
+                   Back
+                 </span>
+               </button>
+             </div>
              <TrophyIcon className={`w-28 h-28 mx-auto mb-8 ${percentage === 100 ? 'text-yellow-400 drop-shadow-xl' : 'text-indigo-200'}`} />
              <h2 className="text-5xl font-black text-slate-900 mb-4">{score}/{quiz.length}</h2>
              <p className="text-slate-500 text-lg mb-10 font-medium">
