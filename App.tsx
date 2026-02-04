@@ -131,6 +131,7 @@ const App: React.FC = () => {
     guideHash: string;
     guideTitle?: string;
     totalPrefab: number;
+    remainingPrefab?: number;
   } | null>(null);
   const [prefabExhausted, setPrefabExhausted] = useState(false);
   const [remediationMeta, setRemediationMeta] = useState<{
@@ -167,6 +168,19 @@ const App: React.FC = () => {
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
+  const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || '')
+    .split(',')
+    .map((email: string) => email.trim().toLowerCase())
+    .filter(Boolean);
+  const adminDomain = (import.meta.env.VITE_ADMIN_DOMAIN || '').trim().toLowerCase();
+  const adminMode = import.meta.env.VITE_ADMIN_MODE === 'true' || import.meta.env.DEV;
+  const userEmail = user?.email?.toLowerCase() || '';
+  const isAdmin = !!user && (
+    adminEmails.includes(userEmail) ||
+    (adminDomain ? userEmail.endsWith(`@${adminDomain}`) : false) ||
+    (adminMode && adminEmails.length === 0 && !adminDomain)
+  );
+
   const hashString = (value: string) => {
     let hash = 0;
     for (let i = 0; i < value.length; i += 1) {
@@ -176,8 +190,20 @@ const App: React.FC = () => {
     return Math.abs(hash);
   };
 
+  const getGuideOverride = useCallback(
+    (guideHash: string) => {
+      if (!isAdmin) return null;
+      const stored = localStorage.getItem(`mediprep_ab_override_${guideHash}`);
+      if (stored === 'gold' || stored === 'guide') return stored;
+      return null;
+    },
+    [isAdmin]
+  );
+
   const getGuideVariant = useCallback(
     (guideHash: string) => {
+      const override = getGuideOverride(guideHash);
+      if (override) return override;
       const storageKey = `mediprep_ab_variant_${guideHash}`;
       if (!user?.id) {
         const stored = localStorage.getItem(storageKey);
@@ -190,7 +216,7 @@ const App: React.FC = () => {
       }
       return variant;
     },
-    [user?.id]
+    [getGuideOverride, user?.id]
   );
 
   const shortHash = (value?: string | null) => {
@@ -436,6 +462,26 @@ const App: React.FC = () => {
     };
   }, [questions, lastGuideContext?.guideHash, lastGuideContext?.guideTitle]);
 
+  const [abOverride, setAbOverride] = useState<'auto' | 'gold' | 'guide'>('auto');
+
+  useEffect(() => {
+    if (!isAdmin) {
+      setAbOverride('auto');
+      return;
+    }
+    const activeGuideHash = abDebug.guideHash || lastGuideContext?.guideHash;
+    if (!activeGuideHash) {
+      setAbOverride('auto');
+      return;
+    }
+    const stored = localStorage.getItem(`mediprep_ab_override_${activeGuideHash}`);
+    if (stored === 'gold' || stored === 'guide') {
+      setAbOverride(stored);
+    } else {
+      setAbOverride('auto');
+    }
+  }, [abDebug.guideHash, isAdmin, lastGuideContext?.guideHash]);
+
   useEffect(() => {
     if (!import.meta.env.VITE_XAI_API_KEY) {
       console.warn("xAI API Key missing in environment variables.");
@@ -567,20 +613,22 @@ const App: React.FC = () => {
 
       const takePrefab = async (count: number) => {
         if (!guideHash || count <= 0) {
-          return { picked: [] as Question[], total: 0, exhausted: false };
+          return { picked: [] as Question[], total: 0, remaining: 0, exhausted: false };
         }
         const prefab = await getPrefabSet(guideHash);
         if (!prefab) {
-          return { picked: [] as Question[], total: 0, exhausted: false };
+          return { picked: [] as Question[], total: 0, remaining: 0, exhausted: false };
         }
         const active = getActivePrefabQuestions(prefab.questions || []);
         const unseenActive = active.filter((q) => !hasSeenFingerprint(q, workingFingerprints));
         const picked = unseenActive.slice(0, count);
         picked.forEach((q) => addFingerprintsToSet(q, workingFingerprints));
+        const remaining = Math.max(0, unseenActive.length - picked.length);
         return {
           picked: picked.map((q) => ({ ...q, sourceType: 'prefab', guideHash })),
           total: active.length,
-          exhausted: unseenActive.length <= picked.length
+          remaining,
+          exhausted: remaining === 0
         };
       };
 
@@ -623,7 +671,8 @@ const App: React.FC = () => {
                 mode: usedFallback ? 'mixed' : 'prefab',
                 guideHash,
                 guideTitle,
-                totalPrefab: prefabResult.total
+                totalPrefab: prefabResult.total,
+                remainingPrefab: prefabResult.remaining
               };
             }
           }
@@ -652,7 +701,8 @@ const App: React.FC = () => {
               mode: usedFallback ? 'mixed' : 'prefab',
               guideHash,
               guideTitle,
-              totalPrefab: prefabResult.total
+              totalPrefab: prefabResult.total,
+              remainingPrefab: prefabResult.remaining
             };
           }
           sessionVariant = usedFallback ? 'mixed' : primaryVariant;
@@ -732,11 +782,18 @@ const App: React.FC = () => {
         setQuestions(prev => [...prev, ...normalizedNext]);
         markQuestionsSeen(moduleId, normalizedNext);
         await markQuestionsSeenByFingerprint(moduleId, normalizedNext);
+        if (prefabMeta) {
+          const remaining = Math.max(0, unseenQuestions.length - nextSlice.length);
+          setPrefabMeta({ ...prefabMeta, remainingPrefab: remaining });
+        }
         setPrefabExhausted(unseenQuestions.length <= limit);
         return;
       }
       if (cached) {
         setPrefabExhausted(true);
+        if (prefabMeta) {
+          setPrefabMeta({ ...prefabMeta, remainingPrefab: 0 });
+        }
       }
     }
     setIsLoading(true);
@@ -937,18 +994,6 @@ const App: React.FC = () => {
     );
   }
 
-  const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || '')
-    .split(',')
-    .map((email: string) => email.trim().toLowerCase())
-    .filter(Boolean);
-  const adminDomain = (import.meta.env.VITE_ADMIN_DOMAIN || '').trim().toLowerCase();
-  const adminMode = import.meta.env.VITE_ADMIN_MODE === 'true' || import.meta.env.DEV;
-  const userEmail = user?.email?.toLowerCase() || '';
-  const isAdmin = !!user && (
-    adminEmails.includes(userEmail) ||
-    (adminDomain ? userEmail.endsWith(`@${adminDomain}`) : false) ||
-    (adminMode && adminEmails.length === 0 && !adminDomain)
-  );
   const canViewAnalytics = isAdmin;
 
   const isImmersiveView = view === 'practice' || view === 'deepdive';
@@ -1124,9 +1169,39 @@ const App: React.FC = () => {
                      {prefabMeta && (
                        <div>
                          Prefab: <span className="text-slate-900">{prefabMeta.totalPrefab}</span>
+                         {typeof prefabMeta.remainingPrefab === 'number' && (
+                           <span className="text-slate-400"> • remaining {prefabMeta.remainingPrefab}</span>
+                         )}
                          {prefabExhausted && <span className="text-amber-600"> • exhausted</span>}
                        </div>
                      )}
+                     <div className="flex items-center gap-2">
+                       <span className="text-slate-500">Override</span>
+                       <select
+                         value={abOverride}
+                         onChange={(e) => {
+                           const next = e.target.value as 'auto' | 'gold' | 'guide';
+                           setAbOverride(next);
+                           const activeGuideHash = abDebug.guideHash || lastGuideContext?.guideHash;
+                           if (!activeGuideHash) return;
+                           const storageKey = `mediprep_ab_override_${activeGuideHash}`;
+                           if (next === 'auto') {
+                             localStorage.removeItem(storageKey);
+                           } else {
+                             localStorage.setItem(storageKey, next);
+                           }
+                         }}
+                         disabled={!(abDebug.guideHash || lastGuideContext?.guideHash)}
+                         className="px-2 py-1 rounded-lg border border-slate-200 text-[10px] uppercase tracking-widest text-slate-600 font-black bg-white"
+                       >
+                         <option value="auto">Auto</option>
+                         <option value="gold">Gold</option>
+                         <option value="guide">Guide</option>
+                       </select>
+                     </div>
+                   </div>
+                   <div className="mt-2 text-[10px] text-slate-400">
+                     Override applies on the next generation for this guide.
                    </div>
                  </div>
                )}
