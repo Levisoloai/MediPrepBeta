@@ -21,6 +21,14 @@ export const histologyBank: HistologyEntry[] = [
       "acute promyelocytic leukemia",
       "AML"
     ],
+    "requiredAny": [
+      "auer rod",
+      "auer rods",
+      "apl",
+      "acute promyelocytic",
+      "aml",
+      "myeloblast"
+    ],
     "imageUrl": "/histology/heme/curated/auer_rods_aml.jpg",
     "source": "Wikimedia Commons",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:Myeloblast_with_Auer_rod_smear_2010-01-27.JPG",
@@ -46,6 +54,12 @@ export const histologyBank: HistologyEntry[] = [
       "CLL",
       "chronic lymphocytic leukemia"
     ],
+    "requiredAny": [
+      "smudge",
+      "smudge cells",
+      "cll",
+      "chronic lymphocytic"
+    ],
     "imageUrl": "/histology/heme/curated/smudge_cells_cll.jpg",
     "source": "Wikimedia Commons",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:Smudge_cell_in_a_peripheral_blood_smear.jpg",
@@ -68,6 +82,13 @@ export const histologyBank: HistologyEntry[] = [
       "sickle cell",
       "drepanocytes",
       "sickle cell disease"
+    ],
+    "requiredAny": [
+      "sickle cell",
+      "sickle",
+      "drepanocyte",
+      "hbs",
+      "hemoglobin s"
     ],
     "imageUrl": "/histology/heme/curated/sickle_cell_blood_smear.jpg",
     "source": "Wikimedia Commons",
@@ -94,6 +115,12 @@ export const histologyBank: HistologyEntry[] = [
       "spherocyte",
       "hereditary spherocytosis",
       "warm autoimmune hemolytic anemia"
+    ],
+    "requiredAny": [
+      "spherocyte",
+      "spherocytosis",
+      "hereditary spherocytosis",
+      "warm autoimmune"
     ],
     "imageUrl": "/histology/heme/curated/spherocyte_micrograph.jpg",
     "source": "Wikimedia Commons",
@@ -123,6 +150,15 @@ export const histologyBank: HistologyEntry[] = [
       "DIC",
       "hemolytic uremic syndrome"
     ],
+    "requiredAny": [
+      "schistocyte",
+      "schistocytes",
+      "maha",
+      "ttp",
+      "hus",
+      "microangiopathic",
+      "dic"
+    ],
     "imageUrl": "/histology/heme/curated/schistocytes.jpg",
     "source": "Wikimedia Commons",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:Schistocytes.jpg",
@@ -150,6 +186,16 @@ export const histologyBank: HistologyEntry[] = [
       "liver disease",
       "sickle cell"
     ],
+    "requiredAny": [
+      "target cell",
+      "codocyte",
+      "thalassemia",
+      "hbc",
+      "hemoglobin c",
+      "liver disease",
+      "post-splenectomy",
+      "asplenia"
+    ],
     "imageUrl": "/histology/heme/curated/target_cells_peripheral_smear.jpg",
     "source": "Wikimedia Commons",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:Target_Cells,_Peripheral_Blood_Smear_(39144139915).jpg",
@@ -173,6 +219,13 @@ export const histologyBank: HistologyEntry[] = [
     ],
     "conceptTags": [
       "Howell-Jolly bodies",
+      "asplenia",
+      "splenectomy",
+      "sickle cell"
+    ],
+    "requiredAny": [
+      "howell-jolly",
+      "howell jolly",
       "asplenia",
       "splenectomy",
       "sickle cell"
@@ -204,6 +257,12 @@ export const histologyBank: HistologyEntry[] = [
       "thalassemia",
       "sideroblastic anemia"
     ],
+    "requiredAny": [
+      "basophilic stippling",
+      "lead poisoning",
+      "sideroblastic",
+      "thalassemia"
+    ],
     "imageUrl": "/histology/heme/curated/basophilic_stippling.jpg",
     "source": "Wikimedia Commons",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:Micrograph_of_a_red_blood_cell_with_basophilic_stippling.jpg",
@@ -231,6 +290,12 @@ export const histologyBank: HistologyEntry[] = [
       "B12 deficiency",
       "folate deficiency"
     ],
+    "requiredAny": [
+      "hypersegmented",
+      "megaloblastic",
+      "b12",
+      "folate"
+    ],
     "imageUrl": "/histology/heme/curated/hypersegmented_neutrophil.jpg",
     "source": "Wikimedia Commons",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:Hypersegmented_neutrophil.jpg",
@@ -255,6 +320,12 @@ export const histologyBank: HistologyEntry[] = [
       "multiple myeloma",
       "Waldenstrom macroglobulinemia"
     ],
+    "requiredAny": [
+      "rouleaux",
+      "multiple myeloma",
+      "waldenstrom",
+      "macroglobulinemia"
+    ],
     "imageUrl": "/histology/heme/curated/rouleaux_formation.jpg",
     "source": "Wikimedia Commons",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:Rouleaux_formation.jpg",
@@ -276,6 +347,11 @@ export const histologyBank: HistologyEntry[] = [
     "conceptTags": [
       "Reed-Sternberg",
       "Hodgkin lymphoma"
+    ],
+    "requiredAny": [
+      "reed-sternberg",
+      "reed sternberg",
+      "hodgkin"
     ],
     "imageUrl": "/histology/heme/curated/reed_sternberg_cell.jpg",
     "source": "Wikimedia Commons",
@@ -302,6 +378,11 @@ export const histologyBank: HistologyEntry[] = [
       "TRAP",
       "BRAF V600E"
     ],
+    "requiredAny": [
+      "hairy cell",
+      "trap",
+      "braf v600e"
+    ],
     "imageUrl": "/histology/heme/curated/hairy_cell_leukemia_smear.jpg",
     "source": "Wikimedia Commons",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:Hairy_cell_leukemia_smear_2009-08-20.JPG",
@@ -323,6 +404,11 @@ export const histologyBank: HistologyEntry[] = [
     "conceptTags": [
       "teardrop cells",
       "dacrocytes",
+      "myelofibrosis"
+    ],
+    "requiredAny": [
+      "teardrop",
+      "dacrocyte",
       "myelofibrosis"
     ],
     "imageUrl": "/histology/heme/curated/teardrop_cell.jpg",

@@ -47,25 +47,52 @@ const tokenize = (text: string) =>
     .map((token) => token.trim())
     .filter((token) => token.length >= 3);
 
-const buildSearchText = (question: Question) =>
+const buildCoreText = (question: Question) =>
   [
     question.questionText || '',
     question.studyConcepts?.join(' ') || '',
-    question.options?.join(' ') || '',
     question.correctAnswer || ''
   ].join(' ');
 
-const buildSearchRaw = (question: Question) =>
+const buildCoreRaw = (question: Question) =>
   [
     question.questionText || '',
     question.studyConcepts?.join(' ') || '',
-    question.options?.join(' ') || '',
     question.correctAnswer || ''
   ].join(' ');
 
 const hasHistologyCue = (question: Question) => {
-  const text = buildSearchText(question).toLowerCase();
+  const text = buildCoreText(question).toLowerCase();
   return HISTOLOGY_TRIGGERS.some((trigger) => text.includes(trigger));
+};
+
+const matchesNeedle = (
+  needle: string,
+  searchText: string,
+  textTokens: Set<string>,
+  searchRaw: string
+) => {
+  const norm = needle.toLowerCase().trim();
+  if (!norm) return false;
+  const isAbbrev = needle.trim().length <= 4 && needle.trim() === needle.trim().toUpperCase();
+  if (isAbbrev) {
+    const abbrevRegex = new RegExp(`\\b${needle.trim()}\\b`);
+    return abbrevRegex.test(searchRaw);
+  }
+  if (norm.includes(' ')) {
+    return searchText.includes(norm);
+  }
+  return textTokens.has(norm);
+};
+
+const matchesAny = (
+  needles: string[] | undefined,
+  searchText: string,
+  textTokens: Set<string>,
+  searchRaw: string
+) => {
+  if (!needles || needles.length === 0) return false;
+  return needles.some((needle) => matchesNeedle(needle, searchText, textTokens, searchRaw));
 };
 
 const matchesTag = (
@@ -105,18 +132,25 @@ const findBestEntry = (
   pool: HistologyEntry[],
   usage: Map<string, number>
 ) => {
-  const searchRaw = buildSearchRaw(question);
-  const searchText = searchRaw.toLowerCase();
-  const textTokens = new Set(tokenize(searchText));
+  const coreRaw = buildCoreRaw(question);
+  const coreText = coreRaw.toLowerCase();
+  const textTokens = new Set(tokenize(coreText));
   let best: HistologyEntry | null = null;
   let bestScore = 0;
 
   pool.forEach((entry) => {
+    if (entry.excludeAny && matchesAny(entry.excludeAny, coreText, textTokens, coreRaw)) {
+      return;
+    }
+    if (entry.requiredAny && !matchesAny(entry.requiredAny, coreText, textTokens, coreRaw)) {
+      return;
+    }
+
     const keywordScore = entry.keywords.reduce((acc, keyword) => {
       const normalized = keyword.toLowerCase().trim();
       if (!normalized || GENERIC_KEYWORDS.has(normalized)) return acc;
       if (normalized.includes(' ')) {
-        return acc + (searchText.includes(normalized) ? 1 : 0);
+        return acc + (coreText.includes(normalized) ? 1 : 0);
       }
       return acc + (textTokens.has(normalized) ? 1 : 0);
     }, 0);
@@ -124,7 +158,7 @@ const findBestEntry = (
     let tagMatch = false;
     const tags = entry.conceptTags || [];
     tags.forEach((tag) => {
-      if (!matchesTag(tag, searchText, textTokens, searchRaw)) return;
+      if (!matchesTag(tag, coreText, textTokens, coreRaw)) return;
       tagScore += 4;
       tagMatch = true;
     });

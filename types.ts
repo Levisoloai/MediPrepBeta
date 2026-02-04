@@ -188,6 +188,8 @@ export interface HistologyEntry {
   caption: string;
   keywords: string[];
   conceptTags: string[];
+  requiredAny?: string[];
+  excludeAny?: string[];
   imageUrl: string;
   source: string;
   sourceUrl?: string;
