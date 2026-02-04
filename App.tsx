@@ -18,7 +18,7 @@ import katex from 'katex';
 import { supabase } from './services/supabaseClient';
 import { fetchSeenFingerprints, recordSeenQuestions } from './services/seenQuestionsService';
 
-type ViewMode = 'generate' | 'practice' | 'deepdive' | 'analytics';
+type ViewMode = 'generate' | 'practice' | 'remediation' | 'deepdive' | 'analytics';
 
 const stripOptionPrefix = (text: string) => String(text ?? '').replace(/^[A-E](?:[\)\.\:]|\s)\s*/i, '').trim();
 
@@ -125,7 +125,7 @@ const normalizeQuestionShape = (question: Question): Question => {
 };
 
 const App: React.FC = () => {
-  const allowedViews = new Set<ViewMode>(['generate', 'practice', 'deepdive', 'analytics']);
+  const allowedViews = new Set<ViewMode>(['generate', 'practice', 'remediation', 'deepdive', 'analytics']);
   const onboardingSteps = [
     {
       title: 'Pick a module',
@@ -590,6 +590,12 @@ const App: React.FC = () => {
     }
   }, []);
 
+  useEffect(() => {
+    if (view === 'remediation' && !remediationMeta) {
+      setView('practice');
+    }
+  }, [remediationMeta, view]);
+
   const closeOnboarding = () => {
     setShowOnboarding(false);
     localStorage.setItem('mediprep_onboarding_seen', '1');
@@ -1027,7 +1033,7 @@ const App: React.FC = () => {
       });
       markQuestionsSeen(lastGuideContext.guideHash || 'custom', normalizedRemediation);
       await markQuestionsSeenByFingerprint(lastGuideContext.guideHash || 'custom', normalizedRemediation);
-      setView('practice');
+      setView('remediation');
     } catch (err: any) {
       setError(err.message || 'Failed to generate remediation questions.');
     } finally {
@@ -1161,7 +1167,8 @@ const App: React.FC = () => {
 
   const canViewAnalytics = isAdmin;
 
-  const isImmersiveView = view === 'practice' || view === 'deepdive';
+  const isRemediationView = view === 'remediation';
+  const isImmersiveView = view === 'practice' || view === 'deepdive' || view === 'remediation';
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col md:flex-row overflow-hidden relative selection:bg-teal-100">
@@ -1211,7 +1218,9 @@ const App: React.FC = () => {
       <Navigation 
         currentView={view} 
         setView={(v) => { setView(v as ViewMode); setIsChatOpen(false); }} 
-        activeQuestionCount={questions.length}
+        practiceCount={remediationMeta ? 0 : questions.length}
+        remediationCount={remediationMeta ? questions.length : 0}
+        showRemediation={Boolean(remediationMeta)}
         user={user}
         showAnalytics={canViewAnalytics}
         onLoginClick={() => setIsAuthModalOpen(true)}
@@ -1298,7 +1307,7 @@ const App: React.FC = () => {
             </div>
           )}
           
-          {view === 'practice' && (
+          {(view === 'practice' || view === 'remediation') && (
             <div 
               className="h-full flex flex-col transition-all duration-300 ease-out p-6 md:p-10"
               style={{ 
@@ -1307,8 +1316,14 @@ const App: React.FC = () => {
             >
                <div className="mb-4 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                   <div className="flex-1">
-                    <h2 className="text-2xl font-black text-slate-800 tracking-tight">Practice Session</h2>
-                    <p className="text-slate-500 text-sm font-medium">Questions generated from the selected module.</p>
+                    <h2 className="text-2xl font-black text-slate-800 tracking-tight">
+                      {isRemediationView ? 'Remediation Session' : 'Practice Session'}
+                    </h2>
+                    <p className="text-slate-500 text-sm font-medium">
+                      {isRemediationView
+                        ? 'Targeted questions based on your weak concepts.'
+                        : 'Questions generated from the selected module.'}
+                    </p>
                   </div>
                   {performanceSummary.totalAnswered > 0 && (
                     <div className="group w-full lg:w-auto lg:self-start flex flex-col items-end">
@@ -1538,7 +1553,7 @@ const App: React.FC = () => {
 
         <div 
           ref={sidebarRef}
-          className={`fixed inset-y-0 right-0 bg-white/95 backdrop-blur-xl shadow-2xl transform transition-transform duration-300 ease-out z-[102] flex flex-col border-l border-slate-200 ${isChatOpen && view === 'practice' ? 'translate-x-0' : 'translate-x-full'}`}
+          className={`fixed inset-y-0 right-0 bg-white/95 backdrop-blur-xl shadow-2xl transform transition-transform duration-300 ease-out z-[102] flex flex-col border-l border-slate-200 ${isChatOpen && (view === 'practice' || view === 'remediation') ? 'translate-x-0' : 'translate-x-full'}`}
           style={{ width: sidebarWidth }}
         >
           <div 

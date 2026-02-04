@@ -1,22 +1,35 @@
 import React from 'react';
-import { BeakerIcon, PencilSquareIcon, AcademicCapIcon, SparklesIcon, UserCircleIcon, ChartBarIcon } from '@heroicons/react/24/solid';
+import { BeakerIcon, PencilSquareIcon, AcademicCapIcon, SparklesIcon, UserCircleIcon, ChartBarIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
 
-type ViewMode = 'generate' | 'practice' | 'deepdive' | 'analytics';
+type ViewMode = 'generate' | 'practice' | 'remediation' | 'deepdive' | 'analytics';
 
 interface NavigationProps {
   currentView: ViewMode;
   setView: (view: ViewMode) => void;
-  activeQuestionCount: number;
+  practiceCount: number;
+  remediationCount?: number;
+  showRemediation?: boolean;
   user?: any;
   showAnalytics?: boolean;
   onLoginClick?: () => void;
   onLogout?: () => void;
 }
 
-const Navigation: React.FC<NavigationProps> = ({ currentView, setView, activeQuestionCount, user, showAnalytics, onLoginClick, onLogout }) => {
+const Navigation: React.FC<NavigationProps> = ({
+  currentView,
+  setView,
+  practiceCount,
+  remediationCount,
+  showRemediation,
+  user,
+  showAnalytics,
+  onLoginClick,
+  onLogout
+}) => {
   const items = [
     { id: 'generate', label: 'Generate', icon: BeakerIcon },
-    { id: 'practice', label: 'Practice', icon: PencilSquareIcon, count: activeQuestionCount },
+    { id: 'practice', label: 'Practice', icon: PencilSquareIcon, count: practiceCount },
+    ...(showRemediation ? [{ id: 'remediation', label: 'Remediation', icon: ArrowPathIcon, count: remediationCount }] : []),
     { id: 'deepdive', label: 'Deep Dive', icon: AcademicCapIcon },
     ...(showAnalytics ? [{ id: 'analytics', label: 'Analytics', icon: ChartBarIcon }] : [])
   ];
