@@ -1224,32 +1224,33 @@ const App: React.FC = () => {
                </div>
 
                <div className="mb-6 p-4 rounded-2xl border border-slate-200 bg-white/80 shadow-sm">
-                 <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Performance</div>
-                 {performanceSummary.totalAnswered > 0 ? (
-                   <div className="mt-2 flex flex-wrap gap-4 text-[11px] text-slate-600 font-semibold">
-                     <div>
-                       Accuracy: <span className="text-slate-900">{Math.round(performanceSummary.overallAccuracy * 100)}%</span>
-                     </div>
-                     <div>
-                       Correct/Answered:{' '}
-                       <span className="text-slate-900">
-                         {performanceSummary.totalCorrect}/{performanceSummary.totalAnswered}
-                       </span>
-                     </div>
-                     <div>
-                       Weak concepts:{' '}
-                       <span className="text-slate-900">
-                         {performanceSummary.weakConcepts.length > 0
-                           ? performanceSummary.weakConcepts.slice(0, 3).map((concept) => concept.concept).join(' • ')
-                           : 'None yet'}
-                       </span>
-                     </div>
+                 <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Practice Tracker</div>
+                 <div className="mt-2 flex flex-wrap items-center gap-4 text-[11px] text-slate-600 font-semibold">
+                   <div>
+                     Completed:{' '}
+                     <span className="text-slate-900">
+                       {performanceSummary.totalAnswered}/{questions.length}
+                     </span>
                    </div>
-                 ) : (
-                   <div className="mt-2 text-[11px] text-slate-500 font-semibold">
-                     Answer a few questions to unlock performance metrics.
+                   <div className="text-slate-400">
+                     {questions.length > 0
+                       ? `${Math.round((performanceSummary.totalAnswered / Math.max(questions.length, 1)) * 100)}%`
+                       : '0%'}
                    </div>
-                 )}
+                 </div>
+                 <div className="mt-3 h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                   <div
+                     className="h-full bg-gradient-to-r from-teal-500 to-indigo-500"
+                     style={{
+                       width: `${questions.length > 0
+                         ? Math.min(100, Math.round((performanceSummary.totalAnswered / Math.max(questions.length, 1)) * 100))
+                         : 0}%`
+                     }}
+                   />
+                 </div>
+                 <div className="mt-2 text-[11px] text-slate-500 font-semibold">
+                   Keep going — every question sharpens your pattern recognition.
+                 </div>
                </div>
 
                {remediationMeta && (
