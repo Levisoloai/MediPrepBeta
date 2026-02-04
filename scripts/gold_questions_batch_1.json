@@ -1,0 +1,402 @@
+[
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 34-year-old woman has fatigue and heavy menstrual bleeding. Labs: hemoglobin 9.2 g/dL, MCV 70 fL, serum iron 18 \u00b5g/dL, ferritin 6 ng/mL, and total iron-binding capacity (TIBC) 480 \u00b5g/dL. Which diagnosis best explains these findings?",
+    "options": [
+      "Iron deficiency anemia",
+      "Anemia of chronic disease",
+      "Beta-thalassemia trait",
+      "Sideroblastic anemia",
+      "Lead poisoning"
+    ],
+    "correctAnswer": "Iron deficiency anemia",
+    "explanation": "Correct: Low ferritin and low serum iron with elevated TIBC indicates depleted iron stores, classic for iron deficiency anemia.\n\nWhy the other options are wrong: Anemia of chronic disease typically has low iron with low/normal TIBC and normal or high ferritin. Beta-thalassemia trait has microcytosis with normal or high iron stores and often an elevated RBC count. Sideroblastic anemia usually shows increased iron stores. Lead poisoning causes basophilic stippling and does not produce low ferritin with high TIBC.",
+    "studyConcepts": [
+      "iron deficiency anemia",
+      "microcytic anemia",
+      "iron studies"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 58-year-old man with long-standing rheumatoid arthritis has hemoglobin 10.1 g/dL and MCV 78 fL. Iron studies show low serum iron, low transferrin, and ferritin 220 ng/mL. Which diagnosis best explains this pattern?",
+    "options": [
+      "Iron deficiency anemia",
+      "Anemia of chronic disease",
+      "Beta-thalassemia trait",
+      "Vitamin B12 deficiency",
+      "Autoimmune hemolytic anemia"
+    ],
+    "correctAnswer": "Anemia of chronic disease",
+    "explanation": "Correct: Anemia of chronic disease (chronic inflammation) is characterized by low serum iron and low transferrin with normal or elevated ferritin due to iron sequestration.\n\nWhy the other options are wrong: Iron deficiency shows low ferritin and high TIBC/transferrin. Beta-thalassemia trait has microcytosis with normal or high iron stores. Vitamin B12 deficiency is macrocytic. Autoimmune hemolysis causes elevated reticulocytes and bilirubin, not low transferrin with high ferritin.",
+    "studyConcepts": [
+      "anemia of chronic disease",
+      "iron studies",
+      "microcytic anemia"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 24-year-old woman of Mediterranean ancestry has mild fatigue. CBC shows hemoglobin 11.3 g/dL, MCV 67 fL, and an elevated RBC count. Iron studies are normal. Peripheral smear shows target cells. Which diagnosis is most likely?",
+    "options": [
+      "Iron deficiency anemia",
+      "Beta-thalassemia trait",
+      "Anemia of chronic disease",
+      "Aplastic anemia",
+      "Warm autoimmune hemolytic anemia"
+    ],
+    "correctAnswer": "Beta-thalassemia trait",
+    "explanation": "Correct: Beta-thalassemia trait causes microcytosis with normal iron studies and often an elevated RBC count; target cells support a hemoglobinopathy.\n\nWhy the other options are wrong: Iron deficiency has low ferritin and high TIBC. Anemia of chronic disease has low transferrin and normal/high ferritin. Aplastic anemia causes pancytopenia. Warm autoimmune hemolysis is typically normocytic with spherocytes and elevated reticulocytes.",
+    "studyConcepts": [
+      "thalassemia trait",
+      "microcytosis",
+      "target cells"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 32-year-old man presents with gingival bleeding and easy bruising. Labs show anemia, thrombocytopenia, prolonged PT and aPTT, and low fibrinogen. Peripheral smear shows abnormal promyelocytes. A representative histology image is provided below. What is the most appropriate initial therapy?",
+    "options": [
+      "All-trans retinoic acid plus arsenic trioxide",
+      "Cytarabine and daunorubicin induction",
+      "Imatinib",
+      "Rituximab",
+      "Observation only"
+    ],
+    "correctAnswer": "All-trans retinoic acid plus arsenic trioxide",
+    "explanation": "Correct: Acute promyelocytic leukemia is treated urgently with ATRA plus arsenic trioxide to induce differentiation and remission.\n\nWhy the other options are wrong: Standard AML induction (cytarabine/daunorubicin) is not first-line for APL. Imatinib targets BCR-ABL in CML. Rituximab targets CD20-positive B-cell malignancies. Observation is unsafe because APL often presents with life-threatening coagulopathy.",
+    "studyConcepts": [
+      "acute promyelocytic leukemia",
+      "DIC",
+      "ATRA",
+      "arsenic trioxide"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 56-year-old man has early satiety and splenomegaly. CBC shows WBC 120,000/\u00b5L with left shift and basophilia. Leukocyte alkaline phosphatase is low. Which is the best initial therapy?",
+    "options": [
+      "All-trans retinoic acid",
+      "BCR-ABL tyrosine kinase inhibitor (e.g., imatinib)",
+      "Rituximab",
+      "High-dose prednisone",
+      "Cyclophosphamide"
+    ],
+    "correctAnswer": "BCR-ABL tyrosine kinase inhibitor (e.g., imatinib)",
+    "explanation": "Correct: This is chronic myeloid leukemia; first-line therapy targets BCR-ABL with a tyrosine kinase inhibitor such as imatinib.\n\nWhy the other options are wrong: ATRA treats APL. Rituximab is used for CD20-positive B-cell malignancies. Steroids or cyclophosphamide are not first-line for CML.",
+    "studyConcepts": [
+      "CML",
+      "BCR-ABL",
+      "tyrosine kinase inhibitor"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 29-year-old woman has petechiae and epistaxis. Platelet count is 8,000/\u00b5L; hemoglobin and WBC count are normal. Peripheral smear shows normal platelet morphology and no schistocytes. Which is the most appropriate initial treatment?",
+    "options": [
+      "High-dose corticosteroids",
+      "Platelet transfusion alone",
+      "Splenectomy",
+      "Warfarin",
+      "Observation only"
+    ],
+    "correctAnswer": "High-dose corticosteroids",
+    "explanation": "Correct: Immune thrombocytopenia is treated initially with corticosteroids (often with IVIG if bleeding is significant).\n\nWhy the other options are wrong: Platelet transfusion alone is ineffective without suppressing immune destruction. Splenectomy is reserved for refractory cases. Warfarin is contraindicated with severe thrombocytopenia. Observation is inappropriate with severe thrombocytopenia and mucosal bleeding.",
+    "studyConcepts": [
+      "immune thrombocytopenia",
+      "ITP",
+      "corticosteroids"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 67-year-old postoperative patient on unfractionated heparin develops a platelet drop from 240,000/\u00b5L to 90,000/\u00b5L on day 7 and a new femoral DVT. What is the best next step?",
+    "options": [
+      "Continue heparin and add warfarin",
+      "Stop heparin and start argatroban",
+      "Switch to low-molecular-weight heparin",
+      "Give platelet transfusion and continue heparin",
+      "Observe without anticoagulation"
+    ],
+    "correctAnswer": "Stop heparin and start argatroban",
+    "explanation": "Correct: Suspected HIT requires immediate discontinuation of heparin and initiation of a non-heparin anticoagulant such as argatroban.\n\nWhy the other options are wrong: Continuing heparin or switching to LMWH can worsen HIT. Platelet transfusion is not indicated unless there is life-threatening bleeding. Observation risks thrombosis progression.",
+    "studyConcepts": [
+      "HIT",
+      "argatroban",
+      "thrombocytopenia"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 20-year-old woman with sickle cell disease has fever, chest pain, cough, and a new pulmonary infiltrate. Oxygen saturation is 85% on room air despite supplemental oxygen. What is the best next step?",
+    "options": [
+      "Exchange transfusion",
+      "Oral opioids only",
+      "Immediate phlebotomy",
+      "High-dose corticosteroids only",
+      "No transfusion; observe"
+    ],
+    "correctAnswer": "Exchange transfusion",
+    "explanation": "Correct: Severe acute chest syndrome with hypoxemia warrants transfusion, often exchange transfusion, to rapidly reduce HbS and improve oxygen delivery.\n\nWhy the other options are wrong: Analgesia alone is insufficient. Phlebotomy worsens anemia. Steroids alone are not definitive. Observation risks rapid decompensation.",
+    "studyConcepts": [
+      "sickle cell disease",
+      "acute chest syndrome",
+      "exchange transfusion"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 6-year-old boy has recurrent painful hemarthroses. Labs show prolonged aPTT with normal PT and platelet count. Which therapy is most appropriate for acute bleeding?",
+    "options": [
+      "Factor VIII replacement",
+      "Factor IX replacement",
+      "Vitamin K",
+      "Aspirin",
+      "Warfarin"
+    ],
+    "correctAnswer": "Factor VIII replacement",
+    "explanation": "Correct: Hemophilia A is due to factor VIII deficiency and is treated acutely with factor VIII replacement.\n\nWhy the other options are wrong: Factor IX replacement treats hemophilia B. Vitamin K does not correct congenital factor VIII deficiency. Aspirin and warfarin worsen bleeding.",
+    "studyConcepts": [
+      "hemophilia A",
+      "factor VIII",
+      "hemarthrosis"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 64-year-old man with septic shock develops oozing from IV sites. Labs: platelets 40,000/\u00b5L, PT 22 sec, aPTT 58 sec, fibrinogen 90 mg/dL, and markedly elevated D-dimer. What is the most likely diagnosis?",
+    "options": [
+      "Disseminated intravascular coagulation",
+      "Thrombotic thrombocytopenic purpura",
+      "Immune thrombocytopenia",
+      "Hemophilia A",
+      "von Willebrand disease"
+    ],
+    "correctAnswer": "Disseminated intravascular coagulation",
+    "explanation": "Correct: DIC presents with thrombocytopenia, prolonged PT/aPTT, low fibrinogen, and elevated fibrin degradation products (D-dimer), often triggered by sepsis.\n\nWhy the other options are wrong: TTP usually has normal PT/aPTT and prominent neurologic/renal findings. ITP has isolated thrombocytopenia. Hemophilia A and vWD affect aPTT without severe thrombocytopenia and low fibrinogen.",
+    "studyConcepts": [
+      "DIC",
+      "coagulation",
+      "sepsis"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 66-year-old man has back pain, fatigue, and recurrent infections. Labs show anemia, hypercalcemia, and elevated creatinine. Which diagnosis is most likely?",
+    "options": [
+      "Multiple myeloma",
+      "Polycythemia vera",
+      "Chronic lymphocytic leukemia",
+      "Aplastic anemia",
+      "Hereditary spherocytosis"
+    ],
+    "correctAnswer": "Multiple myeloma",
+    "explanation": "Correct: Multiple myeloma commonly presents with bone pain, anemia, hypercalcemia, and renal dysfunction (CRAB features).\n\nWhy the other options are wrong: Polycythemia vera causes elevated hemoglobin/hematocrit. CLL usually presents with lymphocytosis and lymphadenopathy. Aplastic anemia causes pancytopenia without hypercalcemia or bone pain. Hereditary spherocytosis causes hemolysis and splenomegaly.",
+    "studyConcepts": [
+      "multiple myeloma",
+      "CRAB",
+      "plasma cell dyscrasia"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 67-year-old former smoker has COPD with CAT score 18 and mMRC 2. He has had no exacerbations in the past year. Which is the preferred initial maintenance therapy?",
+    "options": [
+      "Short-acting beta agonist as needed only",
+      "Long-acting beta agonist plus long-acting muscarinic antagonist",
+      "Long-acting beta agonist plus inhaled corticosteroid",
+      "Oral prednisone daily",
+      "Theophylline monotherapy"
+    ],
+    "correctAnswer": "Long-acting beta agonist plus long-acting muscarinic antagonist",
+    "explanation": "Correct: GOLD recommendations for symptomatic, low-exacerbation-risk patients (Group B) favor dual long-acting bronchodilator therapy (LABA/LAMA).\n\nWhy the other options are wrong: SABA-only is insufficient for persistent symptoms. LABA/ICS is not preferred initial therapy in COPD without asthma. Chronic systemic steroids and theophylline are not first-line.",
+    "studyConcepts": [
+      "COPD",
+      "GOLD Group B",
+      "LABA/LAMA"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 19-year-old with asthma uses a low-dose inhaled corticosteroid daily but still has symptoms most days and wakes weekly with cough. FEV1 is 70% predicted. What is the best next controller step?",
+    "options": [
+      "Add a long-acting beta agonist (ICS/LABA combination)",
+      "Stop ICS and use SABA only",
+      "Start oral corticosteroids daily",
+      "Add theophylline only",
+      "Start a long-acting muscarinic antagonist alone"
+    ],
+    "correctAnswer": "Add a long-acting beta agonist (ICS/LABA combination)",
+    "explanation": "Correct: For persistent symptoms on low-dose ICS, step-up therapy includes adding a LABA (or using ICS-formoterol maintenance/reliever).\n\nWhy the other options are wrong: SABA-only therapy is not recommended for persistent asthma. Chronic oral steroids are reserved for severe refractory disease. Theophylline and LAMA alone are not preferred first step-up options.",
+    "studyConcepts": [
+      "asthma",
+      "step-up therapy",
+      "ICS/LABA"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 23-year-old woman with asthma presents to the ED with severe wheezing. Peak expiratory flow is 45% predicted after initial albuterol. Which additional treatment reduces hospitalizations in moderate-to-severe exacerbations?",
+    "options": [
+      "Inhaled ipratropium bromide",
+      "Oral theophylline",
+      "Inhaled corticosteroid only",
+      "Routine antibiotics",
+      "High-dose aspirin"
+    ],
+    "correctAnswer": "Inhaled ipratropium bromide",
+    "explanation": "Correct: Adding inhaled ipratropium to SABA therapy in moderate-to-severe asthma exacerbations reduces hospitalization risk.\n\nWhy the other options are wrong: Theophylline is not first-line for acute exacerbations. ICS alone is not sufficient in severe attacks. Antibiotics are not routine unless bacterial infection is suspected. Aspirin may worsen asthma in sensitive patients.",
+    "studyConcepts": [
+      "asthma exacerbation",
+      "ipratropium",
+      "SABA"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 33-year-old woman has cough and dyspnea. Chest imaging shows bilateral hilar lymphadenopathy. Biopsy reveals noncaseating granulomas. She has limiting symptoms. What is the first-line therapy?",
+    "options": [
+      "Oral corticosteroids",
+      "Inhaled short-acting beta agonist only",
+      "High-dose antibiotics",
+      "TNF-alpha inhibitor first line",
+      "Observation only"
+    ],
+    "correctAnswer": "Oral corticosteroids",
+    "explanation": "Correct: Symptomatic sarcoidosis is treated first-line with systemic corticosteroids.\n\nWhy the other options are wrong: Bronchodilators do not treat granulomatous inflammation. Antibiotics are not indicated. TNF-alpha inhibitors are reserved for refractory disease. Observation alone is acceptable only in asymptomatic patients.",
+    "studyConcepts": [
+      "sarcoidosis",
+      "noncaseating granulomas",
+      "corticosteroids"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 52-year-old man with obesity has loud snoring, witnessed apneas, and excessive daytime sleepiness. Polysomnography shows an apnea-hypopnea index of 32. What is the recommended first-line therapy?",
+    "options": [
+      "Continuous positive airway pressure (CPAP)",
+      "Oral appliance therapy only",
+      "Upper airway surgery as first line",
+      "Nocturnal oxygen alone",
+      "Stimulant medication only"
+    ],
+    "correctAnswer": "Continuous positive airway pressure (CPAP)",
+    "explanation": "Correct: Positive airway pressure therapy (CPAP/APAP) is recommended as first-line treatment for obstructive sleep apnea.\n\nWhy the other options are wrong: Oral appliances are alternatives for those who prefer them or cannot tolerate CPAP. Surgery or oxygen alone is not first-line. Stimulants do not treat airway obstruction.",
+    "studyConcepts": [
+      "obstructive sleep apnea",
+      "CPAP"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 68-year-old man has progressive dyspnea and dry cough. HRCT shows basilar, subpleural honeycombing consistent with usual interstitial pneumonia. Which therapy slows disease progression?",
+    "options": [
+      "Nintedanib",
+      "High-dose inhaled bronchodilators",
+      "Long-term macrolide therapy",
+      "Daily oral prednisone alone",
+      "Short-acting beta agonist as needed"
+    ],
+    "correctAnswer": "Nintedanib",
+    "explanation": "Correct: Antifibrotic therapy such as nintedanib is recommended to slow progression in idiopathic pulmonary fibrosis.\n\nWhy the other options are wrong: Bronchodilators and short-acting beta agonists do not modify fibrotic progression. Macrolides and prednisone alone are not standard disease-modifying therapy for IPF.",
+    "studyConcepts": [
+      "idiopathic pulmonary fibrosis",
+      "nintedanib",
+      "UIP"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 45-year-old woman has pleuritic chest pain and tachycardia. Wells score indicates intermediate probability. D-dimer is positive. She is hemodynamically stable. What is the next best diagnostic test?",
+    "options": [
+      "CT pulmonary angiography",
+      "Lower extremity Doppler ultrasound only",
+      "V/Q scan without further testing",
+      "Transthoracic echocardiography only",
+      "No imaging; begin anticoagulation and reassess"
+    ],
+    "correctAnswer": "CT pulmonary angiography",
+    "explanation": "Correct: In low to intermediate probability patients with a positive D-dimer, CT pulmonary angiography is the recommended diagnostic test.\n\nWhy the other options are wrong: Doppler ultrasound may help but does not rule out PE. V/Q scan is an alternative when CTPA is contraindicated. Echocardiography is mainly for unstable patients. Empiric anticoagulation without imaging is not first-line in stable patients.",
+    "studyConcepts": [
+      "pulmonary embolism",
+      "CTPA",
+      "D-dimer"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 7-month-old infant has cough, wheezing, and rhinorrhea. RSV test is positive. SpO2 is 91% on room air and the child is feeding adequately. What is the best management?",
+    "options": [
+      "Supportive care with hydration and supplemental oxygen only if needed",
+      "Routine albuterol treatments",
+      "Systemic corticosteroids",
+      "Empiric antibiotics",
+      "High-dose inhaled corticosteroids"
+    ],
+    "correctAnswer": "Supportive care with hydration and supplemental oxygen only if needed",
+    "explanation": "Correct: Bronchiolitis management is primarily supportive with hydration and oxygen if saturation falls persistently below target thresholds.\n\nWhy the other options are wrong: Bronchodilators and steroids are not routinely recommended. Antibiotics are reserved for proven bacterial infection.",
+    "studyConcepts": [
+      "bronchiolitis",
+      "RSV",
+      "supportive care"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 62-year-old man with a 40-pack-year smoking history has a central cavitary lung mass on CT and chronic cough. Which lung cancer subtype is most likely?",
+    "options": [
+      "Squamous cell carcinoma",
+      "Adenocarcinoma",
+      "Small cell carcinoma",
+      "Large cell carcinoma",
+      "Typical carcinoid tumor"
+    ],
+    "correctAnswer": "Squamous cell carcinoma",
+    "explanation": "Correct: Squamous cell carcinoma is classically central/endobronchial and strongly associated with smoking, often with cavitation.\n\nWhy the other options are wrong: Adenocarcinoma is usually peripheral. Small cell is typically perihilar but is neuroendocrine and not classically cavitary. Large cell is often peripheral. Typical carcinoid is less associated with heavy smoking.",
+    "studyConcepts": [
+      "lung cancer",
+      "squamous cell carcinoma",
+      "smoking"
+    ],
+    "difficulty": "Clinical vignette"
+  }
+]

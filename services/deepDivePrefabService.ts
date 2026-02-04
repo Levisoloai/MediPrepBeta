@@ -1,0 +1,100 @@
+import { supabase } from './supabaseClient';
+import { hashText, normalizeText } from '../utils/studyGuide';
+import { buildFingerprintSet, filterDuplicateQuestions } from '../utils/questionDedupe';
+
+type DeepDiveCacheRow = {
+  topic_key: string;
+  topic_context: string;
+  concept: string;
+  lesson_content: string;
+  quiz: any[];
+  model: string | null;
+  created_at: string;
+};
+
+export const buildDeepDiveKey = async (topicContext: string, concept: string) => {
+  const normalized = normalizeText(`${topicContext}||${concept}`).toLowerCase();
+  return hashText(normalized);
+};
+
+export const getDeepDivePrefab = async (topicContext: string, concept: string) => {
+  const topicKey = await buildDeepDiveKey(topicContext, concept);
+  const { data, error } = await supabase
+    .from('deep_dive_cache')
+    .select('*')
+    .eq('topic_key', topicKey)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  const row = data as DeepDiveCacheRow;
+  return {
+    topicKey: row.topic_key,
+    topicContext: row.topic_context,
+    concept: row.concept,
+    lessonContent: row.lesson_content,
+    quiz: Array.isArray(row.quiz) ? row.quiz : [],
+    createdAt: row.created_at,
+    model: row.model || undefined
+  };
+};
+
+export const seedDeepDivePrefab = async (topicContext: string, concept: string, lessonContent: string, quiz: any[]) => {
+  const topicKey = await buildDeepDiveKey(topicContext, concept);
+  const row: DeepDiveCacheRow = {
+    topic_key: topicKey,
+    topic_context: topicContext,
+    concept,
+    lesson_content: lessonContent,
+    quiz,
+    model: import.meta.env.VITE_XAI_MODEL || 'grok-4-1-fast-reasoning',
+    created_at: new Date().toISOString()
+  };
+
+  const { error } = await supabase
+    .from('deep_dive_cache')
+    .upsert(row, { onConflict: 'topic_key' });
+
+  if (error) {
+    throw error;
+  }
+
+  return row;
+};
+
+export const appendDeepDivePrefab = async (
+  topicContext: string,
+  concept: string,
+  lessonContent: string,
+  quiz: any[]
+) => {
+  const existing = await getDeepDivePrefab(topicContext, concept);
+  if (!existing) {
+    throw new Error('Deep dive prefab not found for append.');
+  }
+
+  const existingQuiz = Array.isArray(existing.quiz) ? existing.quiz : [];
+  const existingSet = buildFingerprintSet(existingQuiz);
+  const { unique } = filterDuplicateQuestions(quiz, existingSet);
+  const merged = [...existingQuiz, ...unique];
+
+  const topicKey = await buildDeepDiveKey(topicContext, concept);
+  const row: DeepDiveCacheRow = {
+    topic_key: topicKey,
+    topic_context: topicContext,
+    concept,
+    lesson_content: existing.lessonContent || lessonContent,
+    quiz: merged,
+    model: import.meta.env.VITE_XAI_MODEL || 'grok-4-1-fast-reasoning',
+    created_at: existing.createdAt || new Date().toISOString()
+  };
+
+  const { error } = await supabase
+    .from('deep_dive_cache')
+    .upsert(row, { onConflict: 'topic_key' });
+
+  if (error) {
+    throw error;
+  }
+
+  return row;
+};

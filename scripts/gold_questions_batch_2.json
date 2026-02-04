@@ -1,0 +1,802 @@
+[
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 46-year-old woman has progressive numbness in her feet and difficulty with balance. Labs show hemoglobin 9.8 g/dL, MCV 112 fL, low reticulocytes, elevated LDH, and low vitamin B12. Which underlying mechanism most likely explains her deficiency?",
+    "options": [
+      "Autoantibodies against intrinsic factor",
+      "Dietary iron deficiency",
+      "Folate deficiency from alcohol use",
+      "Beta-thalassemia trait",
+      "Anemia of chronic disease"
+    ],
+    "correctAnswer": "Autoantibodies against intrinsic factor",
+    "explanation": "Correct: Pernicious anemia causes autoimmune loss of intrinsic factor, leading to B12 malabsorption and neurologic symptoms. Why the other options are wrong: Iron deficiency and thalassemia cause microcytosis; folate deficiency does not cause neurologic deficits; anemia of chronic disease is typically normocytic or mildly microcytic.",
+    "studyConcepts": [
+      "vitamin B12 deficiency",
+      "pernicious anemia",
+      "macrocytic anemia"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 32-year-old woman on methotrexate for rheumatoid arthritis has fatigue and glossitis. Labs: hemoglobin 8.9 g/dL, MCV 110 fL, low reticulocytes, elevated homocysteine, and normal methylmalonic acid. What is the most likely cause of her anemia?",
+    "options": [
+      "Folate deficiency due to dihydrofolate reductase inhibition",
+      "Vitamin B12 deficiency",
+      "Iron deficiency",
+      "Sideroblastic anemia",
+      "Hemolytic anemia"
+    ],
+    "correctAnswer": "Folate deficiency due to dihydrofolate reductase inhibition",
+    "explanation": "Correct: Methotrexate inhibits dihydrofolate reductase, causing folate deficiency with high homocysteine and normal methylmalonic acid. Why the other options are wrong: B12 deficiency elevates methylmalonic acid; iron deficiency and sideroblastic anemia are microcytic; hemolysis increases reticulocytes.",
+    "studyConcepts": [
+      "folate deficiency",
+      "methotrexate",
+      "macrocytic anemia"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 25-year-old man develops jaundice and dark urine 2 days after taking trimethoprim-sulfamethoxazole. Smear shows bite cells and Heinz bodies. Which enzyme deficiency is responsible?",
+    "options": [
+      "Glucose-6-phosphate dehydrogenase",
+      "Pyruvate kinase",
+      "Adenosine deaminase",
+      "Hexokinase",
+      "Glutathione synthetase"
+    ],
+    "correctAnswer": "Glucose-6-phosphate dehydrogenase",
+    "explanation": "Correct: G6PD deficiency causes oxidative hemolysis with Heinz bodies and bite cells after oxidant drugs. Why the other options are wrong: Pyruvate kinase deficiency causes chronic hemolysis without Heinz bodies; ADA causes SCID; hexokinase deficiency is rare and not classic for oxidant stress.",
+    "studyConcepts": [
+      "G6PD deficiency",
+      "hemolytic anemia",
+      "oxidative stress"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 14-year-old boy has anemia, jaundice, and splenomegaly. Peripheral smear shows spherocytes and reticulocytosis; direct Coombs test is negative. Which defect best explains his condition?",
+    "options": [
+      "Spectrin or ankyrin defect in RBC membrane",
+      "Autoantibodies against RBCs",
+      "Decreased beta-globin synthesis",
+      "Folate deficiency",
+      "Warm IgG hemolysis"
+    ],
+    "correctAnswer": "Spectrin or ankyrin defect in RBC membrane",
+    "explanation": "Correct: Hereditary spherocytosis is due to membrane skeleton defects (spectrin/ankyrin) causing spherocytes and extravascular hemolysis with negative Coombs. Why the other options are wrong: Autoimmune hemolysis has a positive Coombs test; beta-thalassemia and folate deficiency cause different smear patterns.",
+    "studyConcepts": [
+      "hereditary spherocytosis",
+      "extravascular hemolysis",
+      "RBC membrane"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 22-year-old man has pancytopenia and a hypocellular bone marrow after exposure to benzene. What is the most appropriate definitive therapy for a severe case in a young patient with a matched sibling donor?",
+    "options": [
+      "Allogeneic hematopoietic stem cell transplant",
+      "Splenectomy",
+      "High-dose iron therapy",
+      "Rituximab",
+      "Hydroxyurea"
+    ],
+    "correctAnswer": "Allogeneic hematopoietic stem cell transplant",
+    "explanation": "Correct: Severe aplastic anemia in a young patient with a matched donor is treated with stem cell transplant. Why the other options are wrong: Splenectomy treats extravascular hemolysis; iron and hydroxyurea do not address marrow failure; rituximab is not standard first-line.",
+    "studyConcepts": [
+      "aplastic anemia",
+      "bone marrow failure",
+      "stem cell transplant"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 71-year-old woman has macrocytic anemia and neutropenia. Bone marrow shows dysplastic megakaryocytes and a 5q deletion. Which therapy is most appropriate?",
+    "options": [
+      "Lenalidomide",
+      "Imatinib",
+      "All-trans retinoic acid",
+      "High-dose folate",
+      "Eculizumab"
+    ],
+    "correctAnswer": "Lenalidomide",
+    "explanation": "Correct: Myelodysplastic syndrome with isolated del(5q) responds to lenalidomide. Why the other options are wrong: Imatinib treats CML; ATRA treats APL; folate does not correct MDS; eculizumab treats PNH.",
+    "studyConcepts": [
+      "myelodysplastic syndrome",
+      "del(5q)",
+      "lenalidomide"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 6-year-old boy has bone pain, fever, and hepatosplenomegaly. CBC shows blasts; flow cytometry is positive for TdT. Which diagnosis is most likely?",
+    "options": [
+      "Acute lymphoblastic leukemia",
+      "Acute myeloid leukemia",
+      "Chronic myeloid leukemia",
+      "Hairy cell leukemia",
+      "Multiple myeloma"
+    ],
+    "correctAnswer": "Acute lymphoblastic leukemia",
+    "explanation": "Correct: Pediatric leukemia with TdT-positive lymphoblasts suggests ALL. Why the other options are wrong: AML is MPO positive; CML is chronic with mature myeloid cells; hairy cell and myeloma occur in older adults.",
+    "studyConcepts": [
+      "acute lymphoblastic leukemia",
+      "TdT",
+      "pediatric leukemia"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 58-year-old man has fatigue and weight loss. CBC shows myeloblasts with Auer rods and MPO positivity. Which diagnosis is most likely?",
+    "options": [
+      "Acute myeloid leukemia",
+      "Acute lymphoblastic leukemia",
+      "Chronic lymphocytic leukemia",
+      "Essential thrombocythemia",
+      "Myelodysplastic syndrome"
+    ],
+    "correctAnswer": "Acute myeloid leukemia",
+    "explanation": "Correct: Auer rods and MPO positivity are classic for AML. Why the other options are wrong: ALL lacks MPO; CLL is a mature lymphoid neoplasm; ET is a platelet disorder; MDS has dysplasia without prominent Auer rods.",
+    "studyConcepts": [
+      "acute myeloid leukemia",
+      "Auer rods",
+      "myeloperoxidase"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 72-year-old man has lymphadenopathy and an absolute lymphocyte count of 18,000. Smear shows smudge cells. Which complication is most likely?",
+    "options": [
+      "Hypogammaglobulinemia with recurrent infections",
+      "Renal cell carcinoma",
+      "DIC",
+      "Hemophilia",
+      "Microangiopathic hemolytic anemia"
+    ],
+    "correctAnswer": "Hypogammaglobulinemia with recurrent infections",
+    "explanation": "Correct: CLL commonly causes hypogammaglobulinemia and recurrent infections. Why the other options are wrong: DIC and hemophilia are unrelated; MAHA suggests TTP/HUS; renal cell carcinoma is not a typical complication.",
+    "studyConcepts": [
+      "chronic lymphocytic leukemia",
+      "smudge cells",
+      "hypogammaglobulinemia"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 60-year-old man has pruritus after hot showers and a hematocrit of 58%. EPO level is low. What is the best initial management?",
+    "options": [
+      "Phlebotomy",
+      "Imatinib",
+      "Rituximab",
+      "Iron supplementation",
+      "Erythropoietin"
+    ],
+    "correctAnswer": "Phlebotomy",
+    "explanation": "Correct: Polycythemia vera is treated initially with phlebotomy to reduce hematocrit. Why the other options are wrong: Imatinib treats CML; rituximab treats B-cell disorders; iron and EPO would worsen erythrocytosis.",
+    "studyConcepts": [
+      "polycythemia vera",
+      "JAK2",
+      "phlebotomy"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 55-year-old woman has platelets of 1.2 million and headaches. JAK2 mutation is present and there is no splenomegaly. Which treatment reduces the risk of thrombosis?",
+    "options": [
+      "Hydroxyurea",
+      "All-trans retinoic acid",
+      "Desmopressin",
+      "Vitamin K",
+      "Erythropoietin"
+    ],
+    "correctAnswer": "Hydroxyurea",
+    "explanation": "Correct: Essential thrombocythemia with high-risk features is treated with cytoreduction (hydroxyurea). Why the other options are wrong: ATRA treats APL; desmopressin treats vWD; vitamin K and EPO do not reduce platelet counts.",
+    "studyConcepts": [
+      "essential thrombocythemia",
+      "JAK2",
+      "hydroxyurea"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 64-year-old man has fatigue, early satiety, and massive splenomegaly. Smear shows teardrop cells and leukoerythroblastosis. Bone marrow aspiration yields a dry tap. What is the most likely diagnosis?",
+    "options": [
+      "Primary myelofibrosis",
+      "Polycythemia vera",
+      "Multiple myeloma",
+      "Immune thrombocytopenia",
+      "Aplastic anemia"
+    ],
+    "correctAnswer": "Primary myelofibrosis",
+    "explanation": "Correct: Teardrop cells, dry tap, and splenomegaly suggest primary myelofibrosis. Why the other options are wrong: PV causes erythrocytosis; myeloma causes lytic bone disease; ITP is isolated thrombocytopenia; aplastic anemia has hypocellular marrow without teardrop cells.",
+    "studyConcepts": [
+      "primary myelofibrosis",
+      "teardrop cells",
+      "dry tap"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 28-year-old woman has a DVT after a long flight and a history of recurrent miscarriages. PTT is prolonged but does not correct with mixing. Which antibody is most consistent with this condition?",
+    "options": [
+      "Anti-beta-2 glycoprotein I",
+      "Anti-dsDNA",
+      "Anti-centromere",
+      "Anti-Scl-70",
+      "Anti-mitochondrial"
+    ],
+    "correctAnswer": "Anti-beta-2 glycoprotein I",
+    "explanation": "Correct: Antiphospholipid syndrome causes thrombosis and miscarriages with lupus anticoagulant or anticardiolipin/anti-beta-2 glycoprotein I antibodies. Why the other options are wrong: Anti-dsDNA is SLE; anti-centromere and anti-Scl-70 are scleroderma; anti-mitochondrial is PBC.",
+    "studyConcepts": [
+      "antiphospholipid syndrome",
+      "thrombosis",
+      "pregnancy loss"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 23-year-old woman has mucosal bleeding and menorrhagia. PTT is mildly prolonged and ristocetin test is abnormal. Which medication is most appropriate for episodic bleeding?",
+    "options": [
+      "Desmopressin",
+      "Warfarin",
+      "Eculizumab",
+      "Vitamin K",
+      "Imatinib"
+    ],
+    "correctAnswer": "Desmopressin",
+    "explanation": "Correct: von Willebrand disease is treated with desmopressin to increase vWF release. Why the other options are wrong: Warfarin worsens bleeding; eculizumab treats PNH; vitamin K treats deficiency; imatinib treats CML.",
+    "studyConcepts": [
+      "von Willebrand disease",
+      "mucosal bleeding",
+      "desmopressin"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 70-year-old man develops large ecchymoses and hematuria. PTT is prolonged and does not correct with a mixing study. Which is the best initial treatment?",
+    "options": [
+      "Bypassing agent such as activated prothrombin complex concentrate",
+      "Desmopressin",
+      "Platelet transfusion",
+      "Vitamin K",
+      "Fresh frozen plasma only"
+    ],
+    "correctAnswer": "Bypassing agent such as activated prothrombin complex concentrate",
+    "explanation": "Correct: Acquired hemophilia A presents with inhibitor causing non-correcting PTT; treat bleeding with bypassing agents. Why the other options are wrong: Desmopressin is for vWD; platelets are not the issue; vitamin K and FFP are inadequate for inhibitor-mediated bleeding.",
+    "studyConcepts": [
+      "acquired hemophilia",
+      "inhibitor",
+      "prolonged PTT"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 35-year-old woman has fever, confusion, petechiae, anemia, and thrombocytopenia. Smear shows schistocytes and creatinine is mildly elevated. What is the most appropriate treatment?",
+    "options": [
+      "Plasma exchange",
+      "Platelet transfusion",
+      "Heparin infusion",
+      "Warfarin",
+      "Erythropoietin"
+    ],
+    "correctAnswer": "Plasma exchange",
+    "explanation": "Correct: TTP is treated urgently with plasma exchange. Why the other options are wrong: Platelet transfusion can worsen thrombosis; anticoagulation is not first-line; EPO does not address microangiopathy.",
+    "studyConcepts": [
+      "thrombotic thrombocytopenic purpura",
+      "ADAMTS13",
+      "plasma exchange"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 5-year-old boy develops pallor, petechiae, and decreased urine output after a bloody diarrheal illness. Labs show hemolytic anemia and thrombocytopenia. What is the best next step in management?",
+    "options": [
+      "Supportive care with fluids and monitoring",
+      "Immediate plasmapheresis",
+      "High-dose steroids",
+      "Platelet transfusion",
+      "IV immunoglobulin"
+    ],
+    "correctAnswer": "Supportive care with fluids and monitoring",
+    "explanation": "Correct: Typical HUS after EHEC is managed with supportive care. Why the other options are wrong: Plasmapheresis is for TTP; steroids and IVIG are not standard; platelet transfusion is avoided unless life-threatening bleeding.",
+    "studyConcepts": [
+      "hemolytic uremic syndrome",
+      "EHEC",
+      "supportive care"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A patient develops fever, flank pain, and hypotension during a blood transfusion. Urine is dark and labs show elevated LDH. What is the immediate management?",
+    "options": [
+      "Stop the transfusion and give IV fluids",
+      "Give diuretics only and continue transfusion",
+      "Give corticosteroids and continue transfusion",
+      "Start broad-spectrum antibiotics and continue transfusion",
+      "Give IM epinephrine"
+    ],
+    "correctAnswer": "Stop the transfusion and give IV fluids",
+    "explanation": "Correct: Acute hemolytic transfusion reaction requires immediate cessation and supportive care with fluids. Why the other options are wrong: Continuing the transfusion worsens hemolysis; epinephrine is for anaphylaxis; antibiotics do not treat ABO incompatibility.",
+    "studyConcepts": [
+      "transfusion reaction",
+      "acute hemolysis",
+      "ABO incompatibility"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 50-year-old man has fatigue, bronze skin, diabetes, and hepatomegaly. Labs show ferritin 1,200 ng/mL and transferrin saturation 70%. What is the best treatment?",
+    "options": [
+      "Therapeutic phlebotomy",
+      "Iron supplementation",
+      "Erythropoietin",
+      "Hydroxyurea",
+      "Desmopressin"
+    ],
+    "correctAnswer": "Therapeutic phlebotomy",
+    "explanation": "Correct: Hereditary hemochromatosis is treated with regular phlebotomy to reduce iron stores. Why the other options are wrong: Iron and EPO worsen overload; hydroxyurea and desmopressin are unrelated.",
+    "studyConcepts": [
+      "hemochromatosis",
+      "iron overload",
+      "phlebotomy"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 30-year-old woman has a DVT after starting oral contraceptives. Testing shows resistance to activated protein C. Which mutation is most likely?",
+    "options": [
+      "Factor V Leiden",
+      "Factor VIII deficiency",
+      "Protein C deficiency",
+      "Antithrombin deficiency",
+      "Prothrombin time prolongation"
+    ],
+    "correctAnswer": "Factor V Leiden",
+    "explanation": "Correct: Factor V Leiden causes APC resistance and increases venous thrombosis risk. Why the other options are wrong: Protein C or antithrombin deficiency can also cause thrombosis but do not specifically cause APC resistance; factor VIII deficiency causes bleeding.",
+    "studyConcepts": [
+      "factor V Leiden",
+      "thrombophilia",
+      "APC resistance"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 68-year-old man with COPD has dyspnea and a CAT score of 18. He has 0 exacerbations in the last year and FEV1/FVC is 0.55. What is the best initial maintenance therapy?",
+    "options": [
+      "Long-acting muscarinic antagonist",
+      "Short-acting beta agonist only",
+      "Inhaled corticosteroid monotherapy",
+      "Oral theophylline",
+      "Leukotriene receptor antagonist"
+    ],
+    "correctAnswer": "Long-acting muscarinic antagonist",
+    "explanation": "Correct: Symptomatic COPD without frequent exacerbations should start with a long-acting bronchodilator such as LAMA. Why the other options are wrong: SABA alone is rescue only; ICS monotherapy is not first-line in COPD; theophylline and leukotrienes are not preferred.",
+    "studyConcepts": [
+      "COPD",
+      "GOLD",
+      "LAMA"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 70-year-old man with COPD presents with increased dyspnea, sputum volume, and purulence. He is afebrile and stable. What is the most appropriate outpatient treatment?",
+    "options": [
+      "Short-acting bronchodilators plus oral corticosteroids and antibiotics",
+      "High-dose inhaled corticosteroid only",
+      "Nebulized epinephrine",
+      "Immediate intubation",
+      "Observation only"
+    ],
+    "correctAnswer": "Short-acting bronchodilators plus oral corticosteroids and antibiotics",
+    "explanation": "Correct: COPD exacerbations with increased dyspnea and purulent sputum are treated with bronchodilators, systemic steroids, and antibiotics. Why the other options are wrong: ICS monotherapy is inadequate; epinephrine and intubation are reserved for severe cases; observation alone risks progression.",
+    "studyConcepts": [
+      "COPD exacerbation",
+      "bronchodilator",
+      "systemic steroids"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 21-year-old woman with asthma uses low-dose inhaled corticosteroid daily but still has symptoms 4 days per week. What is the best next step?",
+    "options": [
+      "Add a long-acting beta agonist",
+      "Stop inhaled corticosteroid",
+      "Add oral theophylline only",
+      "Switch to short-acting beta agonist monotherapy",
+      "Add leukotriene receptor antagonist and stop ICS"
+    ],
+    "correctAnswer": "Add a long-acting beta agonist",
+    "explanation": "Correct: Persistent symptoms on low-dose ICS warrant step-up therapy with a LABA. Why the other options are wrong: Stopping ICS worsens control; SABA monotherapy is inadequate; theophylline is not preferred; LTRA is an alternative but not preferred over LABA add-on.",
+    "studyConcepts": [
+      "asthma",
+      "step-up therapy",
+      "ICS plus LABA"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 24-year-old woman with asthma is in severe distress despite repeated nebulized albuterol and ipratropium. She is drowsy and her PaCO2 is rising. What is the most appropriate next step?",
+    "options": [
+      "Endotracheal intubation and mechanical ventilation",
+      "Continue albuterol only",
+      "Start oral antibiotics",
+      "Give loop diuretic",
+      "Discharge with steroids"
+    ],
+    "correctAnswer": "Endotracheal intubation and mechanical ventilation",
+    "explanation": "Correct: Rising PaCO2 and fatigue in status asthmaticus indicate impending respiratory failure requiring intubation. Why the other options are wrong: Continued bronchodilators alone are insufficient; antibiotics and diuretics do not address bronchospasm; discharge is unsafe.",
+    "studyConcepts": [
+      "status asthmaticus",
+      "respiratory failure",
+      "intubation"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 34-year-old healthy woman has fever, cough, and lobar infiltrate on chest x-ray. She is stable for outpatient treatment. What is the best empiric antibiotic?",
+    "options": [
+      "Amoxicillin",
+      "Vancomycin",
+      "Piperacillin-tazobactam",
+      "Linezolid",
+      "Amphotericin B"
+    ],
+    "correctAnswer": "Amoxicillin",
+    "explanation": "Correct: Outpatient CAP in a healthy adult can be treated with high-dose amoxicillin. Why the other options are wrong: Vancomycin and linezolid are for MRSA; piperacillin-tazobactam is for severe hospital-acquired infections; amphotericin is antifungal.",
+    "studyConcepts": [
+      "community-acquired pneumonia",
+      "outpatient therapy",
+      "beta-lactam"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A patient with sepsis develops acute hypoxemic respiratory failure. CXR shows bilateral infiltrates and PaO2/FiO2 is 150. What ventilation strategy improves mortality?",
+    "options": [
+      "Low tidal volume ventilation (6 mL/kg predicted body weight)",
+      "High tidal volume ventilation",
+      "No PEEP",
+      "High-dose beta-agonists",
+      "Immediate ECMO for all patients"
+    ],
+    "correctAnswer": "Low tidal volume ventilation (6 mL/kg predicted body weight)",
+    "explanation": "Correct: ARDS is managed with low tidal volume ventilation to reduce ventilator-induced lung injury. Why the other options are wrong: High tidal volumes increase mortality; no PEEP worsens oxygenation; beta-agonists do not treat ARDS; ECMO is reserved for refractory cases.",
+    "studyConcepts": [
+      "ARDS",
+      "low tidal volume",
+      "lung-protective ventilation"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "Pleural fluid analysis shows protein ratio 0.7 and LDH ratio 0.8 compared with serum. What type of effusion is present?",
+    "options": [
+      "Exudative effusion",
+      "Transudative effusion",
+      "Chylous effusion",
+      "Pseudochylous effusion",
+      "Hemothorax"
+    ],
+    "correctAnswer": "Exudative effusion",
+    "explanation": "Correct: Light's criteria indicate exudate when protein ratio >0.5 or LDH ratio >0.6. Why the other options are wrong: Transudates fail Light's criteria; chylous effusions require triglyceride data; hemothorax requires high hematocrit.",
+    "studyConcepts": [
+      "pleural effusion",
+      "Light's criteria",
+      "exudate"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A tall young man develops sudden pleuritic chest pain and dyspnea. Exam shows hypotension, tracheal deviation, and absent breath sounds on the right. What is the most appropriate treatment?",
+    "options": [
+      "Needle decompression followed by chest tube",
+      "CT angiography",
+      "IV antibiotics",
+      "Noninvasive ventilation only",
+      "Observation"
+    ],
+    "correctAnswer": "Needle decompression followed by chest tube",
+    "explanation": "Correct: Tension pneumothorax is a clinical diagnosis requiring immediate decompression. Why the other options are wrong: Imaging delays treatment; antibiotics and observation do not address the life-threatening pressure.",
+    "studyConcepts": [
+      "tension pneumothorax",
+      "needle decompression",
+      "emergency management"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 52-year-old woman with pleuritic chest pain and tachycardia has a high pretest probability of PE. What is the most appropriate next diagnostic test?",
+    "options": [
+      "CT pulmonary angiography",
+      "D-dimer",
+      "Chest x-ray only",
+      "V/Q scan only",
+      "Bronchoscopy"
+    ],
+    "correctAnswer": "CT pulmonary angiography",
+    "explanation": "Correct: High pretest probability warrants imaging with CT pulmonary angiography. Why the other options are wrong: D-dimer is for low probability; chest x-ray is nonspecific; V/Q is used when CT is contraindicated; bronchoscopy is not diagnostic for PE.",
+    "studyConcepts": [
+      "pulmonary embolism",
+      "CT angiography",
+      "diagnosis"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 66-year-old man with long-standing left-sided heart failure develops exertional dyspnea and a loud P2. What is the primary treatment target for his pulmonary hypertension?",
+    "options": [
+      "Optimize left heart failure therapy",
+      "Endothelin receptor antagonist",
+      "Inhaled prostacyclin for all patients",
+      "Thrombolysis",
+      "Lung transplantation"
+    ],
+    "correctAnswer": "Optimize left heart failure therapy",
+    "explanation": "Correct: Group 2 pulmonary hypertension is due to left heart disease; treat the underlying cardiac condition. Why the other options are wrong: Pulmonary arterial hypertension therapies are not first-line for group 2; thrombolysis is for PE; transplant is for select advanced cases.",
+    "studyConcepts": [
+      "pulmonary hypertension",
+      "left heart disease",
+      "group 2 PH"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 19-year-old with cystic fibrosis has recurrent lung infections and steatorrhea. Which organism most commonly causes chronic lung colonization?",
+    "options": [
+      "Pseudomonas aeruginosa",
+      "Streptococcus pneumoniae",
+      "Mycoplasma pneumoniae",
+      "Coxiella burnetii",
+      "Histoplasma capsulatum"
+    ],
+    "correctAnswer": "Pseudomonas aeruginosa",
+    "explanation": "Correct: CF patients are commonly colonized by Pseudomonas. Why the other options are wrong: The listed organisms are less typical for chronic CF colonization.",
+    "studyConcepts": [
+      "cystic fibrosis",
+      "Pseudomonas",
+      "chronic infection"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A patient has chronic productive cough and recurrent infections. CT shows dilated bronchi with thickened walls. Which underlying condition is classically associated with this finding?",
+    "options": [
+      "Kartagener syndrome",
+      "Sarcoidosis",
+      "Pulmonary embolism",
+      "Pleural effusion",
+      "Asthma"
+    ],
+    "correctAnswer": "Kartagener syndrome",
+    "explanation": "Correct: Bronchiectasis is associated with primary ciliary dyskinesia (Kartagener). Why the other options are wrong: Sarcoidosis and asthma do not cause permanent bronchial dilation; PE and pleural effusion are unrelated.",
+    "studyConcepts": [
+      "bronchiectasis",
+      "primary ciliary dyskinesia",
+      "Kartagener"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 60-year-old smoker has cough and weight loss. He develops hyponatremia due to SIADH. Which lung cancer is most likely?",
+    "options": [
+      "Small cell carcinoma",
+      "Adenocarcinoma",
+      "Squamous cell carcinoma",
+      "Large cell carcinoma",
+      "Carcinoid tumor"
+    ],
+    "correctAnswer": "Small cell carcinoma",
+    "explanation": "Correct: Small cell lung cancer is associated with SIADH. Why the other options are wrong: Squamous cell is associated with hypercalcemia; adenocarcinoma is peripheral; carcinoid causes bronchial obstruction and flushing.",
+    "studyConcepts": [
+      "lung cancer",
+      "small cell",
+      "SIADH"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 63-year-old shipyard worker has dyspnea and pleural plaques. Biopsy shows malignant mesothelioma. Which exposure is most associated with this condition?",
+    "options": [
+      "Asbestos",
+      "Silica",
+      "Coal dust",
+      "Beryllium",
+      "Cotton fiber"
+    ],
+    "correctAnswer": "Asbestos",
+    "explanation": "Correct: Asbestos exposure causes pleural plaques and mesothelioma. Why the other options are wrong: Silica causes upper lobe nodules and eggshell calcifications; coal dust causes black lung; beryllium causes granulomatous disease.",
+    "studyConcepts": [
+      "mesothelioma",
+      "asbestos",
+      "pleural plaques"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 29-year-old woman has dry cough and dyspnea. CXR shows bilateral hilar adenopathy; biopsy shows noncaseating granulomas. What is the first-line treatment for symptomatic disease?",
+    "options": [
+      "Oral corticosteroids",
+      "Isoniazid",
+      "Cyclophosphamide",
+      "Methotrexate only",
+      "Azithromycin"
+    ],
+    "correctAnswer": "Oral corticosteroids",
+    "explanation": "Correct: Symptomatic sarcoidosis is treated with corticosteroids. Why the other options are wrong: Isoniazid is for TB; cyclophosphamide is for severe autoimmune disease; methotrexate is second-line; azithromycin is not indicated.",
+    "studyConcepts": [
+      "sarcoidosis",
+      "noncaseating granulomas",
+      "steroids"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 50-year-old man has loud snoring, daytime somnolence, and witnessed apneas. Which therapy is first-line?",
+    "options": [
+      "Continuous positive airway pressure",
+      "Oral glucocorticoids",
+      "Theophylline",
+      "Beta-agonist inhaler",
+      "Surgery as first-line"
+    ],
+    "correctAnswer": "Continuous positive airway pressure",
+    "explanation": "Correct: CPAP is first-line therapy for obstructive sleep apnea. Why the other options are wrong: Medications are not first-line; surgery is reserved for select cases.",
+    "studyConcepts": [
+      "obstructive sleep apnea",
+      "CPAP",
+      "sleep-disordered breathing"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "An obese man has daytime hypercapnia, hypoxemia, and sleep-disordered breathing. What is the mainstay of therapy?",
+    "options": [
+      "Positive airway pressure and weight loss",
+      "High-flow oxygen only",
+      "Bronchodilators only",
+      "Long-term antibiotics",
+      "Anticoagulation"
+    ],
+    "correctAnswer": "Positive airway pressure and weight loss",
+    "explanation": "Correct: Obesity hypoventilation syndrome is treated with PAP and weight reduction. Why the other options are wrong: Oxygen alone does not correct hypoventilation; antibiotics and anticoagulation are unrelated.",
+    "studyConcepts": [
+      "obesity hypoventilation syndrome",
+      "PAP",
+      "weight loss"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A farmer develops cough, fever, and dyspnea after exposure to moldy hay. CXR shows diffuse ground-glass opacities; BAL shows lymphocytosis. What is the most likely diagnosis?",
+    "options": [
+      "Hypersensitivity pneumonitis",
+      "Asbestosis",
+      "Sarcoidosis",
+      "Pulmonary embolism",
+      "Bronchiectasis"
+    ],
+    "correctAnswer": "Hypersensitivity pneumonitis",
+    "explanation": "Correct: Moldy hay exposure with lymphocytic alveolitis suggests hypersensitivity pneumonitis. Why the other options are wrong: Asbestosis causes pleural plaques; sarcoidosis causes hilar adenopathy; PE causes vascular defects; bronchiectasis causes airway dilation.",
+    "studyConcepts": [
+      "hypersensitivity pneumonitis",
+      "farmer's lung",
+      "interstitial lung disease"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 69-year-old man has progressive dyspnea and dry cough. HRCT shows basilar reticular opacities and honeycombing. Which medication slows disease progression?",
+    "options": [
+      "Nintedanib",
+      "Albuterol",
+      "Isoniazid",
+      "Azithromycin",
+      "High-dose warfarin"
+    ],
+    "correctAnswer": "Nintedanib",
+    "explanation": "Correct: Idiopathic pulmonary fibrosis is treated with antifibrotic agents such as nintedanib or pirfenidone. Why the other options are wrong: Bronchodilators and antibiotics do not treat IPF; warfarin is not recommended.",
+    "studyConcepts": [
+      "idiopathic pulmonary fibrosis",
+      "antifibrotic therapy",
+      "honeycombing"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 58-year-old construction worker with asbestos exposure has dyspnea and bibasilar crackles. Imaging shows lower lobe fibrosis and pleural plaques. What is the most likely diagnosis?",
+    "options": [
+      "Asbestosis",
+      "Sarcoidosis",
+      "Silicosis",
+      "Coal workers' pneumoconiosis",
+      "Hypersensitivity pneumonitis"
+    ],
+    "correctAnswer": "Asbestosis",
+    "explanation": "Correct: Asbestos exposure causes lower lobe fibrosis and pleural plaques. Why the other options are wrong: Silicosis affects upper lobes with eggshell calcifications; coal disease causes upper lobe nodules; sarcoidosis causes hilar adenopathy.",
+    "studyConcepts": [
+      "asbestosis",
+      "occupational lung disease",
+      "pleural plaques"
+    ],
+    "difficulty": "Clinical vignette"
+  }
+]

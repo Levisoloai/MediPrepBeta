@@ -1,0 +1,802 @@
+[
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 58-year-old man with chronic kidney disease has fatigue. Labs show hemoglobin 9.5 g/dL, MCV 88 fL, low reticulocytes, and normal iron studies. What is the most appropriate treatment?",
+    "options": [
+      "Erythropoietin-stimulating agent",
+      "Oral iron supplementation",
+      "Vitamin B12 injections",
+      "Splenectomy",
+      "High-dose folate"
+    ],
+    "correctAnswer": "Erythropoietin-stimulating agent",
+    "explanation": "Correct: Anemia of CKD is due to low erythropoietin and is treated with EPO. Why the other options are wrong: Iron and vitamin B12 are not deficient; splenectomy and folate do not address low EPO.",
+    "studyConcepts": [
+      "anemia of chronic kidney disease",
+      "erythropoietin",
+      "normocytic anemia"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 36-year-old woman on isoniazid develops fatigue and microcytic anemia. Bone marrow shows ring sideroblasts. What is the best treatment?",
+    "options": [
+      "Pyridoxine (vitamin B6)",
+      "Vitamin B12",
+      "Folate",
+      "Iron chelation",
+      "Rituximab"
+    ],
+    "correctAnswer": "Pyridoxine (vitamin B6)",
+    "explanation": "Correct: Isoniazid can cause sideroblastic anemia via B6 deficiency; treat with pyridoxine. Why the other options are wrong: B12 and folate cause macrocytosis; iron chelation is for overload; rituximab is for B-cell disorders.",
+    "studyConcepts": [
+      "sideroblastic anemia",
+      "vitamin B6",
+      "isoniazid"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 4-year-old child has abdominal pain, constipation, and developmental delay. CBC shows microcytic anemia with basophilic stippling. What is the most likely diagnosis?",
+    "options": [
+      "Lead poisoning",
+      "Iron deficiency anemia",
+      "Thalassemia trait",
+      "Anemia of chronic disease",
+      "Sickle cell disease"
+    ],
+    "correctAnswer": "Lead poisoning",
+    "explanation": "Correct: Lead poisoning causes microcytosis with basophilic stippling and neurologic/GI symptoms. Why the other options are wrong: Iron deficiency and thalassemia do not cause neurologic symptoms; anemia of chronic disease is usually normocytic; sickle cell is normocytic hemolysis.",
+    "studyConcepts": [
+      "lead poisoning",
+      "basophilic stippling",
+      "microcytic anemia"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 28-year-old man has episodic dark urine in the morning and abdominal pain. Labs show hemolytic anemia and pancytopenia. Flow cytometry shows loss of CD55 and CD59. What is the best treatment?",
+    "options": [
+      "Eculizumab",
+      "Desmopressin",
+      "Hydroxyurea",
+      "Splenectomy",
+      "All-trans retinoic acid"
+    ],
+    "correctAnswer": "Eculizumab",
+    "explanation": "Correct: PNH is treated with complement inhibition using eculizumab. Why the other options are wrong: Desmopressin treats vWD; hydroxyurea is for myeloproliferative disorders; splenectomy and ATRA are not appropriate.",
+    "studyConcepts": [
+      "paroxysmal nocturnal hemoglobinuria",
+      "CD55 CD59",
+      "eculizumab"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 40-year-old woman with SLE has fatigue and jaundice. Labs show anemia, elevated indirect bilirubin, and a positive direct Coombs test. What type of hemolysis is most likely?",
+    "options": [
+      "Warm autoimmune hemolytic anemia",
+      "Cold agglutinin disease",
+      "G6PD deficiency",
+      "Hereditary spherocytosis",
+      "Paroxysmal nocturnal hemoglobinuria"
+    ],
+    "correctAnswer": "Warm autoimmune hemolytic anemia",
+    "explanation": "Correct: SLE is associated with warm IgG autoimmune hemolysis and positive Coombs test. Why the other options are wrong: Cold agglutinin disease is IgM; G6PD deficiency has bite cells; hereditary spherocytosis is Coombs-negative; PNH has CD55/59 loss.",
+    "studyConcepts": [
+      "warm autoimmune hemolytic anemia",
+      "Coombs positive",
+      "SLE"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 62-year-old man develops hemolysis and acrocyanosis after a Mycoplasma pneumoniae infection. Which antibody is involved?",
+    "options": [
+      "IgM against I antigen",
+      "IgG against Rh antigen",
+      "IgA against vWF",
+      "IgE against platelets",
+      "IgM against platelet factor 4"
+    ],
+    "correctAnswer": "IgM against I antigen",
+    "explanation": "Correct: Cold agglutinin disease involves IgM antibodies against I antigen, often after Mycoplasma infection. Why the other options are wrong: Warm AIHA is IgG; vWF is unrelated; PF4 antibodies cause HIT.",
+    "studyConcepts": [
+      "cold agglutinin disease",
+      "Mycoplasma",
+      "IgM"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 3-year-old child of Mediterranean ancestry has severe microcytic anemia, jaundice, and hepatosplenomegaly. He requires frequent transfusions. Which diagnosis is most likely?",
+    "options": [
+      "Beta-thalassemia major",
+      "Iron deficiency anemia",
+      "Sideroblastic anemia",
+      "Anemia of chronic disease",
+      "G6PD deficiency"
+    ],
+    "correctAnswer": "Beta-thalassemia major",
+    "explanation": "Correct: Beta-thalassemia major causes severe microcytosis, transfusion dependence, and hepatosplenomegaly. Why the other options are wrong: Iron deficiency is milder; sideroblastic anemia has ring sideroblasts; G6PD deficiency causes episodic hemolysis.",
+    "studyConcepts": [
+      "beta-thalassemia major",
+      "microcytic anemia",
+      "transfusion"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 17-year-old with sickle cell disease has sudden severe anemia and low reticulocyte count after a febrile illness. What is the most likely cause?",
+    "options": [
+      "Parvovirus B19 infection",
+      "Acute chest syndrome",
+      "Splenic sequestration",
+      "Folate deficiency",
+      "G6PD deficiency"
+    ],
+    "correctAnswer": "Parvovirus B19 infection",
+    "explanation": "Correct: Parvovirus B19 causes aplastic crisis with low reticulocytes. Why the other options are wrong: Acute chest syndrome causes hypoxia and chest pain; splenic sequestration has high reticulocytes; folate deficiency is chronic.",
+    "studyConcepts": [
+      "sickle cell disease",
+      "aplastic crisis",
+      "parvovirus B19"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 2-year-old with sickle cell disease develops acute abdominal pain, pallor, and hypotension. Spleen is enlarged. What is the best immediate treatment?",
+    "options": [
+      "Urgent blood transfusion",
+      "Hydroxyurea",
+      "Iron chelation",
+      "Splenectomy now",
+      "High-dose steroids"
+    ],
+    "correctAnswer": "Urgent blood transfusion",
+    "explanation": "Correct: Splenic sequestration is life-threatening and requires urgent transfusion. Why the other options are wrong: Hydroxyurea is for prevention; chelation and steroids are not indicated acutely; splenectomy is not immediate therapy.",
+    "studyConcepts": [
+      "splenic sequestration",
+      "sickle cell disease",
+      "transfusion"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 20-year-old man has chronic hemolytic anemia with elevated 2,3-BPG and echinocytes on smear. Which enzyme deficiency is most likely?",
+    "options": [
+      "Pyruvate kinase deficiency",
+      "G6PD deficiency",
+      "Hexokinase deficiency",
+      "Adenosine deaminase deficiency",
+      "Glucose-6-phosphatase deficiency"
+    ],
+    "correctAnswer": "Pyruvate kinase deficiency",
+    "explanation": "Correct: Pyruvate kinase deficiency causes chronic hemolysis with echinocytes and increased 2,3-BPG. Why the other options are wrong: G6PD deficiency causes episodic hemolysis with Heinz bodies; ADA causes SCID; glucose-6-phosphatase causes glycogen storage disease.",
+    "studyConcepts": [
+      "pyruvate kinase deficiency",
+      "hemolytic anemia",
+      "echinocytes"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 10-year-old boy has hemarthroses and a prolonged PTT that corrects with mixing. Factor IX level is low. What is the diagnosis?",
+    "options": [
+      "Hemophilia B",
+      "Hemophilia A",
+      "von Willebrand disease",
+      "DIC",
+      "HIT"
+    ],
+    "correctAnswer": "Hemophilia B",
+    "explanation": "Correct: Factor IX deficiency is hemophilia B. Why the other options are wrong: Hemophilia A is factor VIII deficiency; vWD affects mucosal bleeding; DIC affects PT and PTT; HIT is a platelet disorder.",
+    "studyConcepts": [
+      "hemophilia B",
+      "factor IX",
+      "bleeding disorder"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A woman with placental abruption develops bleeding, elevated PT and PTT, low fibrinogen, and high D-dimer. What is the most appropriate management?",
+    "options": [
+      "Treat underlying cause and give blood products as needed",
+      "Platelet transfusion only",
+      "High-dose vitamin K",
+      "Heparin infusion",
+      "Rituximab"
+    ],
+    "correctAnswer": "Treat underlying cause and give blood products as needed",
+    "explanation": "Correct: DIC is managed by treating the underlying cause and supportive transfusion (e.g., platelets, cryoprecipitate). Why the other options are wrong: Platelets alone are insufficient; vitamin K does not fix consumption; heparin is not routine in acute obstetric DIC.",
+    "studyConcepts": [
+      "disseminated intravascular coagulation",
+      "obstetric complication",
+      "supportive care"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A patient develops acute hypoxemia and pulmonary edema within 2 hours of a transfusion. CXR shows bilateral infiltrates, and there is no evidence of volume overload. What is the most likely diagnosis?",
+    "options": [
+      "Transfusion-related acute lung injury",
+      "TACO",
+      "Anaphylaxis",
+      "Febrile nonhemolytic reaction",
+      "Acute hemolytic reaction"
+    ],
+    "correctAnswer": "Transfusion-related acute lung injury",
+    "explanation": "Correct: TRALI presents with noncardiogenic pulmonary edema shortly after transfusion. Why the other options are wrong: TACO causes volume overload and hypertension; anaphylaxis causes bronchospasm; febrile reactions lack lung edema; hemolytic reactions cause hemoglobinuria.",
+    "studyConcepts": [
+      "TRALI",
+      "transfusion reaction",
+      "noncardiogenic pulmonary edema"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 45-year-old man with leukemia receives chemotherapy and develops hyperkalemia, hyperphosphatemia, hypocalcemia, and acute kidney injury. What is the best treatment?",
+    "options": [
+      "Rasburicase and aggressive IV fluids",
+      "Warfarin",
+      "Desmopressin",
+      "Platelet transfusion",
+      "Oral iron"
+    ],
+    "correctAnswer": "Rasburicase and aggressive IV fluids",
+    "explanation": "Correct: Tumor lysis syndrome is treated with IV fluids and uric acid reduction (rasburicase). Why the other options are wrong: Warfarin and desmopressin do not address TLS; platelets and iron are unrelated.",
+    "studyConcepts": [
+      "tumor lysis syndrome",
+      "rasburicase",
+      "chemotherapy"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 30-year-old woman has painless cervical lymphadenopathy. Biopsy shows Reed-Sternberg cells that are CD15 and CD30 positive. What is the diagnosis?",
+    "options": [
+      "Hodgkin lymphoma",
+      "Non-Hodgkin lymphoma",
+      "CLL",
+      "Multiple myeloma",
+      "Burkitt lymphoma"
+    ],
+    "correctAnswer": "Hodgkin lymphoma",
+    "explanation": "Correct: Reed-Sternberg cells with CD15/CD30 positivity indicate Hodgkin lymphoma. Why the other options are wrong: Non-Hodgkin lymphomas lack RS cells; CLL and myeloma have different cell types; Burkitt shows starry sky.",
+    "studyConcepts": [
+      "Hodgkin lymphoma",
+      "Reed-Sternberg",
+      "CD15 CD30"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 12-year-old boy from Africa has a jaw mass. Biopsy shows a starry-sky pattern. What chromosomal translocation is most likely?",
+    "options": [
+      "t(8;14)",
+      "t(9;22)",
+      "t(14;18)",
+      "t(11;14)",
+      "t(15;17)"
+    ],
+    "correctAnswer": "t(8;14)",
+    "explanation": "Correct: Burkitt lymphoma has t(8;14) involving c-MYC. Why the other options are wrong: t(9;22) is CML; t(14;18) is follicular lymphoma; t(11;14) is mantle cell; t(15;17) is APL.",
+    "studyConcepts": [
+      "Burkitt lymphoma",
+      "c-MYC",
+      "starry sky"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 63-year-old man has fatigue, weight loss, and hyperviscosity symptoms. Serum shows high IgM. What is the most likely diagnosis?",
+    "options": [
+      "Waldenstrom macroglobulinemia",
+      "Multiple myeloma",
+      "CLL",
+      "Hodgkin lymphoma",
+      "Hairy cell leukemia"
+    ],
+    "correctAnswer": "Waldenstrom macroglobulinemia",
+    "explanation": "Correct: IgM monoclonal gammopathy with hyperviscosity suggests Waldenstrom macroglobulinemia. Why the other options are wrong: Myeloma usually has IgG or IgA; CLL is lymphocytosis; Hodgkin and hairy cell have different features.",
+    "studyConcepts": [
+      "Waldenstrom macroglobulinemia",
+      "IgM",
+      "hyperviscosity"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 72-year-old woman on broad-spectrum antibiotics develops easy bruising and prolonged PT with normal PTT. What is the most likely cause?",
+    "options": [
+      "Vitamin K deficiency",
+      "Hemophilia A",
+      "DIC",
+      "vWD",
+      "Factor V Leiden"
+    ],
+    "correctAnswer": "Vitamin K deficiency",
+    "explanation": "Correct: Vitamin K deficiency causes isolated PT prolongation due to reduced factors II, VII, IX, and X. Why the other options are wrong: Hemophilia A prolongs PTT; DIC prolongs both PT and PTT; vWD affects bleeding time and PTT; Factor V Leiden causes thrombosis.",
+    "studyConcepts": [
+      "vitamin K deficiency",
+      "prolonged PT",
+      "antibiotics"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A patient has mucocutaneous bleeding and thrombocytopenia. Platelets are large and bleeding time is prolonged. Ristocetin test is abnormal. Which disorder is most likely?",
+    "options": [
+      "Bernard-Soulier syndrome",
+      "Glanzmann thrombasthenia",
+      "Hemophilia A",
+      "DIC",
+      "ITP"
+    ],
+    "correctAnswer": "Bernard-Soulier syndrome",
+    "explanation": "Correct: Bernard-Soulier is a GPIb defect causing abnormal ristocetin test and large platelets. Why the other options are wrong: Glanzmann is GPIIb/IIIa with normal ristocetin; hemophilia A affects PTT; ITP has small platelets; DIC affects PT and PTT.",
+    "studyConcepts": [
+      "Bernard-Soulier",
+      "platelet adhesion",
+      "GPIb"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "Spirometry in a patient with dyspnea shows FEV1/FVC ratio of 0.55 with increased TLC. What pattern is most likely?",
+    "options": [
+      "Obstructive lung disease",
+      "Restrictive lung disease",
+      "Normal spirometry",
+      "Mixed restrictive and obstructive",
+      "Neuromuscular weakness"
+    ],
+    "correctAnswer": "Obstructive lung disease",
+    "explanation": "Correct: Low FEV1/FVC with increased TLC indicates obstructive disease. Why the other options are wrong: Restrictive disease has low TLC and normal or high FEV1/FVC.",
+    "studyConcepts": [
+      "spirometry",
+      "obstructive lung disease",
+      "FEV1/FVC"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "Which condition is associated with a decreased DLCO?",
+    "options": [
+      "Emphysema",
+      "Asthma",
+      "Obesity",
+      "Neuromuscular weakness",
+      "Pleural effusion only"
+    ],
+    "correctAnswer": "Emphysema",
+    "explanation": "Correct: Emphysema destroys alveolar-capillary surface area, lowering DLCO. Why the other options are wrong: Asthma and obesity have normal or increased DLCO; neuromuscular weakness does not reduce DLCO.",
+    "studyConcepts": [
+      "DLCO",
+      "emphysema",
+      "diffusion capacity"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 35-year-old man has early-onset panacinar emphysema and liver disease. What is the underlying defect?",
+    "options": [
+      "Alpha-1 antitrypsin deficiency",
+      "CFTR mutation",
+      "Beta-2 microglobulin deficiency",
+      "Surfactant deficiency",
+      "Ciliary dyskinesia"
+    ],
+    "correctAnswer": "Alpha-1 antitrypsin deficiency",
+    "explanation": "Correct: Alpha-1 antitrypsin deficiency causes panacinar emphysema and liver disease from misfolded protein. Why the other options are wrong: CFTR causes bronchiectasis; surfactant deficiency causes neonatal RDS; ciliary dyskinesia causes sinusitis and bronchiectasis.",
+    "studyConcepts": [
+      "alpha-1 antitrypsin deficiency",
+      "panacinar emphysema",
+      "liver disease"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 28-year-old woman has episodic wheeze and normal spirometry between attacks. Post-bronchodilator FEV1 increases by 15%. What is the most likely diagnosis?",
+    "options": [
+      "Asthma",
+      "COPD",
+      "Bronchiectasis",
+      "Idiopathic pulmonary fibrosis",
+      "Pulmonary hypertension"
+    ],
+    "correctAnswer": "Asthma",
+    "explanation": "Correct: Reversible airflow obstruction with bronchodilator response suggests asthma. Why the other options are wrong: COPD has limited reversibility; bronchiectasis has chronic sputum; IPF is restrictive; pulmonary hypertension does not cause reversibility.",
+    "studyConcepts": [
+      "asthma",
+      "reversibility",
+      "spirometry"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 45-year-old man has pneumonia with high fever, diarrhea, and hyponatremia. Which antibiotic is most appropriate?",
+    "options": [
+      "Azithromycin",
+      "Nafcillin",
+      "Vancomycin",
+      "Cefazolin",
+      "Amoxicillin-clavulanate only"
+    ],
+    "correctAnswer": "Azithromycin",
+    "explanation": "Correct: Legionella pneumonia causes GI symptoms and hyponatremia; treat with macrolide or fluoroquinolone. Why the other options are wrong: Nafcillin and cefazolin are for MSSA; vancomycin is for MRSA; amoxicillin-clavulanate is not optimal for Legionella.",
+    "studyConcepts": [
+      "Legionella",
+      "atypical pneumonia",
+      "hyponatremia"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A patient with poor dentition develops fever and foul-smelling sputum. Imaging shows a lung abscess. What is the best empiric therapy?",
+    "options": [
+      "Clindamycin",
+      "Ciprofloxacin",
+      "Azithromycin",
+      "Amoxicillin only",
+      "Acyclovir"
+    ],
+    "correctAnswer": "Clindamycin",
+    "explanation": "Correct: Aspiration lung abscess requires anaerobic coverage such as clindamycin. Why the other options are wrong: Ciprofloxacin has limited anaerobic coverage; azithromycin targets atypicals; acyclovir is antiviral.",
+    "studyConcepts": [
+      "lung abscess",
+      "aspiration",
+      "anaerobes"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 31-year-old man has night sweats, weight loss, and hemoptysis. CXR shows upper lobe cavitary lesion. What is the most appropriate initial therapy?",
+    "options": [
+      "Isoniazid, rifampin, pyrazinamide, and ethambutol",
+      "Amoxicillin",
+      "Azithromycin only",
+      "Oseltamivir",
+      "Ceftriaxone"
+    ],
+    "correctAnswer": "Isoniazid, rifampin, pyrazinamide, and ethambutol",
+    "explanation": "Correct: Active tuberculosis is treated initially with RIPE therapy. Why the other options are wrong: Single antibiotics or antivirals are inadequate.",
+    "studyConcepts": [
+      "tuberculosis",
+      "RIPE therapy",
+      "cavitary lesion"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 60-year-old smoker has shoulder pain, ptosis, and miosis. Imaging shows an apical lung mass. What is the most likely diagnosis?",
+    "options": [
+      "Pancoast tumor",
+      "Carcinoid tumor",
+      "Mesothelioma",
+      "Hamartoma",
+      "Atypical pneumonia"
+    ],
+    "correctAnswer": "Pancoast tumor",
+    "explanation": "Correct: An apical lung cancer causing Horner syndrome is a Pancoast tumor. Why the other options are wrong: Carcinoid and hamartoma are usually central or benign; mesothelioma is pleural.",
+    "studyConcepts": [
+      "Pancoast tumor",
+      "Horner syndrome",
+      "apical lung mass"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 58-year-old man with a large mediastinal mass has facial swelling and distended neck veins. Which lung cancer most commonly causes this?",
+    "options": [
+      "Small cell carcinoma",
+      "Adenocarcinoma",
+      "Squamous cell carcinoma",
+      "Carcinoid tumor",
+      "Large cell carcinoma"
+    ],
+    "correctAnswer": "Small cell carcinoma",
+    "explanation": "Correct: Small cell lung cancer commonly causes SVC syndrome due to central location. Why the other options are wrong: Adenocarcinoma is usually peripheral; squamous cell is central but less associated with SVC syndrome; carcinoid is less aggressive.",
+    "studyConcepts": [
+      "SVC syndrome",
+      "small cell lung cancer",
+      "mediastinal mass"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 4-year-old with fever, drooling, and tripod positioning has a swollen epiglottis on lateral neck x-ray. What is the best next step?",
+    "options": [
+      "Secure the airway and give IV ceftriaxone",
+      "Give oral steroids only",
+      "Send home with oral antibiotics",
+      "Nebulized epinephrine only",
+      "Immediate CT scan"
+    ],
+    "correctAnswer": "Secure the airway and give IV ceftriaxone",
+    "explanation": "Correct: Epiglottitis requires airway stabilization and IV antibiotics. Why the other options are wrong: Oral therapy and discharge are unsafe; CT delays care; nebulized epinephrine is for croup.",
+    "studyConcepts": [
+      "epiglottitis",
+      "airway management",
+      "Hib"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "Which infant is the best candidate for palivizumab prophylaxis?",
+    "options": [
+      "Preterm infant born at 28 weeks with chronic lung disease",
+      "Healthy term infant",
+      "Child with mild seasonal allergies",
+      "Toddler with asthma",
+      "Adolescent with cystic fibrosis"
+    ],
+    "correctAnswer": "Preterm infant born at 28 weeks with chronic lung disease",
+    "explanation": "Correct: Palivizumab is used for high-risk infants (prematurity, chronic lung disease, CHD). Why the other options are wrong: Healthy term infants and older children are not candidates.",
+    "studyConcepts": [
+      "RSV",
+      "palivizumab",
+      "prematurity"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A preterm infant develops respiratory distress shortly after birth. CXR shows ground-glass opacities and air bronchograms. What is the most appropriate therapy?",
+    "options": [
+      "Exogenous surfactant",
+      "Broad-spectrum antibiotics only",
+      "High-dose steroids only",
+      "Diuretics",
+      "Ribavirin"
+    ],
+    "correctAnswer": "Exogenous surfactant",
+    "explanation": "Correct: Neonatal RDS is due to surfactant deficiency; treat with surfactant and CPAP. Why the other options are wrong: Antibiotics alone do not treat surfactant deficiency; diuretics and ribavirin are not indicated.",
+    "studyConcepts": [
+      "neonatal respiratory distress syndrome",
+      "surfactant",
+      "prematurity"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A term infant is born through meconium-stained fluid and develops respiratory distress with patchy infiltrates. What is the most likely diagnosis?",
+    "options": [
+      "Meconium aspiration syndrome",
+      "Neonatal RDS",
+      "Bronchiolitis",
+      "Croup",
+      "Pulmonary embolism"
+    ],
+    "correctAnswer": "Meconium aspiration syndrome",
+    "explanation": "Correct: Meconium aspiration causes respiratory distress and patchy infiltrates in term infants. Why the other options are wrong: Neonatal RDS is in preterm infants; bronchiolitis occurs later; croup is upper airway.",
+    "studyConcepts": [
+      "meconium aspiration",
+      "neonatal lung disease",
+      "term infant"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 50-year-old man with occupational exposure develops upper lobe nodules and eggshell calcification of hilar nodes. What exposure is most likely?",
+    "options": [
+      "Silica",
+      "Asbestos",
+      "Coal dust",
+      "Cotton fiber",
+      "Beryllium"
+    ],
+    "correctAnswer": "Silica",
+    "explanation": "Correct: Silicosis causes upper lobe nodules and eggshell calcifications. Why the other options are wrong: Asbestos causes lower lobe fibrosis and pleural plaques; coal dust causes upper lobe nodules without eggshell; beryllium causes granulomas.",
+    "studyConcepts": [
+      "silicosis",
+      "eggshell calcifications",
+      "occupational lung disease"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 67-year-old man with COPD has PaO2 52 mm Hg on room air. What therapy improves survival?",
+    "options": [
+      "Long-term oxygen therapy",
+      "Short-acting beta agonist only",
+      "Oral antibiotics only",
+      "High-dose inhaled steroids only",
+      "Nocturnal oxygen only"
+    ],
+    "correctAnswer": "Long-term oxygen therapy",
+    "explanation": "Correct: LTOT improves survival in COPD with severe hypoxemia (PaO2 <=55 or SaO2 <=88). Why the other options are wrong: Bronchodilators and steroids do not improve survival; nocturnal oxygen alone is insufficient.",
+    "studyConcepts": [
+      "COPD",
+      "oxygen therapy",
+      "hypoxemia"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 3-year-old with barking cough and inspiratory stridor improves with racemic epinephrine. What is the most appropriate additional therapy?",
+    "options": [
+      "Dexamethasone",
+      "Amoxicillin",
+      "Oseltamivir",
+      "Inhaled tobramycin",
+      "No further treatment"
+    ],
+    "correctAnswer": "Dexamethasone",
+    "explanation": "Correct: Croup is treated with steroids; racemic epinephrine is for acute distress. Why the other options are wrong: Antibiotics and antivirals are not routine; no treatment risks recurrence.",
+    "studyConcepts": [
+      "croup",
+      "dexamethasone",
+      "upper airway"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A patient with acute decompensated heart failure has dyspnea and bilateral crackles. CXR shows Kerley B lines. What is the mechanism of his pulmonary edema?",
+    "options": [
+      "Increased hydrostatic pressure",
+      "Increased capillary permeability",
+      "Decreased oncotic pressure",
+      "Airway obstruction",
+      "Lymphatic obstruction"
+    ],
+    "correctAnswer": "Increased hydrostatic pressure",
+    "explanation": "Correct: Cardiogenic pulmonary edema is due to increased hydrostatic pressure. Why the other options are wrong: Increased permeability is ARDS; low oncotic pressure causes edema but not classic Kerley lines.",
+    "studyConcepts": [
+      "pulmonary edema",
+      "heart failure",
+      "hydrostatic pressure"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "An ABG in a patient with severe COPD shows pH 7.36, PaCO2 60 mm Hg, and HCO3- 33 mEq/L. How should this be interpreted?",
+    "options": [
+      "Chronic respiratory acidosis with renal compensation",
+      "Acute respiratory acidosis",
+      "Metabolic alkalosis",
+      "Acute respiratory alkalosis",
+      "Mixed metabolic acidosis"
+    ],
+    "correctAnswer": "Chronic respiratory acidosis with renal compensation",
+    "explanation": "Correct: COPD causes chronic CO2 retention with elevated bicarbonate and near-normal pH. Why the other options are wrong: Acute respiratory acidosis would have low bicarbonate; alkalosis and metabolic acidosis do not fit.",
+    "studyConcepts": [
+      "COPD",
+      "ABG",
+      "chronic respiratory acidosis"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A patient with heart failure has central sleep apnea with Cheyne-Stokes breathing. What is the best initial management?",
+    "options": [
+      "Optimize heart failure therapy",
+      "Start antibiotics",
+      "Immediate surgery",
+      "High-dose steroids",
+      "Bronchodilators"
+    ],
+    "correctAnswer": "Optimize heart failure therapy",
+    "explanation": "Correct: Central sleep apnea in CHF improves with optimization of heart failure management. Why the other options are wrong: Antibiotics, steroids, and bronchodilators do not address central apnea.",
+    "studyConcepts": [
+      "central sleep apnea",
+      "Cheyne-Stokes",
+      "heart failure"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "heme",
+    "status": "draft",
+    "questionText": "A 27-year-old woman has recurrent unprovoked DVTs. She is given heparin but her PTT does not increase. Which deficiency best explains this finding?",
+    "options": [
+      "Antithrombin deficiency",
+      "Protein C deficiency",
+      "Factor V Leiden",
+      "Factor VIII deficiency",
+      "von Willebrand disease"
+    ],
+    "correctAnswer": "Antithrombin deficiency",
+    "explanation": "Correct: Heparin requires antithrombin to inhibit thrombin and factor Xa, so antithrombin deficiency causes heparin resistance and thrombosis. Why the other options are wrong: Protein C deficiency and Factor V Leiden cause thrombosis but do not blunt heparin effect; factor VIII and vWD cause bleeding.",
+    "studyConcepts": [
+      "antithrombin deficiency",
+      "heparin resistance",
+      "thrombophilia"
+    ],
+    "difficulty": "Clinical vignette"
+  },
+  {
+    "module": "pulm",
+    "status": "draft",
+    "questionText": "A 40-year-old woman has acute pleuritic chest pain and tachycardia. Which physiologic abnormality is most likely in pulmonary embolism?",
+    "options": [
+      "Increased dead space ventilation",
+      "Decreased dead space ventilation",
+      "Uniformly increased perfusion",
+      "Increased diffusion capacity",
+      "Increased FEV1/FVC ratio"
+    ],
+    "correctAnswer": "Increased dead space ventilation",
+    "explanation": "Correct: PE creates ventilated but poorly perfused lung units, increasing dead space. Why the other options are wrong: Perfusion is reduced, not increased; diffusion capacity falls; FEV1/FVC is not increased.",
+    "studyConcepts": [
+      "pulmonary embolism",
+      "V/Q mismatch",
+      "dead space"
+    ],
+    "difficulty": "Clinical vignette"
+  }
+]

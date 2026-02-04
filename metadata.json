@@ -1,0 +1,9 @@
+{
+  "name": "Copy of Mediprep - devmode LEVI ",
+  "description": "Professional medical exam prediction and clinical ward simulation platform powered by Gemini and Supabase.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "display-capture"
+  ]
+}
