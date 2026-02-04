@@ -20,6 +20,8 @@ const HISTOLOGY_TRIGGERS = [
 ];
 
 const HISTOLOGY_BASE_URL = (import.meta.env.VITE_HISTOLOGY_BASE_URL || '').trim();
+const TAG_STOPWORDS = new Set(['anemia', 'deficiency', 'disease', 'syndrome', 'disorder']);
+const GENERIC_KEYWORDS = new Set(['anemia', 'deficiency', 'disease', 'syndrome', 'disorder', 'cell', 'cells', 'blood', 'smear']);
 
 const resolveHistologyUrl = (imageUrl: string) => {
   if (!imageUrl || !HISTOLOGY_BASE_URL) return imageUrl;
@@ -90,14 +92,12 @@ const matchesTag = (
   }
 
   const tagTokens = tokenize(tagNorm);
-  if (tagTokens.length > 0 && tagTokens.every((token) => textTokens.has(token))) {
-    return true;
-  }
-  if (tagTokens.length > 0 && tagTokens.some((token) => textTokens.has(token))) {
-    return true;
-  }
+  const filteredTokens = tagTokens.filter((token) => !TAG_STOPWORDS.has(token));
+  const tokensToMatch = filteredTokens.length > 0 ? filteredTokens : tagTokens;
 
-  return false;
+  if (tokensToMatch.length === 0) return false;
+  if (tokensToMatch.length === 1) return textTokens.has(tokensToMatch[0]);
+  return tokensToMatch.every((token) => textTokens.has(token));
 };
 
 const findBestEntry = (
@@ -112,7 +112,14 @@ const findBestEntry = (
   let bestScore = 0;
 
   pool.forEach((entry) => {
-    const keywordScore = entry.keywords.reduce((acc, keyword) => acc + (textTokens.has(keyword) ? 1 : 0), 0);
+    const keywordScore = entry.keywords.reduce((acc, keyword) => {
+      const normalized = keyword.toLowerCase().trim();
+      if (!normalized || GENERIC_KEYWORDS.has(normalized)) return acc;
+      if (normalized.includes(' ')) {
+        return acc + (searchText.includes(normalized) ? 1 : 0);
+      }
+      return acc + (textTokens.has(normalized) ? 1 : 0);
+    }, 0);
     let tagScore = 0;
     let tagMatch = false;
     const tags = entry.conceptTags || [];
