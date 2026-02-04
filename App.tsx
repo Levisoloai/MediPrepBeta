@@ -580,7 +580,9 @@ const App: React.FC = () => {
     const seenFingerprintSet = await ensureSeenFingerprints(moduleId);
 
     const histologyInstruction =
-      guideModule ? 'Include histology/morphology questions where appropriate. If you reference an image, say "A representative histology image is provided below.".' : '';
+      guideModule
+        ? 'Include histology/morphology or imaging questions where appropriate. If you reference an image, say "A representative image is provided below.".'
+        : '';
     const effectivePrefs: UserPreferences = histologyInstruction
       ? {
           ...prefs,

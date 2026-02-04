@@ -188,12 +188,13 @@ const findBestEntry = (
 };
 
 const addHistologyCue = (text: string) => {
-  const lower = text.toLowerCase();
+  const stripped = stripHistologyCue(text);
+  const lower = stripped.toLowerCase();
   if (lower.includes('image') || lower.includes('histology') || lower.includes('smear')) {
-    return text;
+    return stripped;
   }
-  const cue = 'A representative histology image is provided below.';
-  return text.trim().length > 0 ? `${text.trim()}\n\n${cue}` : cue;
+  const cue = 'A representative image is provided below.';
+  return stripped.trim().length > 0 ? `${stripped.trim()}\n\n${cue}` : cue;
 };
 
 const stripHistologyCue = (text: string) => {

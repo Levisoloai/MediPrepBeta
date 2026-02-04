@@ -832,17 +832,17 @@ const QuestionCard: React.FC<QuestionCardProps> = ({ question, index, userId, on
                   : 'bg-white text-slate-500 border-slate-200 hover:text-emerald-700 hover:border-emerald-200'
               }`}
             >
-              {showHistology ? 'Hide Histology' : 'Show Histology'}
+              {showHistology ? 'Hide Image' : 'Show Image'}
             </button>
             {showHistology && (
               <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
                 <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">
-                  {showAnswer ? (question.histology.title || 'Histology') : 'Histology (label hidden)'}
+                  {showAnswer ? (question.histology.title || 'Image') : 'Image (label hidden)'}
                 </div>
                 <div className="flex justify-center">
                   <img
                     src={question.histology.imageUrl}
-                    alt={question.histology.title || 'Histology image'}
+                    alt={question.histology.title || 'Representative image'}
                     className="max-h-[320px] w-auto rounded-xl border border-slate-200 bg-white"
                   />
                 </div>
