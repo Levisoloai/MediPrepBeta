@@ -1,4 +1,5 @@
 import { UserPreferences, QuestionType, Question, StudyFile, ChatMessage, ExamFormat, Subject, BlueprintTopic, ClinicalCase, CaseLabResult, CaseEvaluation, StudyPlanItem, DifficultyLevel, CardStyle } from '../types';
+import { normalizeOptions, resolveCorrectAnswer } from '../utils/answerKey';
 
 const XAI_BASE_URL = 'https://api.x.ai/v1';
 const DEFAULT_MODEL = import.meta.env.VITE_XAI_MODEL || 'grok-4-1-fast-reasoning';
@@ -152,24 +153,11 @@ const mapGeneratedQuestions = (rawQuestions: any[], preferences: UserPreferences
       : sanitized.options.length > 0
       ? sanitized.options
       : undefined;
-    let correctAnswer = q.correctAnswer || '';
-
-    if (rawOptions && rawOptions.length > 0) {
-      const letterMatch = correctAnswer.trim().match(/^([A-E])(?:[\\)\\.:\\s]|$)/i);
-      if (letterMatch) {
-        const index = letterMatch[1].toUpperCase().charCodeAt(0) - 65;
-        if (rawOptions[index]) {
-          correctAnswer = rawOptions[index];
-        }
-      }
-
-      if (!rawOptions.some((opt: string) => normalizeText(opt) === normalizeText(correctAnswer))) {
-        const matched = rawOptions.find((opt: string) => normalizeText(correctAnswer).includes(normalizeText(opt)) || normalizeText(opt).includes(normalizeText(correctAnswer)));
-        if (matched) correctAnswer = matched;
-      }
-    }
-
-    const shuffledOptions = rawOptions ? shuffleArray(rawOptions) : undefined;
+    const normalizedOptions = rawOptions ? normalizeOptions(rawOptions) : [];
+    const shuffledOptions = normalizedOptions.length > 0 ? shuffleArray(normalizedOptions) : undefined;
+    const correctAnswer = shuffledOptions
+      ? resolveCorrectAnswer({ correctAnswer: q.correctAnswer || '', options: shuffledOptions, explanation: q.explanation || '' })
+      : String(q.correctAnswer || '').trim();
 
     return {
       id: q.id || Math.random().toString(36).slice(2, 9),
@@ -261,16 +249,23 @@ export const normalizeDeepDiveQuiz = (rawQuiz: any[], concept: string): Question
         examFormat: ExamFormat.NBME,
         cardStyle: CardStyle.BASIC
       })
-    : coerced.map((q, idx) => ({
-        id: q.id || `dd-${Date.now()}-${idx}`,
-        type: q.type || QuestionType.MULTIPLE_CHOICE,
-        questionText: q.questionText || '',
-        options: q.options,
-        correctAnswer: q.correctAnswer || '',
-        explanation: q.explanation || '',
-        studyConcepts: Array.isArray(q.studyConcepts) ? q.studyConcepts : [],
-        difficulty: q.difficulty || DifficultyLevel.CLINICAL_VIGNETTE
-      }));
+    : coerced.map((q, idx) => {
+        const normalizedOptions = normalizeOptions(q.options);
+        return {
+          id: q.id || `dd-${Date.now()}-${idx}`,
+          type: q.type || QuestionType.MULTIPLE_CHOICE,
+          questionText: q.questionText || '',
+          options: normalizedOptions,
+          correctAnswer: resolveCorrectAnswer({
+            correctAnswer: q.correctAnswer || '',
+            options: normalizedOptions,
+            explanation: q.explanation || ''
+          }),
+          explanation: q.explanation || '',
+          studyConcepts: Array.isArray(q.studyConcepts) ? q.studyConcepts : [],
+          difficulty: q.difficulty || DifficultyLevel.CLINICAL_VIGNETTE
+        };
+      });
 
   return normalized.map((q) => {
     const hasUworldSections =

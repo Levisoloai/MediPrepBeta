@@ -11,6 +11,7 @@ import { flushFeedbackQueue } from './services/feedbackService';
 import { getPrefabSet, getActivePrefabQuestions } from './services/prefabService';
 import { getApprovedGoldQuestions } from './services/goldQuestionService';
 import { Question, UserPreferences, StudyFile, ChatMessage, QuestionState, StudyGuideItem, QuestionType, DifficultyLevel, ExamFormat, CardStyle } from './types';
+import { normalizeOptions, resolveCorrectAnswer } from './utils/answerKey';
 import { buildFingerprintSet, buildFingerprintVariants, filterDuplicateQuestions } from './utils/questionDedupe';
 import { attachHistologyToQuestions } from './utils/histology';
 import { SparklesIcon, XMarkIcon, ChatBubbleLeftRightIcon, PaperAirplaneIcon, ExclamationTriangleIcon, CheckIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/solid';
@@ -19,44 +20,6 @@ import { supabase } from './services/supabaseClient';
 import { fetchSeenFingerprints, recordSeenQuestions } from './services/seenQuestionsService';
 
 type ViewMode = 'generate' | 'practice' | 'remediation' | 'deepdive' | 'analytics';
-
-const stripOptionPrefix = (text: string) => String(text ?? '').replace(/^[A-E](?:[\)\.\:]|\s)\s*/i, '').trim();
-
-const normalizeOptions = (raw: any): string[] => {
-  if (Array.isArray(raw)) {
-    return raw
-      .map((opt) => stripOptionPrefix(opt))
-      .filter((opt) => opt.length > 0);
-  }
-  if (raw && typeof raw === 'object') {
-    const orderedLetterKeys = ['A', 'B', 'C', 'D', 'E', 'a', 'b', 'c', 'd', 'e'];
-    const letterValues = orderedLetterKeys
-      .filter((key) => Object.prototype.hasOwnProperty.call(raw, key))
-      .map((key) => stripOptionPrefix(raw[key]))
-      .filter((opt) => opt.length > 0);
-    if (letterValues.length > 0) {
-      return letterValues;
-    }
-    const numericKeys = Object.keys(raw)
-      .filter((key) => /^\d+$/.test(key))
-      .sort((a, b) => Number(a) - Number(b));
-    if (numericKeys.length > 0) {
-      return numericKeys
-        .map((key) => stripOptionPrefix(raw[key]))
-        .filter((opt) => opt.length > 0);
-    }
-    return Object.values(raw)
-      .map((opt) => stripOptionPrefix(opt))
-      .filter((opt) => opt.length > 0);
-  }
-  if (typeof raw === 'string') {
-    return raw
-      .split(/\r?\n/)
-      .map((opt) => stripOptionPrefix(opt))
-      .filter((opt) => opt.length > 0);
-  }
-  return [];
-};
 
 const normalizeStudyConcepts = (raw: any): string[] => {
   if (Array.isArray(raw)) {
@@ -71,55 +34,16 @@ const normalizeStudyConcepts = (raw: any): string[] => {
   return [];
 };
 
-const inferCorrectFromExplanation = (explanation: string, options: string[]) => {
-  if (!explanation) return null;
-  const marker = '**Choice Analysis:**';
-  const idx = explanation.indexOf(marker);
-  if (idx === -1) return null;
-  const after = explanation.slice(idx + marker.length);
-  const lines = after.split('\n').map((line) => line.trim());
-  const tableLines = lines.filter((line) => line.startsWith('|'));
-  if (tableLines.length < 3) return null;
-  const dataLines = tableLines.slice(2);
-  for (const line of dataLines) {
-    const cols = line.split('|').map((c) => c.trim()).filter((c) => c.length > 0);
-    if (cols.length < 2) continue;
-    const optionText = cols[0];
-    const rationale = cols[1] || '';
-    if (!/^correct[:\s]/i.test(rationale)) continue;
-    const normalizedOption = stripOptionPrefix(optionText).toLowerCase();
-    const matched = options.find((opt) => opt.toLowerCase() === normalizedOption)
-      || options.find((opt) => opt.toLowerCase().includes(normalizedOption) || normalizedOption.includes(opt.toLowerCase()));
-    if (matched) return matched;
-  }
-  return null;
-};
-
-const normalizeCorrectAnswer = (raw: any, options: string[], explanation?: string): string => {
-  const answer = String(raw ?? '').trim();
-  if (!answer) return '';
-  const normalizedOptions = options.map((opt) => stripOptionPrefix(opt)).filter(Boolean);
-  const letterMatch = answer.match(/\b([A-E])\b/i);
-  if (letterMatch) {
-    const idx = letterMatch[1].toUpperCase().charCodeAt(0) - 65;
-    if (normalizedOptions[idx]) return normalizedOptions[idx];
-  }
-  const normalizedAnswer = stripOptionPrefix(answer).toLowerCase();
-  const exact = normalizedOptions.find((opt) => opt.toLowerCase() === normalizedAnswer);
-  if (exact) return exact;
-  const partial = normalizedOptions.find((opt) => opt.toLowerCase().includes(normalizedAnswer) || normalizedAnswer.includes(opt.toLowerCase()));
-  if (partial) return partial;
-  const inferred = explanation ? inferCorrectFromExplanation(explanation, normalizedOptions) : null;
-  if (inferred) return inferred;
-  return stripOptionPrefix(answer);
-};
-
 const normalizeQuestionShape = (question: Question): Question => {
   const normalizedOptions = normalizeOptions(question.options);
   return {
     ...question,
     options: normalizedOptions,
-    correctAnswer: normalizeCorrectAnswer(question.correctAnswer, normalizedOptions, question.explanation),
+    correctAnswer: resolveCorrectAnswer({
+      correctAnswer: question.correctAnswer,
+      options: normalizedOptions,
+      explanation: question.explanation
+    }),
     studyConcepts: normalizeStudyConcepts(question.studyConcepts)
   };
 };
@@ -198,6 +122,14 @@ const App: React.FC = () => {
   });
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(0);
+  const [sessionToolsOpen, setSessionToolsOpen] = useState(() => {
+    try {
+      const saved = localStorage.getItem('mediprep_session_tools_open');
+      return saved === null ? true : saved === '1';
+    } catch {
+      return true;
+    }
+  });
 
   const [practiceQuestions, setPracticeQuestions] = useState<Question[]>(() => {
     try {
@@ -510,6 +442,14 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('mediprep_chat_history_by_question', JSON.stringify(chatHistoryByQuestion));
   }, [chatHistoryByQuestion]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('mediprep_session_tools_open', sessionToolsOpen ? '1' : '0');
+    } catch {
+      // ignore storage errors
+    }
+  }, [sessionToolsOpen]);
 
   useEffect(() => {
     setChatHistoryByQuestion(prev => {
@@ -1450,79 +1390,37 @@ const App: React.FC = () => {
                         : 'Questions generated from the selected module.'}
                     </p>
                   </div>
-                  {(isRemediationView || activeSummary.totalAnswered > 0) && (
-                    <div className="flex flex-col items-end gap-2 w-full lg:w-auto lg:self-start">
-                      {isRemediationView && (
-                        <button
-                          onClick={() => setView('practice')}
-                          className="px-3 py-2 rounded-full border border-slate-200 bg-white text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-indigo-600 hover:border-indigo-200"
-                        >
-                          Back to Practice
-                        </button>
-                      )}
+                  <div className="flex flex-col items-end gap-2 w-full lg:w-auto lg:self-start">
+                    {isRemediationView && (
+                      <button
+                        onClick={() => setView('practice')}
+                        className="px-3 py-2 rounded-full border border-slate-200 bg-white text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-indigo-600 hover:border-indigo-200"
+                      >
+                        Back to Practice
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setSessionToolsOpen((prev) => !prev)}
+                      className="w-full lg:w-auto inline-flex items-center gap-3 px-4 py-2 rounded-full border border-slate-200 bg-white shadow-sm text-[11px] font-bold text-slate-600 hover:border-indigo-200 hover:shadow-md transition-all"
+                    >
+                      <span className="text-[10px] uppercase tracking-widest text-slate-400">Session Tools</span>
                       {activeSummary.totalAnswered > 0 && (
-                        <div className="group w-full lg:w-auto flex flex-col items-end">
-                          <button
-                            type="button"
-                            tabIndex={0}
-                            className="w-full lg:w-auto inline-flex items-center gap-3 px-4 py-2 rounded-full border border-slate-200 bg-white shadow-sm text-[11px] font-bold text-slate-600 hover:border-indigo-200 hover:shadow-md transition-all"
-                          >
-                            <span className="text-[10px] uppercase tracking-widest text-slate-400">Performance</span>
-                            <span className="text-slate-900 font-black">{Math.round(activeSummary.overallAccuracy * 100)}%</span>
-                            <span className="text-slate-400">
-                              {activeSummary.totalCorrect}/{activeSummary.totalAnswered}
-                            </span>
-                            <span className="text-[10px] text-indigo-600 font-black uppercase tracking-widest">Hover</span>
-                          </button>
-
-                          <div className="w-full lg:w-[340px] mt-0 group-hover:mt-3 group-focus-within:mt-3 max-h-0 opacity-0 pointer-events-none overflow-hidden transition-all duration-200 group-hover:max-h-[480px] group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:max-h-[480px] group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
-                            <div className="rounded-2xl border border-slate-200 bg-white shadow-xl p-4">
-                              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Performance Snapshot</div>
-                              <div className="mt-1 text-2xl font-black text-slate-800">
-                                {Math.round(activeSummary.overallAccuracy * 100)}%
-                              </div>
-                              <div className="text-[11px] text-slate-500 mt-0.5">
-                                {activeSummary.totalCorrect} correct out of {activeSummary.totalAnswered} answered
-                              </div>
-                              {!isRemediationView && (
-                                <>
-                                  <div className="mt-2">
-                                    <button
-                                      onClick={handleGenerateRemediation}
-                                      disabled={isLoading || practiceSummary.totalAnswered === 0}
-                                      className="w-full px-2 py-2 rounded-xl bg-indigo-600 text-white text-[9px] font-black uppercase tracking-widest disabled:opacity-50"
-                                    >
-                                      Generate remediation
-                                    </button>
-                                  </div>
-                                  <div className="mt-3">
-                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Needs Review</div>
-                                    {practiceSummary.weakConcepts.length === 0 ? (
-                                      <div className="text-[11px] text-slate-500">Keep going to unlock targeted remediation.</div>
-                                    ) : (
-                                      <div className="space-y-1.5 max-h-28 overflow-y-auto pr-1 custom-scrollbar">
-                                        {practiceSummary.weakConcepts.map((concept) => (
-                                          <div key={concept.concept} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
-                                            <div className="text-[11px] font-semibold text-slate-700">{concept.concept}</div>
-                                            <div className="text-[10px] text-slate-500">
-                                              {Math.round(concept.accuracy * 100)}% • {concept.correct}/{concept.attempts}
-                                            </div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
+                        <>
+                          <span className="text-slate-900 font-black">{Math.round(activeSummary.overallAccuracy * 100)}%</span>
+                          <span className="text-slate-400">
+                            {activeSummary.totalCorrect}/{activeSummary.totalAnswered}
+                          </span>
+                        </>
                       )}
-                    </div>
-                  )}
+                      <span className="text-[10px] text-indigo-600 font-black uppercase tracking-widest">
+                        {sessionToolsOpen ? 'Hide' : 'Show'}
+                      </span>
+                    </button>
+                  </div>
                </div>
 
-               {activeQuestions.length > 0 && (
+               {sessionToolsOpen && activeQuestions.length > 0 && (
                  <div className="mb-6 p-4 rounded-2xl border border-slate-200 bg-white/90 shadow-sm">
                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
                      <div className="flex-1">
@@ -1576,7 +1474,7 @@ const App: React.FC = () => {
                  </div>
                )}
 
-               {isRemediationView && remediationMeta && (
+               {sessionToolsOpen && isRemediationView && remediationMeta && (
                  <div className="mb-6 p-4 rounded-2xl border border-indigo-100 bg-indigo-50/60 text-indigo-800 shadow-sm">
                    <div className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Remediation Mode</div>
                    <div className="text-sm font-semibold mt-1">
@@ -1585,7 +1483,7 @@ const App: React.FC = () => {
                  </div>
                )}
 
-               {activeSummary.totalAnswered > 0 && <div className="mb-2" />}
+               {sessionToolsOpen && activeSummary.totalAnswered > 0 && <div className="mb-2" />}
 
                {!isRemediationView && prefabExhausted && (
                  <div className="mb-6 p-4 rounded-2xl border border-amber-200 bg-amber-50/80 text-amber-800 shadow-sm">
