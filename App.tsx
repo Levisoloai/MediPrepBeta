@@ -18,6 +18,7 @@ import { SparklesIcon, XMarkIcon, ChatBubbleLeftRightIcon, PaperAirplaneIcon, Ex
 import katex from 'katex';
 import { supabase } from './services/supabaseClient';
 import { fetchSeenFingerprints, recordSeenQuestions } from './services/seenQuestionsService';
+import { trackTutorUsage } from './services/tutorUsageService';
 
 type ViewMode = 'generate' | 'practice' | 'remediation' | 'deepdive' | 'analytics';
 
@@ -223,6 +224,7 @@ const App: React.FC = () => {
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [tutorModel, setTutorModel] = useState<'flash' | 'pro'>('pro');
+  const [tutorSessionId, setTutorSessionId] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const seenFingerprintCache = useRef<Map<string, Set<string>>>(new Map());
 
@@ -1169,10 +1171,22 @@ const App: React.FC = () => {
   };
 
   const openChatForQuestion = (q: Question) => {
+    const sessionId = crypto.randomUUID();
     setActiveQuestionForChat(q);
     setChatHistory(chatHistoryByQuestion[q.id] || []);
     setChatInput('');
     setIsChatOpen(true);
+    setTutorSessionId(sessionId);
+    trackTutorUsage({
+      userId: user?.id,
+      sessionId,
+      questionId: q.id,
+      guideHash: q.guideHash || lastGuideContext?.guideHash || null,
+      sourceType: q.sourceType || null,
+      model: tutorModel,
+      location: view === 'remediation' ? 'remediation' : 'practice',
+      eventType: 'open'
+    });
   };
 
   const getTutorTargetQuestion = (
@@ -1199,6 +1213,16 @@ const App: React.FC = () => {
     setIsChatLoading(true);
 
     try {
+      trackTutorUsage({
+        userId: user?.id,
+        sessionId: tutorSessionId,
+        questionId: activeQuestionForChat.id,
+        guideHash: activeQuestionForChat.guideHash || lastGuideContext?.guideHash || null,
+        sourceType: activeQuestionForChat.sourceType || null,
+        model: tutorModel,
+        location: view === 'remediation' ? 'remediation' : 'practice',
+        eventType: 'message_sent'
+      });
       const responseText = await chatWithTutor(activeQuestionForChat, chatHistory, userMsg.text, tutorModel);
       const updated = [...nextHistory, { role: 'model', text: responseText }];
       setChatHistory(updated);
@@ -1206,6 +1230,16 @@ const App: React.FC = () => {
         ...prev,
         [activeQuestionForChat.id]: updated
       }));
+      trackTutorUsage({
+        userId: user?.id,
+        sessionId: tutorSessionId,
+        questionId: activeQuestionForChat.id,
+        guideHash: activeQuestionForChat.guideHash || lastGuideContext?.guideHash || null,
+        sourceType: activeQuestionForChat.sourceType || null,
+        model: tutorModel,
+        location: view === 'remediation' ? 'remediation' : 'practice',
+        eventType: 'response_received'
+      });
     } catch (error) {
       const updated = [...nextHistory, { role: 'model', text: "Sorry, connection error." }];
       setChatHistory(updated);
@@ -1213,6 +1247,16 @@ const App: React.FC = () => {
         ...prev,
         [activeQuestionForChat.id]: updated
       }));
+      trackTutorUsage({
+        userId: user?.id,
+        sessionId: tutorSessionId,
+        questionId: activeQuestionForChat.id,
+        guideHash: activeQuestionForChat.guideHash || lastGuideContext?.guideHash || null,
+        sourceType: activeQuestionForChat.sourceType || null,
+        model: tutorModel,
+        location: view === 'remediation' ? 'remediation' : 'practice',
+        eventType: 'error'
+      });
     } finally {
       setIsChatLoading(false);
     }

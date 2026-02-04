@@ -7,6 +7,7 @@ import { startDeepDive, extendDeepDiveQuiz } from '../services/geminiService';
 import { buildStudyGuideItems } from '../utils/studyGuide';
 import { CardStyle, DifficultyLevel, ExamFormat, GoldQuestionRow, Question, QuestionType, StudyGuideItem, UserPreferences } from '../types';
 import { listGoldQuestions, createGoldQuestion, updateGoldQuestion, approveGoldQuestion, revokeGoldApproval, deleteGoldQuestion } from '../services/goldQuestionService';
+import { fetchTutorUsageSummary, TutorUsageSummary } from '../services/tutorUsageService';
 import { ArrowDownTrayIcon, ArrowPathIcon, ChartBarIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/react/24/solid';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker?url';
@@ -276,6 +277,8 @@ const BetaAnalyticsView: React.FC<AbDebugProps> = ({
   const [bulkImportStatus, setBulkImportStatus] = useState<string | null>(null);
   const [bulkImportRunning, setBulkImportRunning] = useState(false);
   const [bulkImportModule, setBulkImportModule] = useState<'heme' | 'pulm'>('heme');
+  const [tutorSummary, setTutorSummary] = useState<TutorUsageSummary | null>(null);
+  const [tutorSummaryError, setTutorSummaryError] = useState<string | null>(null);
   const [goldForm, setGoldForm] = useState({
     module: 'heme' as 'heme' | 'pulm',
     questionText: '',
@@ -352,12 +355,28 @@ const BetaAnalyticsView: React.FC<AbDebugProps> = ({
     }
   };
 
+  const loadTutorUsage = async (days?: number) => {
+    setTutorSummaryError(null);
+    try {
+      const summary = await fetchTutorUsageSummary(days);
+      setTutorSummary(summary);
+    } catch (err: any) {
+      setTutorSummary(null);
+      setTutorSummaryError(err?.message || 'Failed to load tutor usage.');
+    }
+  };
+
   useEffect(() => {
     loadFeedback();
     loadPrefabSummaries();
     loadDeepDiveSeeds();
     loadGoldQuestions();
+    loadTutorUsage(range === 'all' ? undefined : range === '30d' ? 30 : 7);
   }, []);
+
+  useEffect(() => {
+    loadTutorUsage(range === 'all' ? undefined : range === '30d' ? 30 : 7);
+  }, [range]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -1459,6 +1478,37 @@ const BetaAnalyticsView: React.FC<AbDebugProps> = ({
           <div className="mt-2 text-[10px] text-slate-400">
             Override applies to the last guide used in Practice.
           </div>
+        </div>
+      )}
+
+      {(tutorSummary || tutorSummaryError) && (
+        <div className="mb-6 p-4 rounded-2xl border border-slate-200 bg-white/90 shadow-sm">
+          <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">AI Tutor Usage</div>
+          {tutorSummaryError ? (
+            <div className="mt-2 text-xs text-rose-600 font-semibold">{tutorSummaryError}</div>
+          ) : tutorSummary ? (
+            <>
+              <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs text-slate-600 font-semibold">
+                <div>
+                  Opens <span className="text-slate-900 font-black">{tutorSummary.totalOpens}</span>
+                </div>
+                <div>
+                  Messages <span className="text-slate-900 font-black">{tutorSummary.totalMessages}</span>
+                </div>
+                <div>
+                  Responses <span className="text-slate-900 font-black">{tutorSummary.totalResponses}</span>
+                </div>
+                <div>
+                  Users <span className="text-slate-900 font-black">{tutorSummary.uniqueUsers}</span>
+                </div>
+              </div>
+              <div className="mt-2 text-[11px] text-slate-500 font-semibold">
+                Practice {tutorSummary.byLocation.practice} • Remediation {tutorSummary.byLocation.remediation} • Deep Dive {tutorSummary.byLocation.deep_dive}
+              </div>
+            </>
+          ) : (
+            <div className="mt-2 text-xs text-slate-500 font-semibold">No tutor usage yet.</div>
+          )}
         </div>
       )}
 

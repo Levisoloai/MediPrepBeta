@@ -113,6 +113,20 @@ create table if not exists question_feedback (
   unique (user_id, question_id, kind)
 );
 
+-- 9b. TUTOR USAGE (AI Tutor telemetry)
+create table if not exists tutor_usage_events (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references profiles(id) on delete cascade not null,
+  event_type text not null check (event_type in ('open','message_sent','response_received','error')),
+  location text not null,
+  model text,
+  question_id text,
+  guide_hash text,
+  source_type text,
+  session_id text,
+  created_at timestamptz default now() not null
+);
+
 -- 10. STUDY GUIDE CACHE (Prefab Questions)
 create table if not exists study_guide_cache (
   guide_hash text primary key,
@@ -136,6 +150,7 @@ alter table concept_mastery enable row level security;
 alter table study_plans enable row level security;
 alter table question_feedback enable row level security;
 alter table study_guide_cache enable row level security;
+alter table tutor_usage_events enable row level security;
 
 -- Simple All-in-one policies for demo
 -- Dropping existing policies first ensures the script is idempotent and fixes "policy already exists" errors.
@@ -172,6 +187,9 @@ drop policy if exists "Users insert own feedback" on question_feedback;
 drop policy if exists "Users update own feedback" on question_feedback;
 drop policy if exists "Users delete own feedback" on question_feedback;
 
+drop policy if exists "Users view own or admin tutor usage" on tutor_usage_events;
+drop policy if exists "Users insert own tutor usage" on tutor_usage_events;
+
 create policy "Users view own or admin feedback" on question_feedback
   for select
   using (
@@ -190,6 +208,17 @@ create policy "Users update own feedback" on question_feedback
 create policy "Users delete own feedback" on question_feedback
   for delete
   using (auth.uid() = user_id);
+
+create policy "Users view own or admin tutor usage" on tutor_usage_events
+  for select
+  using (
+    auth.uid() = user_id
+    or exists (select 1 from admin_users where admin_users.user_id = auth.uid())
+  );
+
+create policy "Users insert own tutor usage" on tutor_usage_events
+  for insert
+  with check (auth.uid() = user_id);
 
 drop policy if exists "Users read study guide cache" on study_guide_cache;
 drop policy if exists "Admins manage study guide cache" on study_guide_cache;

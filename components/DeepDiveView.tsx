@@ -14,6 +14,7 @@ import { deepDivePrefabTopics } from '../utils/deepDivePrefabs';
 import { getDeepDivePrefab, seedDeepDivePrefab } from '../services/deepDivePrefabService';
 import { attachHistologyToQuestions } from '../utils/histology';
 import QuestionCard from './QuestionCard';
+import { trackTutorUsage } from '../services/tutorUsageService';
 
 interface DeepDiveViewProps {
   prefilledTopic?: string | null;
@@ -74,6 +75,7 @@ const DeepDiveView: React.FC<DeepDiveViewProps> = ({ prefilledTopic, clearPrefil
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [tutorModel, setTutorModel] = useState<'flash' | 'pro'>('pro');
+  const [tutorSessionId, setTutorSessionId] = useState<string | null>(null);
   
   const contentRef = useRef<HTMLDivElement>(null);
   const deepDiveAbortRef = useRef<AbortController | null>(null);
@@ -245,9 +247,20 @@ const DeepDiveView: React.FC<DeepDiveViewProps> = ({ prefilledTopic, clearPrefil
     text.replace(/^[A-E](?:[\)\.\:]|\s)\s*/i, '').trim().toLowerCase();
 
   const openChatForQuestion = (question: Question) => {
+    const sessionId = crypto.randomUUID();
     setActiveChatQuestion(question);
     setIsChatOpen(true);
     setChatInput('');
+    setTutorSessionId(sessionId);
+    trackTutorUsage({
+      sessionId,
+      questionId: question.id,
+      guideHash: null,
+      sourceType: question.sourceType || null,
+      model: tutorModel,
+      location: 'deep_dive',
+      eventType: 'open'
+    });
   };
 
   const currentChatHistory = activeChatQuestion ? chatHistoryByQuestion[activeChatQuestion.id] || [] : [];
@@ -305,6 +318,15 @@ const DeepDiveView: React.FC<DeepDiveViewProps> = ({ prefilledTopic, clearPrefil
     setIsChatLoading(true);
 
     try {
+      trackTutorUsage({
+        sessionId: tutorSessionId,
+        questionId: activeChatQuestion.id,
+        guideHash: null,
+        sourceType: activeChatQuestion.sourceType || null,
+        model: tutorModel,
+        location: 'deep_dive',
+        eventType: 'message_sent'
+      });
       const contextSnippet = lessonContent
         ? lessonContent.replace(/\s+/g, ' ').slice(0, 1200)
         : '';
@@ -313,11 +335,29 @@ const DeepDiveView: React.FC<DeepDiveViewProps> = ({ prefilledTopic, clearPrefil
         ...prev,
         [activeChatQuestion.id]: [...history, userMsg, { role: 'model', text: responseText }]
       }));
+      trackTutorUsage({
+        sessionId: tutorSessionId,
+        questionId: activeChatQuestion.id,
+        guideHash: null,
+        sourceType: activeChatQuestion.sourceType || null,
+        model: tutorModel,
+        location: 'deep_dive',
+        eventType: 'response_received'
+      });
     } catch (error) {
       setChatHistoryByQuestion(prev => ({
         ...prev,
         [activeChatQuestion.id]: [...history, userMsg, { role: 'model', text: "Sorry, I'm having trouble connecting." }]
       }));
+      trackTutorUsage({
+        sessionId: tutorSessionId,
+        questionId: activeChatQuestion.id,
+        guideHash: null,
+        sourceType: activeChatQuestion.sourceType || null,
+        model: tutorModel,
+        location: 'deep_dive',
+        eventType: 'error'
+      });
     } finally {
       setIsChatLoading(false);
     }
