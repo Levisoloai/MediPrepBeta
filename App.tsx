@@ -87,6 +87,10 @@ const App: React.FC = () => {
     {
       title: 'Practice + review',
       body: 'Answer, reveal explanations, and use the hover performance summary to spot weak concepts.'
+    },
+    {
+      title: 'Try Deep Dive',
+      body: 'Switch to Deep Dive for focused concept drills with instant feedback.'
     }
   ];
 
@@ -1037,7 +1041,11 @@ const App: React.FC = () => {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    const onboardingSeen = localStorage.getItem('mediprep_onboarding_seen');
     localStorage.clear();
+    if (onboardingSeen) {
+      localStorage.setItem('mediprep_onboarding_seen', onboardingSeen);
+    }
     window.location.reload();
   };
 
@@ -1197,6 +1205,10 @@ const App: React.FC = () => {
                    onGenerate={handleGenerate} 
                    isLoading={isLoading}
                    mode="questions"
+                   onOpenOnboarding={() => {
+                     setOnboardingStep(0);
+                     setShowOnboarding(true);
+                   }}
                  />
               </div>
             </div>

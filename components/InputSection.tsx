@@ -22,13 +22,14 @@ interface InputSectionProps {
   ) => void;
   isLoading: boolean;
   mode?: 'questions' | 'summary';
+  onOpenOnboarding?: () => void;
 }
 
 const MAX_TEXT_CHARS = 120000;
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
-const InputSection: React.FC<InputSectionProps> = ({ onGenerate, isLoading }) => {
+const InputSection: React.FC<InputSectionProps> = ({ onGenerate, isLoading, onOpenOnboarding }) => {
   const [selectedGuide, setSelectedGuide] = useState<BetaGuide | null>(null);
   const [isReading, setIsReading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -148,6 +149,14 @@ const InputSection: React.FC<InputSectionProps> = ({ onGenerate, isLoading }) =>
                <h2 className="text-2xl font-black text-slate-800 tracking-tight">Choose Your Beta Module</h2>
                <p className="text-sm text-slate-500 font-medium">Select Heme or Pulm to generate NBME-style practice questions.</p>
            </div>
+           {onOpenOnboarding && (
+             <button
+               onClick={onOpenOnboarding}
+               className="ml-auto px-3 py-2 rounded-xl border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-teal-600 hover:border-teal-200 hover:bg-teal-50 transition-colors"
+             >
+               Getting Started
+             </button>
+           )}
         </div>
       </div>
 
@@ -158,6 +167,7 @@ const InputSection: React.FC<InputSectionProps> = ({ onGenerate, isLoading }) =>
             <div><span className="text-slate-800 font-black">1.</span> Choose a module (Heme or Pulm).</div>
             <div><span className="text-slate-800 font-black">2.</span> Adjust question count and difficulty.</div>
             <div><span className="text-slate-800 font-black">3.</span> Generate questions and begin practicing.</div>
+            <div><span className="text-slate-800 font-black">4.</span> Try Deep Dive for focused concept drills.</div>
           </div>
         </div>
 
