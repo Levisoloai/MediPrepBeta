@@ -62,6 +62,16 @@ type DeepDiveSeedRow = {
   error?: string;
 };
 
+type DeepDivePrefabDetail = {
+  topicKey: string;
+  topicContext: string;
+  concept: string;
+  lessonContent: string;
+  quiz: Question[];
+  createdAt?: string;
+  model?: string;
+};
+
 type AbDebugData = {
   variant: string | null;
   guideHash: string | null;
@@ -306,6 +316,11 @@ const BetaAnalyticsView: React.FC<AbDebugProps> = ({
   const [deepDiveSelected, setDeepDiveSelected] = useState<Record<string, boolean>>({});
   const [deepDiveCostPerQuestion, setDeepDiveCostPerQuestion] = useState(0.0002);
   const [deepDiveCostPerLesson, setDeepDiveCostPerLesson] = useState(0.0025);
+  const [isDeepDiveDrawerOpen, setIsDeepDiveDrawerOpen] = useState(false);
+  const [selectedDeepDiveMeta, setSelectedDeepDiveMeta] = useState<{ source: DeepDiveSeedRow['source']; concept: string } | null>(null);
+  const [selectedDeepDive, setSelectedDeepDive] = useState<DeepDivePrefabDetail | null>(null);
+  const [deepDiveDrawerError, setDeepDiveDrawerError] = useState<string | null>(null);
+  const [isDeepDiveDrawerLoading, setIsDeepDiveDrawerLoading] = useState(false);
   const deepDiveQueueRef = useRef<string[]>([]);
   const deepDiveQueueRunningRef = useRef(false);
   const deepDiveSeedsRef = useRef<DeepDiveSeedRow[]>([]);
@@ -922,6 +937,42 @@ const BetaAnalyticsView: React.FC<AbDebugProps> = ({
     } finally {
       setIsDeepDiveLoading(false);
     }
+  };
+
+  const openDeepDiveDrawer = async (source: DeepDiveSeedRow['source'], concept: string) => {
+    setSelectedDeepDiveMeta({ source, concept });
+    setSelectedDeepDive(null);
+    setDeepDiveDrawerError(null);
+    setIsDeepDiveDrawerLoading(true);
+    setIsDeepDiveDrawerOpen(true);
+    try {
+      const cached = await getDeepDivePrefab(source, concept);
+      if (!cached) {
+        setDeepDiveDrawerError('No cached deep dive found for this topic.');
+        return;
+      }
+      setSelectedDeepDive({
+        topicKey: cached.topicKey,
+        topicContext: cached.topicContext,
+        concept: cached.concept,
+        lessonContent: cached.lessonContent || '',
+        quiz: Array.isArray(cached.quiz) ? cached.quiz : [],
+        createdAt: cached.createdAt,
+        model: cached.model
+      });
+    } catch (err: any) {
+      setDeepDiveDrawerError(err?.message || 'Failed to load deep dive prefab.');
+    } finally {
+      setIsDeepDiveDrawerLoading(false);
+    }
+  };
+
+  const closeDeepDiveDrawer = () => {
+    setIsDeepDiveDrawerOpen(false);
+    setSelectedDeepDiveMeta(null);
+    setSelectedDeepDive(null);
+    setDeepDiveDrawerError(null);
+    setIsDeepDiveDrawerLoading(false);
   };
 
   const enqueueDeepDiveSeeds = (ids: string[]) => {
@@ -1952,6 +2003,14 @@ const BetaAnalyticsView: React.FC<AbDebugProps> = ({
                     )}
                     {(seed.status === 'cached' || seed.status === 'done') && (
                       <button
+                        onClick={() => openDeepDiveDrawer(seed.source, seed.concept)}
+                        className="px-3 py-1.5 rounded-xl border border-indigo-200 text-indigo-700 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-50"
+                      >
+                        View
+                      </button>
+                    )}
+                    {(seed.status === 'cached' || seed.status === 'done') && (
+                      <button
                         onClick={() => enqueueDeepDiveSeeds([seed.id])}
                         className="px-3 py-1.5 rounded-xl border border-slate-200 text-slate-500 text-[10px] font-black uppercase tracking-widest hover:bg-slate-50"
                       >
@@ -2773,6 +2832,104 @@ const BetaAnalyticsView: React.FC<AbDebugProps> = ({
                   </div>
                 );
               })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isDeepDiveDrawerOpen && selectedDeepDiveMeta && (
+        <div className="fixed inset-0 z-[220]">
+          <div
+            className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
+            onClick={closeDeepDiveDrawer}
+          />
+          <div className="absolute right-0 top-0 bottom-0 w-full max-w-none md:max-w-[680px] bg-white shadow-2xl border-l border-slate-200 flex flex-col">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Deep Dive Prefab</div>
+                <div className="text-sm font-semibold text-slate-700">{selectedDeepDiveMeta.concept}</div>
+                <div className="text-[10px] text-slate-400 uppercase tracking-widest">
+                  {selectedDeepDiveMeta.source}
+                  {selectedDeepDive?.createdAt ? ` • ${formatDate(selectedDeepDive.createdAt)}` : ''}
+                  {selectedDeepDive?.model ? ` • ${selectedDeepDive.model}` : ''}
+                </div>
+              </div>
+              <button
+                onClick={closeDeepDiveDrawer}
+                className="p-2 rounded-full hover:bg-slate-100 text-slate-400"
+                aria-label="Close deep dive drawer"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {isDeepDiveDrawerLoading && (
+                <div className="text-sm text-slate-400">Loading deep dive content…</div>
+              )}
+              {deepDiveDrawerError && (
+                <div className="text-sm text-rose-600 font-semibold">{deepDiveDrawerError}</div>
+              )}
+              {!isDeepDiveDrawerLoading && !deepDiveDrawerError && selectedDeepDive && (
+                <>
+                  {selectedDeepDive.lessonContent && (
+                    <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/60">
+                      <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                        Lesson Preview
+                      </div>
+                      <div className="text-sm text-slate-700 whitespace-pre-wrap">
+                        {selectedDeepDive.lessonContent}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    Questions • {selectedDeepDive.quiz.length}
+                  </div>
+
+                  {selectedDeepDive.quiz.length === 0 && (
+                    <div className="text-sm text-slate-400">No questions found for this deep dive.</div>
+                  )}
+
+                  {selectedDeepDive.quiz.map((question, idx) => (
+                    <div key={`${question.id || 'dd'}-${idx}`} className="border border-slate-200 rounded-2xl p-5 bg-white">
+                      <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                        Question {idx + 1}
+                      </div>
+                      <div className="text-sm font-semibold text-slate-800 leading-relaxed whitespace-pre-wrap mb-3">
+                        {question.questionText}
+                      </div>
+                      {Array.isArray(question.options) && question.options.length > 0 && (
+                        <div className="space-y-2 mb-4">
+                          {question.options.map((option, optIdx) => {
+                            const isCorrect = option === question.correctAnswer;
+                            return (
+                              <div
+                                key={`${option}-${optIdx}`}
+                                className={`px-3 py-2 rounded-xl border text-xs font-semibold ${
+                                  isCorrect
+                                    ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                                    : 'border-slate-200 bg-white text-slate-600'
+                                }`}
+                              >
+                                {option}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <div className="mb-4">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Correct Answer</div>
+                        <div className="text-sm font-semibold text-emerald-700">{question.correctAnswer}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Explanation</div>
+                        <div className="text-sm text-slate-600 whitespace-pre-wrap">{question.explanation}</div>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           </div>
         </div>

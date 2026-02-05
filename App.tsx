@@ -1785,17 +1785,17 @@ const App: React.FC = () => {
                {sessionToolsOpen && activeSummary.totalAnswered > 0 && <div className="mb-2" />}
 
                {!isRemediationView && prefabExhausted && (
-                 <div className="mb-6 p-4 rounded-2xl border border-amber-200 bg-amber-50/80 text-amber-800 shadow-sm">
-                   <div className="text-[10px] font-black uppercase tracking-widest text-amber-600">Prefab Pool Exhausted</div>
+                 <div className="mb-6 p-4 rounded-2xl border border-indigo-100 bg-indigo-50/70 text-indigo-800 shadow-sm">
+                   <div className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Keep Practicing</div>
                    <div className="text-sm font-semibold mt-1">
-                     You’re at the end of the prefab pool for this module.
+                     Generate a fresh set to keep going.
                    </div>
                    <div className="mt-3">
                      <button
                        onClick={handleGenerateMore}
-                       className="px-3 py-2 rounded-lg bg-amber-600 text-white text-[10px] font-black uppercase tracking-widest"
+                       className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700"
                      >
-                       Generate more (uses credits)
+                       Generate more
                      </button>
                    </div>
                  </div>
@@ -1833,7 +1833,7 @@ const App: React.FC = () => {
                           onClick={handleGenerateMore}
                           className="px-6 py-3 rounded-xl font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 transition-colors flex items-center gap-2 mb-4"
                         >
-                          Generate more (uses credits)
+                          Generate more
                         </button>
                       )}
                       {isRemediationView && (
@@ -1854,17 +1854,17 @@ const App: React.FC = () => {
                  </div>
                ) : prefabMeta && prefabExhausted ? (
                  <div className="flex-1 flex flex-col items-center justify-center bg-white border border-slate-200 rounded-3xl p-10 text-center shadow-sm">
-                   <div className="text-xs font-black uppercase tracking-widest text-amber-500 mb-2">Prefab Pool Exhausted</div>
-                   <h3 className="text-xl font-black text-slate-800 mb-3">You’ve completed all prefab questions</h3>
+                   <div className="text-xs font-black uppercase tracking-widest text-indigo-500 mb-2">More Practice</div>
+                   <h3 className="text-xl font-black text-slate-800 mb-3">Ready for another set?</h3>
                    <p className="text-sm text-slate-500 mb-6 max-w-sm">
-                     Generate more questions to keep practicing (uses credits).
+                     Generate a fresh batch to keep practicing.
                    </p>
                    <div className="flex flex-wrap gap-3 justify-center">
                      <button
                        onClick={handleGenerateMore}
-                       className="px-6 py-3 rounded-xl font-bold text-white bg-amber-600 hover:bg-amber-700 transition-colors"
+                       className="px-6 py-3 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
                      >
-                       Generate more (uses credits)
+                       Generate more
                      </button>
                      <button
                        onClick={handleFinishPractice}
