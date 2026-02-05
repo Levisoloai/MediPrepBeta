@@ -247,6 +247,14 @@ create table if not exists deep_dive_cache (
   created_at timestamptz default now()
 );
 
+-- Cheat sheet prefabs (admin write, user read)
+create table if not exists cheat_sheet_prefabs (
+  module text primary key,
+  title text not null,
+  content text not null,
+  updated_at timestamptz default now()
+);
+
 -- 11. GOLD QUESTIONS (Clinician-reviewed set)
 create table if not exists gold_questions (
   id uuid default gen_random_uuid() primary key,
@@ -304,14 +312,31 @@ create policy "Users insert own seen questions" on user_seen_questions
 
 alter table deep_dive_cache enable row level security;
 
+alter table cheat_sheet_prefabs enable row level security;
+
 drop policy if exists "Users read deep dive cache" on deep_dive_cache;
 drop policy if exists "Admins manage deep dive cache" on deep_dive_cache;
+drop policy if exists "Users read cheat sheet prefabs" on cheat_sheet_prefabs;
+drop policy if exists "Admins manage cheat sheet prefabs" on cheat_sheet_prefabs;
 
 create policy "Users read deep dive cache" on deep_dive_cache
   for select
   using (auth.uid() is not null);
 
 create policy "Admins manage deep dive cache" on deep_dive_cache
+  for all
+  using (
+    exists (select 1 from admin_users where admin_users.user_id = auth.uid())
+  )
+  with check (
+    exists (select 1 from admin_users where admin_users.user_id = auth.uid())
+  );
+
+create policy "Users read cheat sheet prefabs" on cheat_sheet_prefabs
+  for select
+  using (auth.uid() is not null);
+
+create policy "Admins manage cheat sheet prefabs" on cheat_sheet_prefabs
   for all
   using (
     exists (select 1 from admin_users where admin_users.user_id = auth.uid())

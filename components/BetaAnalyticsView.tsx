@@ -3,7 +3,7 @@ import { supabase } from '../services/supabaseClient';
 import { getPrefabSet, listPrefabSets, seedPrefabSet, replacePrefabQuestion, restorePrefabQuestion, getActivePrefabQuestions } from '../services/prefabService';
 import { deepDivePrefabTopics } from '../utils/deepDivePrefabs';
 import { getDeepDivePrefab, seedDeepDivePrefab, appendDeepDivePrefab, replaceDeepDivePrefabQuestion, restoreDeepDivePrefabQuestion } from '../services/deepDivePrefabService';
-import { startDeepDive, extendDeepDiveQuiz } from '../services/geminiService';
+import { startDeepDive, extendDeepDiveQuiz, generateCheatSheetText } from '../services/geminiService';
 import { buildStudyGuideItems } from '../utils/studyGuide';
 import { CardStyle, DifficultyLevel, ExamFormat, GoldQuestionRow, Question, QuestionType, StudyGuideItem, UserPreferences } from '../types';
 import { listGoldQuestions, createGoldQuestion, updateGoldQuestion, approveGoldQuestion, revokeGoldApproval, deleteGoldQuestion } from '../services/goldQuestionService';
@@ -11,6 +11,9 @@ import { fetchTutorUsageSummary, TutorUsageSummary } from '../services/tutorUsag
 import { ArrowDownTrayIcon, ArrowPathIcon, ChartBarIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/react/24/solid';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker?url';
+import { cheatSheetPrefabs } from '../utils/cheatSheets';
+import { betaGuides } from '../utils/betaGuides';
+import { getCheatSheetPrefabs, upsertCheatSheetPrefab } from '../services/cheatSheetService';
 
 type FeedbackRow = {
   id: string;
@@ -162,6 +165,7 @@ const csvHeaders = [
 
 const DEFAULT_TARGET_TOTAL = 35;
 const DEFAULT_DEEP_DIVE_COUNT = 5;
+const MAX_CHEATSHEET_TEXT = 120000;
 
 const removalReasons = [
   'Too hard',
@@ -321,6 +325,19 @@ const BetaAnalyticsView: React.FC<AbDebugProps> = ({
   const [selectedDeepDive, setSelectedDeepDive] = useState<DeepDivePrefabDetail | null>(null);
   const [deepDiveDrawerError, setDeepDiveDrawerError] = useState<string | null>(null);
   const [isDeepDiveDrawerLoading, setIsDeepDiveDrawerLoading] = useState(false);
+  const [cheatSheetPrefabsState, setCheatSheetPrefabsState] = useState<Record<'heme' | 'pulm', { title: string; content: string }>>({
+    heme: cheatSheetPrefabs.heme,
+    pulm: cheatSheetPrefabs.pulm
+  });
+  const [cheatSheetDirty, setCheatSheetDirty] = useState<Record<'heme' | 'pulm', boolean>>({ heme: false, pulm: false });
+  const [cheatSheetLoading, setCheatSheetLoading] = useState(false);
+  const [cheatSheetError, setCheatSheetError] = useState<string | null>(null);
+  const [cheatSheetSaving, setCheatSheetSaving] = useState<Record<'heme' | 'pulm', boolean>>({ heme: false, pulm: false });
+  const [cheatSheetGenerating, setCheatSheetGenerating] = useState<Record<'heme' | 'pulm', boolean>>({ heme: false, pulm: false });
+  const cheatSheetSourceCache = useRef<Record<'heme' | 'pulm', string>>({
+    heme: '',
+    pulm: ''
+  });
   const deepDiveQueueRef = useRef<string[]>([]);
   const deepDiveQueueRunningRef = useRef(false);
   const deepDiveSeedsRef = useRef<DeepDiveSeedRow[]>([]);
@@ -381,12 +398,34 @@ const BetaAnalyticsView: React.FC<AbDebugProps> = ({
     }
   };
 
+  const loadCheatSheetPrefabs = async () => {
+    setCheatSheetLoading(true);
+    setCheatSheetError(null);
+    try {
+      const rows = await getCheatSheetPrefabs();
+      if (rows.length > 0) {
+        const next = { ...cheatSheetPrefabsState };
+        rows.forEach((row) => {
+          if (row.module === 'heme' || row.module === 'pulm') {
+            next[row.module] = { title: row.title, content: row.content };
+          }
+        });
+        setCheatSheetPrefabsState(next);
+      }
+    } catch (err: any) {
+      setCheatSheetError(err?.message || 'Failed to load cheat sheet prefabs.');
+    } finally {
+      setCheatSheetLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadFeedback();
     loadPrefabSummaries();
     loadDeepDiveSeeds();
     loadGoldQuestions();
     loadTutorUsage(range === 'all' ? undefined : range === '30d' ? 30 : 7);
+    loadCheatSheetPrefabs();
   }, []);
 
   useEffect(() => {
@@ -1101,6 +1140,103 @@ const BetaAnalyticsView: React.FC<AbDebugProps> = ({
       lessonCount,
       estimate
     };
+  };
+
+  const updateCheatSheetField = (module: 'heme' | 'pulm', patch: { title?: string; content?: string }) => {
+    setCheatSheetPrefabsState((prev) => ({
+      ...prev,
+      [module]: {
+        ...prev[module],
+        ...patch
+      }
+    }));
+    setCheatSheetDirty((prev) => ({ ...prev, [module]: true }));
+  };
+
+  const handleCheatSheetReset = (module: 'heme' | 'pulm') => {
+    setCheatSheetPrefabsState((prev) => ({
+      ...prev,
+      [module]: cheatSheetPrefabs[module]
+    }));
+    setCheatSheetDirty((prev) => ({ ...prev, [module]: true }));
+  };
+
+  const handleCheatSheetSave = async (module: 'heme' | 'pulm') => {
+    const prefab = cheatSheetPrefabsState[module];
+    if (!prefab) return;
+    setCheatSheetSaving((prev) => ({ ...prev, [module]: true }));
+    setCheatSheetError(null);
+    try {
+      await upsertCheatSheetPrefab({
+        module,
+        title: prefab.title,
+        content: prefab.content
+      });
+      setCheatSheetDirty((prev) => ({ ...prev, [module]: false }));
+    } catch (err: any) {
+      setCheatSheetError(err?.message || 'Failed to save cheat sheet prefab.');
+    } finally {
+      setCheatSheetSaving((prev) => ({ ...prev, [module]: false }));
+    }
+  };
+
+  const loadCheatSheetSource = async (module: 'heme' | 'pulm') => {
+    const cached = cheatSheetSourceCache.current[module];
+    if (cached) return cached;
+    const guide = betaGuides.find((g) => g.id === module);
+    if (!guide) throw new Error('Guide PDF not found for this module.');
+    const response = await fetch(guide.pdfUrl);
+    if (!response.ok) {
+      throw new Error('Guide PDF not found. Make sure it exists in public/beta-guides.');
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const totalPages = pdf.numPages;
+    let fullText = '';
+    for (let pageNum = 1; pageNum <= totalPages; pageNum += 1) {
+      const page = await pdf.getPage(pageNum);
+      const content = await page.getTextContent();
+      const pageText = content.items
+        .map((item: any) => ('str' in item ? item.str : ''))
+        .join(' ');
+      fullText += `${pageText}\n`;
+      if (fullText.length >= MAX_CHEATSHEET_TEXT) {
+        fullText = fullText.slice(0, MAX_CHEATSHEET_TEXT);
+        break;
+      }
+    }
+    cheatSheetSourceCache.current[module] = fullText.trim();
+    return cheatSheetSourceCache.current[module];
+  };
+
+  const handleCheatSheetRegenerate = async (module: 'heme' | 'pulm') => {
+    const guide = betaGuides.find((g) => g.id === module);
+    if (!guide) {
+      setCheatSheetError('Guide not found for regeneration.');
+      return;
+    }
+    setCheatSheetGenerating((prev) => ({ ...prev, [module]: true }));
+    setCheatSheetError(null);
+    try {
+      const sourceText = await loadCheatSheetSource(module);
+      const prefs: UserPreferences = {
+        generationMode: 'summary',
+        questionType: QuestionType.MULTIPLE_CHOICE,
+        difficulty: DifficultyLevel.CLINICAL_VIGNETTE,
+        questionCount: 10,
+        autoQuestionCount: false,
+        customInstructions: 'Provide a fuller explanation for each section with concise rationale and pitfalls.',
+        focusedOnWeakness: false,
+        examFormat: ExamFormat.NBME,
+        cardStyle: CardStyle.BASIC
+      };
+      const content = await generateCheatSheetText(sourceText, prefs, guide.title);
+      updateCheatSheetField(module, { title: `${guide.title} Rapid Review`, content });
+    } catch (err: any) {
+      setCheatSheetError(err?.message || 'Failed to regenerate cheat sheet.');
+    } finally {
+      setCheatSheetGenerating((prev) => ({ ...prev, [module]: false }));
+    }
   };
 
   const selectedDeepDives = deepDiveSeeds.filter((seed) => deepDiveSelected[seed.id]);
@@ -2095,6 +2231,89 @@ const BetaAnalyticsView: React.FC<AbDebugProps> = ({
             ))}
           </div>
         )}
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm mb-8">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="text-xs font-black uppercase tracking-widest text-slate-400">Cheat Sheet Prefabs</div>
+            <h3 className="text-lg font-bold text-slate-800 mt-1">Rapid Review Library</h3>
+            <p className="text-sm text-slate-500 mt-1">
+              These prefabs appear in the Cheat Sheet tab. Edit, regenerate, and save to update what learners see.
+            </p>
+          </div>
+          <button
+            onClick={loadCheatSheetPrefabs}
+            className="px-3 py-2 rounded-xl border border-slate-200 text-slate-500 text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 flex items-center gap-2"
+          >
+            <ArrowPathIcon className={`w-4 h-4 ${cheatSheetLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
+
+        {cheatSheetError && (
+          <div className="mt-3 text-xs text-rose-600 font-semibold">{cheatSheetError}</div>
+        )}
+
+        <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {(['heme', 'pulm'] as const).map((module) => {
+            const prefab = cheatSheetPrefabsState[module];
+            const isSaving = cheatSheetSaving[module];
+            const isGenerating = cheatSheetGenerating[module];
+            const dirty = cheatSheetDirty[module];
+            return (
+              <div key={module} className="border border-slate-200 rounded-2xl p-4 bg-slate-50/60">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-xs font-black uppercase tracking-widest text-slate-500">
+                    {module === 'heme' ? 'Hematology' : 'Pulmonology'}
+                  </div>
+                  <span className={`text-[10px] font-black uppercase tracking-widest ${dirty ? 'text-amber-600' : 'text-emerald-600'}`}>
+                    {dirty ? 'Unsaved' : 'Saved'}
+                  </span>
+                </div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  Title
+                  <input
+                    value={prefab.title}
+                    onChange={(e) => updateCheatSheetField(module, { title: e.target.value })}
+                    className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 text-sm text-slate-700 bg-white"
+                  />
+                </label>
+                <label className="mt-3 block text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  Content
+                  <textarea
+                    value={prefab.content}
+                    onChange={(e) => updateCheatSheetField(module, { content: e.target.value })}
+                    rows={10}
+                    className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-700 bg-white"
+                  />
+                </label>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    onClick={() => handleCheatSheetRegenerate(module)}
+                    disabled={isGenerating}
+                    className="px-3 py-2 rounded-xl border border-indigo-200 text-indigo-700 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-50 disabled:opacity-60"
+                  >
+                    {isGenerating ? 'Regenerating…' : 'Regenerate'}
+                  </button>
+                  <button
+                    onClick={() => handleCheatSheetSave(module)}
+                    disabled={isSaving}
+                    className="px-3 py-2 rounded-xl bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 disabled:opacity-60"
+                  >
+                    {isSaving ? 'Saving…' : 'Save'}
+                  </button>
+                  <button
+                    onClick={() => handleCheatSheetReset(module)}
+                    className="px-3 py-2 rounded-xl border border-slate-200 text-slate-500 text-[10px] font-black uppercase tracking-widest hover:bg-slate-50"
+                  >
+                    Reset to Default
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm mb-8">

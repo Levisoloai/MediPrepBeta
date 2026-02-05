@@ -18,6 +18,7 @@ import { attachHistologyToQuestions } from './utils/histology';
 import { buildHistologyReviewQuestions, selectHistologyEntries, HistologyReviewMode } from './utils/histologyReview';
 import { cheatSheetPrefabs } from './utils/cheatSheets';
 import type { BetaGuide } from './utils/betaGuides';
+import { getCheatSheetPrefab } from './services/cheatSheetService';
 import { SparklesIcon, XMarkIcon, ChatBubbleLeftRightIcon, PaperAirplaneIcon, ExclamationTriangleIcon, CheckIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/solid';
 import katex from 'katex';
 import { supabase } from './services/supabaseClient';
@@ -1054,13 +1055,27 @@ const App: React.FC = () => {
     }
   };
 
-  const handleOpenPrefabCheatSheet = (guide: BetaGuide) => {
-    const prefab = cheatSheetPrefabs[guide.id];
-    if (!prefab) {
+  const handleOpenPrefabCheatSheet = async (guide: BetaGuide) => {
+    const fallback = cheatSheetPrefabs[guide.id];
+    if (!fallback) {
       setError('No prefab cheat sheet found for this module.');
       return;
     }
-    openCheatSheet(prefab.content, prefab.title, 'prefab');
+    setIsLoading(true);
+    setError(null);
+    try {
+      const remote = await getCheatSheetPrefab(guide.id);
+      if (remote?.content) {
+        openCheatSheet(remote.content, remote.title || fallback.title, 'prefab');
+        return;
+      }
+      openCheatSheet(fallback.content, fallback.title, 'prefab');
+    } catch (err: any) {
+      openCheatSheet(fallback.content, fallback.title, 'prefab');
+      setError(err?.message || 'Failed to load prefab cheat sheet.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleGenerateHistology = async () => {
