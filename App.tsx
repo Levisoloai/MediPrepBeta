@@ -5,8 +5,9 @@ import QuestionCard from './components/QuestionCard';
 import EmptyState from './components/EmptyState';
 import DeepDiveView from './components/DeepDiveView';
 import BetaAnalyticsView from './components/BetaAnalyticsView';
+import SummaryView from './components/SummaryView';
 import AuthModal from './components/AuthModal';
-import { generateQuestions, chatWithTutor } from './services/geminiService';
+import { generateQuestions, generateCheatSheetText, chatWithTutor } from './services/geminiService';
 import { flushFeedbackQueue } from './services/feedbackService';
 import { getPrefabSet, getActivePrefabQuestions } from './services/prefabService';
 import { getApprovedGoldQuestions } from './services/goldQuestionService';
@@ -15,13 +16,15 @@ import { normalizeOptions, resolveCorrectAnswer } from './utils/answerKey';
 import { buildFingerprintSet, buildFingerprintVariants, filterDuplicateQuestions } from './utils/questionDedupe';
 import { attachHistologyToQuestions } from './utils/histology';
 import { buildHistologyReviewQuestions, selectHistologyEntries, HistologyReviewMode } from './utils/histologyReview';
+import { cheatSheetPrefabs } from './utils/cheatSheets';
+import type { BetaGuide } from './utils/betaGuides';
 import { SparklesIcon, XMarkIcon, ChatBubbleLeftRightIcon, PaperAirplaneIcon, ExclamationTriangleIcon, CheckIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/solid';
 import katex from 'katex';
 import { supabase } from './services/supabaseClient';
 import { fetchSeenFingerprints, recordSeenQuestions } from './services/seenQuestionsService';
 import { trackTutorUsage } from './services/tutorUsageService';
 
-type ViewMode = 'generate' | 'practice' | 'remediation' | 'deepdive' | 'histology' | 'analytics';
+type ViewMode = 'generate' | 'practice' | 'remediation' | 'deepdive' | 'histology' | 'analytics' | 'cheatsheet';
 
 const normalizeStudyConcepts = (raw: any): string[] => {
   if (Array.isArray(raw)) {
@@ -52,7 +55,7 @@ const normalizeQuestionShape = (question: Question): Question => {
 
 const App: React.FC = () => {
   const LAST_GUIDE_CONTEXT_KEY = 'mediprep_last_guide_context';
-  const allowedViews = new Set<ViewMode>(['generate', 'practice', 'remediation', 'deepdive', 'histology', 'analytics']);
+  const allowedViews = new Set<ViewMode>(['generate', 'practice', 'remediation', 'deepdive', 'histology', 'analytics', 'cheatsheet']);
   const loadBetaPrefs = (): UserPreferences => {
     const defaults: UserPreferences = {
       generationMode: 'questions',
@@ -200,6 +203,9 @@ const App: React.FC = () => {
   const histologyMode: HistologyReviewMode = 'diagnosis';
   const [isHistologyLoading, setIsHistologyLoading] = useState(false);
   const [histologyError, setHistologyError] = useState<string | null>(null);
+  const [cheatSheetContent, setCheatSheetContent] = useState<string>('');
+  const [cheatSheetTitle, setCheatSheetTitle] = useState<string | null>(null);
+  const [cheatSheetSource, setCheatSheetSource] = useState<'prefab' | 'generated' | null>(null);
   const [lastGuideContext, setLastGuideContext] = useState<{
     content: string;
     prefs: UserPreferences;
@@ -1005,6 +1011,58 @@ const App: React.FC = () => {
     }
   };
 
+  const openCheatSheet = (content: string, title?: string | null, source: 'prefab' | 'generated' = 'generated') => {
+    setCheatSheetContent(content);
+    setCheatSheetTitle(title || null);
+    setCheatSheetSource(source);
+    setView('cheatsheet');
+  };
+
+  const handleGenerateCheatSheet = async (
+    content: string,
+    _lectureFiles: StudyFile[],
+    _studyGuideFile: StudyFile | null,
+    prefs: UserPreferences,
+    context?: {
+      guideHash: string;
+      guideItems: StudyGuideItem[];
+      guideTitle: string;
+      moduleId: 'heme' | 'pulm';
+    }
+  ) => {
+    if (!isXaiConfigured) {
+      setError("xAI API Key is missing. Please add 'VITE_XAI_API_KEY' to your environment variables.");
+      return;
+    }
+
+    if (!content.trim()) {
+      setError("Please select a module before generating a cheat sheet.");
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const guideTitle = context?.guideTitle;
+      const cheatSheet = await generateCheatSheetText(content, prefs, guideTitle);
+      openCheatSheet(cheatSheet, guideTitle ? `${guideTitle} Rapid Review` : null, 'generated');
+    } catch (err: any) {
+      setError(err?.message || 'Failed to generate cheat sheet.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleOpenPrefabCheatSheet = (guide: BetaGuide) => {
+    const prefab = cheatSheetPrefabs[guide.id];
+    if (!prefab) {
+      setError('No prefab cheat sheet found for this module.');
+      return;
+    }
+    openCheatSheet(prefab.content, prefab.title, 'prefab');
+  };
+
   const handleGenerateHistology = async () => {
     setIsHistologyLoading(true);
     setHistologyError(null);
@@ -1505,6 +1563,30 @@ const App: React.FC = () => {
                  />
               </div>
             </div>
+          )}
+
+          {view === 'cheatsheet' && (
+            cheatSheetContent ? (
+              <SummaryView
+                content={cheatSheetContent}
+                onBack={() => {
+                  setCheatSheetContent('');
+                  setCheatSheetTitle(null);
+                  setCheatSheetSource(null);
+                }}
+              />
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center max-w-4xl mx-auto w-full animate-in fade-in zoom-in-95 duration-300">
+                <div className="w-full h-full">
+                  <InputSection
+                    onGenerate={handleGenerateCheatSheet}
+                    onUsePrefab={handleOpenPrefabCheatSheet}
+                    isLoading={isLoading}
+                    mode="cheatsheet"
+                  />
+                </div>
+              </div>
+            )
           )}
 
           {view === 'deepdive' && <DeepDiveView />}

@@ -20,8 +20,9 @@ interface InputSectionProps {
     },
     subjectId?: string
   ) => void;
+  mode?: 'questions' | 'cheatsheet' | 'summary';
+  onUsePrefab?: (guide: BetaGuide) => void;
   isLoading: boolean;
-  mode?: 'questions' | 'summary';
   onOpenOnboarding?: () => void;
 }
 
@@ -29,7 +30,8 @@ const MAX_TEXT_CHARS = 120000;
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
-const InputSection: React.FC<InputSectionProps> = ({ onGenerate, isLoading, onOpenOnboarding }) => {
+const InputSection: React.FC<InputSectionProps> = ({ onGenerate, onUsePrefab, isLoading, onOpenOnboarding, mode = 'questions' }) => {
+  const isCheatSheetMode = mode === 'cheatsheet' || mode === 'summary';
   const [selectedGuide, setSelectedGuide] = useState<BetaGuide | null>(null);
   const [isReading, setIsReading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -124,7 +126,7 @@ const InputSection: React.FC<InputSectionProps> = ({ onGenerate, isLoading, onOp
       null,
       {
         ...preferences,
-        generationMode: 'questions',
+        generationMode: isCheatSheetMode ? 'summary' : 'questions',
         focusedOnWeakness: false
       },
       {
@@ -146,8 +148,14 @@ const InputSection: React.FC<InputSectionProps> = ({ onGenerate, isLoading, onOp
              <ClipboardDocumentCheckIcon className="w-8 h-8" />
            </div>
            <div>
-               <h2 className="text-2xl font-black text-slate-800 tracking-tight">Choose Your Beta Module</h2>
-               <p className="text-sm text-slate-500 font-medium">Select Heme or Pulm to generate NBME-style practice questions.</p>
+               <h2 className="text-2xl font-black text-slate-800 tracking-tight">
+                 {isCheatSheetMode ? 'Cheat Sheet Builder' : 'Choose Your Beta Module'}
+               </h2>
+               <p className="text-sm text-slate-500 font-medium">
+                 {isCheatSheetMode
+                   ? 'Generate a last-minute rapid review for Heme or Pulm.'
+                   : 'Select Heme or Pulm to generate NBME-style practice questions.'}
+               </p>
            </div>
            {onOpenOnboarding && (
              <button
@@ -165,9 +173,18 @@ const InputSection: React.FC<InputSectionProps> = ({ onGenerate, isLoading, onOp
           <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Getting Started</div>
           <div className="mt-3 space-y-2 text-sm text-slate-600 font-medium">
             <div><span className="text-slate-800 font-black">1.</span> Choose a module (Heme or Pulm).</div>
-            <div><span className="text-slate-800 font-black">2.</span> Adjust question count and difficulty.</div>
-            <div><span className="text-slate-800 font-black">3.</span> Generate questions and begin practicing.</div>
-            <div><span className="text-slate-800 font-black">4.</span> Try Deep Dive for focused concept drills.</div>
+            {isCheatSheetMode ? (
+              <>
+                <div><span className="text-slate-800 font-black">2.</span> Open the prefab quick review or generate a fresh sheet.</div>
+                <div><span className="text-slate-800 font-black">3.</span> Download as PDF for last‑minute review.</div>
+              </>
+            ) : (
+              <>
+                <div><span className="text-slate-800 font-black">2.</span> Adjust question count and difficulty.</div>
+                <div><span className="text-slate-800 font-black">3.</span> Generate questions and begin practicing.</div>
+                <div><span className="text-slate-800 font-black">4.</span> Try Deep Dive for focused concept drills.</div>
+              </>
+            )}
           </div>
         </div>
 
@@ -237,26 +254,30 @@ const InputSection: React.FC<InputSectionProps> = ({ onGenerate, isLoading, onOp
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-            <div className="flex justify-between items-center mb-3">
-              <span className="text-xs font-bold text-slate-600">Question Count</span>
-              <span className="text-xs font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded">{preferences.questionCount} Questions</span>
+          {!isCheatSheetMode && (
+            <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-xs font-bold text-slate-600">Question Count</span>
+                <span className="text-xs font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded">{preferences.questionCount} Questions</span>
+              </div>
+              <input 
+                type="range" 
+                min="3" max="20" 
+                value={preferences.questionCount}
+                onChange={(e) => setPreferences(p => ({ ...p, questionCount: parseInt(e.target.value, 10), autoQuestionCount: false }))}
+                className="w-full accent-teal-600 h-1.5 bg-slate-100 rounded-full appearance-none cursor-pointer"
+              />
             </div>
-            <input 
-              type="range" 
-              min="3" max="20" 
-              value={preferences.questionCount}
-              onChange={(e) => setPreferences(p => ({ ...p, questionCount: parseInt(e.target.value, 10), autoQuestionCount: false }))}
-              className="w-full accent-teal-600 h-1.5 bg-slate-100 rounded-full appearance-none cursor-pointer"
-            />
-          </div>
+          )}
 
           <div>
             <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Focus Instructions (Optional)</label>
             <textarea
               value={preferences.customInstructions}
               onChange={(e) => setPreferences(p => ({ ...p, customInstructions: e.target.value }))}
-              placeholder="e.g., Emphasize pulmonology + hematology, include next-best-step questions"
+              placeholder={isCheatSheetMode
+                ? 'e.g., Emphasize last-minute review, include key tables and pitfalls'
+                : 'e.g., Emphasize pulmonology + hematology, include next-best-step questions'}
               className="w-full p-3 rounded-2xl border border-slate-200 text-xs bg-white focus:ring-2 focus:ring-teal-500/20 outline-none resize-none h-20 transition-all"
             />
           </div>
@@ -264,13 +285,32 @@ const InputSection: React.FC<InputSectionProps> = ({ onGenerate, isLoading, onOp
       </div>
 
       <div className="p-8 pt-4 bg-white border-t border-slate-100 sticky bottom-0 z-10">
-        <button
-          onClick={handleSubmit}
-          disabled={isLoading || !selectedGuide || !studyGuideText.trim() || isReading}
-          className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-sm transition-all transform active:scale-95 ${isLoading || isReading || !selectedGuide || !studyGuideText.trim() ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-teal-600 text-white shadow-xl shadow-teal-500/30 hover:bg-teal-700 hover:shadow-teal-500/40'}`}
-        >
-          {isLoading ? 'Processing...' : 'Generate Practice Questions'}
-        </button>
+        <div className={`grid gap-3 ${isCheatSheetMode ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
+          {isCheatSheetMode && onUsePrefab && (
+            <button
+              onClick={() => selectedGuide && onUsePrefab(selectedGuide)}
+              disabled={!selectedGuide || isReading}
+              className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-sm transition-all transform active:scale-95 ${
+                !selectedGuide || isReading
+                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                  : 'bg-white text-teal-700 border border-teal-200 hover:bg-teal-50'
+              }`}
+            >
+              Open Quick Review
+            </button>
+          )}
+          <button
+            onClick={handleSubmit}
+            disabled={isLoading || !selectedGuide || !studyGuideText.trim() || isReading}
+            className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-sm transition-all transform active:scale-95 ${
+              isLoading || isReading || !selectedGuide || !studyGuideText.trim()
+                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                : 'bg-teal-600 text-white shadow-xl shadow-teal-500/30 hover:bg-teal-700 hover:shadow-teal-500/40'
+            }`}
+          >
+            {isLoading ? 'Processing...' : isCheatSheetMode ? 'Generate Cheat Sheet' : 'Generate Practice Questions'}
+          </button>
+        </div>
       </div>
     </div>
   );

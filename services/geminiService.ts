@@ -542,8 +542,50 @@ export const generateConceptFlashcards = async (_weakConcepts: string[], _lectur
   return betaDisabled('Concept flashcards') as never;
 };
 
-export const generateCheatSheet = async (_lectureFiles: StudyFile[], _studyGuideFile: StudyFile | null, _preferences: UserPreferences): Promise<string> => {
-  return betaDisabled('Cheat sheet generation') as never;
+export const generateCheatSheetText = async (
+  sourceText: string,
+  preferences: UserPreferences,
+  guideTitle?: string
+): Promise<string> => {
+  const focus = preferences.customInstructions?.trim()
+    ? `Additional focus: ${preferences.customInstructions.trim()}`
+    : '';
+  const title = guideTitle ? `${guideTitle} Rapid Review` : 'Rapid Review';
+  const prompt = `
+You are an expert medical educator.
+Create a last-minute cheat sheet based ONLY on the provided source material.
+Output Markdown only. No HTML. Keep it concise, high-yield, and skimmable.
+
+Structure:
+- Start with "# ${title}"
+- Use short sections with "##" headers
+- Use bullet points and tables where helpful
+- Include: key patterns, classic associations, management/next steps, pitfalls
+${focus}
+
+Source material:
+${sourceText}
+`;
+
+  const messages: XaiMessage[] = [
+    { role: 'system', content: 'You produce concise medical study cheat sheets in Markdown.' },
+    { role: 'user', content: prompt }
+  ];
+
+  const raw = await callXai(messages, DEFAULT_MODEL, 0.2, 120000);
+  return stripCodeFences(raw);
+};
+
+export const generateCheatSheet = async (
+  _lectureFiles: StudyFile[],
+  studyGuideFile: StudyFile | null,
+  preferences: UserPreferences
+): Promise<string> => {
+  const sourceText = studyGuideFile?.data || '';
+  if (!sourceText.trim()) {
+    throw new Error('No study guide text available for cheat sheet generation.');
+  }
+  return generateCheatSheetText(sourceText, preferences);
 };
 
 export const chatWithTutor = async (
