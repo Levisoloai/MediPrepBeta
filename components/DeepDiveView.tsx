@@ -363,7 +363,14 @@ const DeepDiveView: React.FC<DeepDiveViewProps> = ({ prefilledTopic, clearPrefil
       const contextSnippet = lessonContent
         ? lessonContent.replace(/\s+/g, ' ').slice(0, 1200)
         : '';
-      const responseText = await chatWithTutor(activeChatQuestion, history, userMsg.text, tutorModel, contextSnippet);
+      const responseText = await chatWithTutor(
+        activeChatQuestion,
+        history,
+        userMsg.text,
+        tutorModel,
+        contextSnippet,
+        deepDiveStates[activeChatQuestion.id]
+      );
       setChatHistoryByQuestion(prev => ({
         ...prev,
         [activeChatQuestion.id]: [...history, userMsg, { role: 'model', text: responseText }]

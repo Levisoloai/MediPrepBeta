@@ -1,4 +1,4 @@
-import { UserPreferences, QuestionType, Question, StudyFile, ChatMessage, ExamFormat, Subject, BlueprintTopic, ClinicalCase, CaseLabResult, CaseEvaluation, StudyPlanItem, DifficultyLevel, CardStyle } from '../types';
+import { UserPreferences, QuestionType, Question, QuestionState, StudyFile, ChatMessage, ExamFormat, Subject, BlueprintTopic, ClinicalCase, CaseLabResult, CaseEvaluation, StudyPlanItem, DifficultyLevel, CardStyle } from '../types';
 import { prepareQuestionForSession, recordIntegrityDropped, recordIntegrityRendered } from '../utils/questionIntegrity';
 
 const XAI_BASE_URL = 'https://api.x.ai/v1';
@@ -322,6 +322,52 @@ const sanitizeTutorResponse = (text: string) => {
   return cleanedLines.join('\n');
 };
 
+type TutorStudentState = Partial<Pick<QuestionState, 'selectedOption' | 'showAnswer' | 'struckOptions'>>;
+
+const extractUworldSection = (explanation: string, header: string) => {
+  if (!explanation) return '';
+  const re = new RegExp(`\\*\\*${header}:\\*\\*\\s*([\\s\\S]*?)(?=\\n\\*\\*[A-Za-z ]+:\\*\\*|$)`, 'i');
+  const match = explanation.match(re);
+  return (match?.[1] || '').trim();
+};
+
+const formatTutorQuestionContext = (question: Question, studentState?: TutorStudentState) => {
+  const options = Array.isArray(question.options) ? question.options : [];
+  const optionLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const optionLines = options.map((opt, idx) => {
+    const letter = optionLetters[idx] || String(idx + 1);
+    return `${letter}) ${String(opt || '').trim()}`;
+  });
+
+  const selected = studentState?.selectedOption ? String(studentState.selectedOption).trim() : '';
+  const struck = Array.isArray(studentState?.struckOptions) ? studentState!.struckOptions : [];
+  const struckLetters = struck
+    .filter((idx) => Number.isFinite(idx) && idx >= 0 && idx < options.length)
+    .map((idx) => optionLetters[idx] || String(idx + 1));
+
+  const clue = extractUworldSection(question.explanation || '', 'Key Clue');
+  const shortExplanation = extractUworldSection(question.explanation || '', 'Explanation');
+  const objective = extractUworldSection(question.explanation || '', 'Educational Objective');
+
+  const parts: string[] = [
+    `Stem:\n${(question.questionText || '').trim()}`,
+    options.length ? `Answer choices:\n${optionLines.join('\n')}` : '',
+    selected ? `Student selected: ${selected}` : 'Student selected: (none)',
+    struckLetters.length ? `Struck: ${struckLetters.join(', ')}` : '',
+    question.studyConcepts?.length ? `Study concepts: ${question.studyConcepts.join('; ')}` : '',
+    question.histology?.title ? `Associated image: ${question.histology.title}` : '',
+    question.histology?.caption ? `Image caption: ${question.histology.caption}` : '',
+    question.correctAnswer ? `Answer key (do not reveal unless allowed): ${question.correctAnswer}` : '',
+    studentState?.showAnswer && clue ? `Key clue: ${clue.replace(/\s+/g, ' ').slice(0, 240)}` : '',
+    studentState?.showAnswer && shortExplanation
+      ? `Explanation (condensed): ${shortExplanation.replace(/\s+/g, ' ').slice(0, 900)}`
+      : '',
+    studentState?.showAnswer && objective ? `Objective: ${objective.replace(/\s+/g, ' ').slice(0, 280)}` : ''
+  ];
+
+  return parts.filter(Boolean).join('\n\n');
+};
+
 // --- Exported Services ---
 
 export const processLectureVideo = async (_base64Video: string, _mimeType: string): Promise<string> => {
@@ -588,9 +634,12 @@ export const chatWithTutor = async (
   history: ChatMessage[],
   message: string,
   model: 'flash' | 'pro',
-  lessonContext?: string
+  lessonContext?: string,
+  studentState?: TutorStudentState
 ): Promise<string> => {
   const contextSnippet = lessonContext ? `Lesson context (condensed): ${lessonContext}` : '';
+  const revealAllowed = Boolean(studentState?.showAnswer);
+  const questionContext = formatTutorQuestionContext(question, studentState);
   const systemInstruction = `
 You are a concise Socratic medical tutor.
 Help the student reason through the question without dumping long explanations.
@@ -601,11 +650,15 @@ Style rules:
 - Ask 3-5 guiding questions (use "Q1)", "Q2)" style).
 - Mention only 2-3 key abnormalities if labs matter.
 - End with a single "Check:" question.
-- Do not reveal the final answer unless the student asks directly or is clearly stuck.
+- During the attempt phase, do not reveal the final answer or "Answer key" unless the student asks directly.
+- If reveal is allowed, you may explain the correct answer openly and contrast it with 1-2 close distractors.
+- When referencing choices, use their letter (A, B, C...) and the option text.
 
-Question: "${question.questionText}"
-Correct answer: "${question.correctAnswer}"
+Reveal allowed: ${revealAllowed ? 'yes' : 'no'}
 ${contextSnippet}
+
+Question context:
+${questionContext}
 `;
 
   const messages: XaiMessage[] = [

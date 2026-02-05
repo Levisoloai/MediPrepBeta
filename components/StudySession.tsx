@@ -76,7 +76,14 @@ const StudySession: React.FC<StudySessionProps> = ({ dueQuestions, onComplete, o
     setIsChatLoading(true);
 
     try {
-      const responseText = await chatWithTutor(currentQuestion, chatHistory, userMsg.text, tutorModel);
+      const responseText = await chatWithTutor(
+        currentQuestion,
+        chatHistory,
+        userMsg.text,
+        tutorModel,
+        undefined,
+        { showAnswer }
+      );
       setChatHistory(prev => [...prev, { role: 'model', text: responseText }]);
     } catch (error) {
       console.error("Chat error", error);
@@ -109,7 +116,14 @@ const StudySession: React.FC<StudySessionProps> = ({ dueQuestions, onComplete, o
     setIsChatLoading(true);
 
     try {
-      const responseText = await chatWithTutor(currentQuestion, historyForRegen, lastUserMsg.text, tutorModel);
+      const responseText = await chatWithTutor(
+        currentQuestion,
+        historyForRegen,
+        lastUserMsg.text,
+        tutorModel,
+        undefined,
+        { showAnswer }
+      );
       setChatHistory(prev => [...prev, { role: 'model', text: responseText }]);
     } catch (error) {
       setChatHistory(prev => [...prev, { role: 'model', text: "Error regenerating response." }]);

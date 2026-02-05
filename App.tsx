@@ -1889,6 +1889,10 @@ const App: React.FC = () => {
     setIsChatLoading(true);
 
     try {
+      const stateForTutor =
+        view === 'remediation'
+          ? remediationStates[activeQuestionForChat.id]
+          : practiceStates[activeQuestionForChat.id];
       trackTutorUsage({
         userId: user?.id,
         sessionId: tutorSessionId,
@@ -1899,7 +1903,14 @@ const App: React.FC = () => {
         location: view === 'remediation' ? 'remediation' : 'practice',
         eventType: 'message_sent'
       });
-      const responseText = await chatWithTutor(activeQuestionForChat, chatHistory, userMsg.text, tutorModel);
+      const responseText = await chatWithTutor(
+        activeQuestionForChat,
+        chatHistory,
+        userMsg.text,
+        tutorModel,
+        undefined,
+        stateForTutor
+      );
       const updated = [...nextHistory, { role: 'model', text: responseText }];
       setChatHistory(updated);
       setChatHistoryByQuestion(prev => ({
