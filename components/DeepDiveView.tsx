@@ -515,8 +515,9 @@ const DeepDiveView: React.FC<DeepDiveViewProps> = ({ prefilledTopic, clearPrefil
 
   if (state === 'select') {
     return (
-      <div className="flex items-start justify-center min-h-full p-6 pt-10 animate-in fade-in">
-        <div className="max-w-lg w-full bg-white rounded-2xl shadow-xl border border-indigo-100 p-8">
+      <div className="h-full overflow-y-auto custom-scrollbar">
+        <div className="flex items-start justify-center min-h-full p-6 pt-10 animate-in fade-in">
+          <div className="max-w-lg w-full bg-white rounded-2xl shadow-xl border border-indigo-100 p-8">
            <div className="text-center mb-8">
              <div className="w-16 h-16 bg-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-4 text-indigo-600">
                <AcademicCapIcon className="w-8 h-8" />
@@ -605,6 +606,7 @@ const DeepDiveView: React.FC<DeepDiveViewProps> = ({ prefilledTopic, clearPrefil
                Begin Lesson <ArrowRightIcon className="w-5 h-5" />
              </button>
            </form>
+          </div>
         </div>
       </div>
     );
