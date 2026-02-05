@@ -159,7 +159,24 @@ const DeepDiveView: React.FC<DeepDiveViewProps> = ({ prefilledTopic, clearPrefil
       if (cached) {
         const rawQuiz = Array.isArray(cached.quiz) ? cached.quiz : [];
         const activeQuiz = rawQuiz.filter((q: any) => q?.adminReview?.status !== 'retired');
-        const normalizedQuiz = normalizeDeepDiveQuiz(activeQuiz, cached.concept || conceptTrimmed).slice(0, initialCount);
+        const normalizedAll = normalizeDeepDiveQuiz(activeQuiz, cached.concept || conceptTrimmed, { shuffleOptions: false });
+        let normalizedQuiz = normalizedAll.slice(0, initialCount);
+
+        const missing = initialCount - normalizedQuiz.length;
+        if (missing > 0) {
+          const backfill = await extendDeepDiveQuiz(
+            sub,
+            selectedSource,
+            cached.concept || conceptTrimmed,
+            missing,
+            controller.signal,
+            'same'
+          );
+          const existingSet = buildFingerprintSet(normalizedQuiz);
+          const { unique } = filterDuplicateQuestions(backfill, existingSet);
+          normalizedQuiz = [...normalizedQuiz, ...unique].slice(0, initialCount);
+        }
+
         const withHistology = attachHistologyToQuestions(normalizedQuiz, selectedSource);
         setLessonContent(cached.lessonContent);
         setQuiz(withHistology);
@@ -173,7 +190,21 @@ const DeepDiveView: React.FC<DeepDiveViewProps> = ({ prefilledTopic, clearPrefil
 
       const data = await startDeepDive(sub, selectedSource, concept, initialCount, controller.signal);
       setLessonContent(data.lessonContent);
-      const trimmedQuiz = data.quiz.slice(0, initialCount);
+      let trimmedQuiz = data.quiz.slice(0, initialCount);
+      const missing = initialCount - trimmedQuiz.length;
+      if (missing > 0) {
+        const backfill = await extendDeepDiveQuiz(
+          sub,
+          selectedSource,
+          concept,
+          missing,
+          controller.signal,
+          'same'
+        );
+        const existingSet = buildFingerprintSet(trimmedQuiz);
+        const { unique } = filterDuplicateQuestions(backfill, existingSet);
+        trimmedQuiz = [...trimmedQuiz, ...unique].slice(0, initialCount);
+      }
       const withHistology = attachHistologyToQuestions(trimmedQuiz, selectedSource);
       setQuiz(withHistology);
       setQuizAnswers(new Array(withHistology.length).fill(false));

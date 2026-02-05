@@ -12,13 +12,13 @@ import { flushFeedbackQueue } from './services/feedbackService';
 import { getPrefabSet, getActivePrefabQuestions } from './services/prefabService';
 import { getApprovedGoldQuestions } from './services/goldQuestionService';
 import { Question, UserPreferences, StudyFile, ChatMessage, QuestionState, StudyGuideItem, QuestionType, DifficultyLevel, ExamFormat, CardStyle } from './types';
-import { normalizeOptions, resolveCorrectAnswer } from './utils/answerKey';
 import { buildFingerprintSet, buildFingerprintVariants, filterDuplicateQuestions } from './utils/questionDedupe';
 import { attachHistologyToQuestions } from './utils/histology';
 import { buildHistologyReviewQuestions, selectHistologyEntries, HistologyReviewMode } from './utils/histologyReview';
 import { cheatSheetPrefabs } from './utils/cheatSheets';
 import type { BetaGuide } from './utils/betaGuides';
 import { getCheatSheetPrefab } from './services/cheatSheetService';
+import { getIntegrityStats, prepareQuestionForSession } from './utils/questionIntegrity';
 import { SparklesIcon, XMarkIcon, ChatBubbleLeftRightIcon, PaperAirplaneIcon, ExclamationTriangleIcon, CheckIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/solid';
 import katex from 'katex';
 import { supabase } from './services/supabaseClient';
@@ -41,16 +41,17 @@ const normalizeStudyConcepts = (raw: any): string[] => {
 };
 
 const normalizeQuestionShape = (question: Question): Question => {
-  const normalizedOptions = normalizeOptions(question.options);
+  const prepared = prepareQuestionForSession(question, { shuffleOptions: false });
+  if (!prepared) {
+    return {
+      ...question,
+      options: Array.isArray(question.options) ? question.options : [],
+      studyConcepts: normalizeStudyConcepts(question.studyConcepts)
+    };
+  }
   return {
-    ...question,
-    options: normalizedOptions,
-    correctAnswer: resolveCorrectAnswer({
-      correctAnswer: question.correctAnswer,
-      options: normalizedOptions,
-      explanation: question.explanation
-    }),
-    studyConcepts: normalizeStudyConcepts(question.studyConcepts)
+    ...prepared.question,
+    studyConcepts: normalizeStudyConcepts(prepared.question.studyConcepts)
   };
 };
 
@@ -638,6 +639,13 @@ const App: React.FC = () => {
   }, [practiceQuestions, lastGuideContext?.guideHash, lastGuideContext?.guideTitle]);
 
   const [abOverride, setAbOverride] = useState<'auto' | 'gold' | 'guide' | 'split'>('auto');
+  const [integrityStats, setIntegrityStats] = useState(() => getIntegrityStats());
+
+  useEffect(() => {
+    const handler = () => setIntegrityStats(getIntegrityStats());
+    window.addEventListener('integrity_updated', handler);
+    return () => window.removeEventListener('integrity_updated', handler);
+  }, []);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -803,6 +811,7 @@ const App: React.FC = () => {
 
     try {
       const workingFingerprints = new Set(seenFingerprintSet);
+      let validationWarning = false;
       const pickFromPool = (pool: Question[], count: number, shouldShuffle: boolean) => {
         const list = shouldShuffle ? shuffleList(pool) : pool;
         const picked: Question[] = [];
@@ -850,11 +859,23 @@ const App: React.FC = () => {
 
       const takeGenerated = async (count: number) => {
         if (count <= 0) return [];
-        const generated = await generateQuestions(content, [], null, { ...effectivePrefs, questionCount: count });
-        const { unique } = filterDuplicateQuestions(generated, workingFingerprints);
-        const selected = unique.slice(0, count);
-        selected.forEach((q) => addFingerprintsToSet(q, workingFingerprints));
-        return selected.map((q) => ({ ...q, sourceType: 'generated', guideHash }));
+        const picked: Question[] = [];
+        let remaining = count;
+        let attempts = 0;
+        while (remaining > 0 && attempts < 3) {
+          attempts += 1;
+          const generated = await generateQuestions(content, [], null, { ...effectivePrefs, questionCount: remaining });
+          const { unique } = filterDuplicateQuestions(generated, workingFingerprints);
+          const selected = unique.slice(0, remaining);
+          selected.forEach((q) => addFingerprintsToSet(q, workingFingerprints));
+          picked.push(...selected);
+          remaining = count - picked.length;
+          if (selected.length === 0) break;
+        }
+        if (picked.length < count) {
+          validationWarning = true;
+        }
+        return picked.map((q) => ({ ...q, sourceType: 'generated', guideHash }));
       };
 
       let goldQuestions: Question[] = [];
@@ -977,12 +998,7 @@ const App: React.FC = () => {
           sessionVariant = usedFallback ? 'mixed' : primaryVariant;
         }
       } else {
-        const generated = await generateQuestions(content, [], null, { ...effectivePrefs, questionCount: effectivePrefs.questionCount });
-        const { unique } = filterDuplicateQuestions(generated, workingFingerprints);
-        guideQuestions = unique.slice(0, effectivePrefs.questionCount).map((q) => ({
-          ...q,
-          sourceType: 'generated'
-        }));
+        guideQuestions = await takeGenerated(effectivePrefs.questionCount);
       }
 
       const combined = shuffleList([...goldQuestions, ...guideQuestions]).map((q) =>
@@ -1005,6 +1021,9 @@ const App: React.FC = () => {
       await markQuestionsSeenByFingerprint(moduleId, normalized);
       setPracticeStates({});
       setPrefabMeta(prefabMetaNext);
+      if (validationWarning) {
+        setError('Some questions failed validation; try again.');
+      }
       setView('practice');
     } catch (err: any) {
       setError(err.message || "Failed to generate questions.");
@@ -1118,9 +1137,24 @@ const App: React.FC = () => {
         customInstructions: [prefs.customInstructions, topicInstruction].filter(Boolean).join('\n')
       };
       const seenFingerprintSet = await ensureSeenFingerprints(moduleId);
-      const generated = await generateQuestions(content, [], null, effectivePrefs);
-      const { unique } = filterDuplicateQuestions(generated, seenFingerprintSet);
-      const selected = unique.slice(0, effectivePrefs.questionCount).map((q) => ({
+      const workingFingerprints = new Set(seenFingerprintSet);
+      const picked: Question[] = [];
+      let remaining = effectivePrefs.questionCount;
+      let attempts = 0;
+      while (remaining > 0 && attempts < 3) {
+        attempts += 1;
+        const batch = await generateQuestions(content, [], null, { ...effectivePrefs, questionCount: remaining });
+        const { unique } = filterDuplicateQuestions(batch, workingFingerprints);
+        const selected = unique.slice(0, remaining);
+        selected.forEach((q) => addFingerprintsToSet(q, workingFingerprints));
+        picked.push(...selected);
+        remaining = effectivePrefs.questionCount - picked.length;
+        if (selected.length === 0) break;
+      }
+      if (picked.length < effectivePrefs.questionCount) {
+        setError('Some questions failed validation; try again.');
+      }
+      const selected = picked.map((q) => ({
         ...q,
         sourceType: 'generated',
         guideHash
@@ -1226,16 +1260,34 @@ const App: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const more = await generateQuestions(
-        lastGuideContext.content,
-        [],
-        null,
-        lastGuideContext.prefs
-      );
       const existingSet = buildFingerprintSet(practiceQuestions);
       const union = new Set<string>([...existingSet, ...seenFingerprintSet]);
-      const { unique } = filterDuplicateQuestions(more, union);
-      const generatedTagged = unique.map((q) => ({
+      const desiredCount = lastGuideContext.prefs.autoQuestionCount
+        ? Math.max(5, Math.min(15, lastGuideContext.prefs.questionCount || 10))
+        : Math.max(1, lastGuideContext.prefs.questionCount || 1);
+      const workingFingerprints = new Set(union);
+      const picked: Question[] = [];
+      let remaining = desiredCount;
+      let attempts = 0;
+      while (remaining > 0 && attempts < 3) {
+        attempts += 1;
+        const batch = await generateQuestions(
+          lastGuideContext.content,
+          [],
+          null,
+          { ...lastGuideContext.prefs, autoQuestionCount: false, questionCount: remaining }
+        );
+        const { unique } = filterDuplicateQuestions(batch, workingFingerprints);
+        const selected = unique.slice(0, remaining);
+        selected.forEach((q) => addFingerprintsToSet(q, workingFingerprints));
+        picked.push(...selected);
+        remaining = desiredCount - picked.length;
+        if (selected.length === 0) break;
+      }
+      if (picked.length < desiredCount) {
+        setError('Some questions failed validation; try again.');
+      }
+      const generatedTagged = picked.map((q) => ({
         ...q,
         sourceType: 'generated',
         abVariant: sessionVariant,
@@ -1296,18 +1348,34 @@ const App: React.FC = () => {
         ...context.prefs,
         customInstructions: [context.prefs.customInstructions, focusLine].filter(Boolean).join('\n')
       };
-      const remediation = await generateQuestions(
-        context.content,
-        [],
-        null,
-        updatedPrefs
-      );
       const moduleKey = context.guideHash || 'custom';
       const seenFingerprintSet = await ensureSeenFingerprints(moduleKey);
       const existingSet = buildFingerprintSet(practiceQuestions);
       const union = new Set<string>([...existingSet, ...seenFingerprintSet]);
-      const { unique } = filterDuplicateQuestions(remediation, union);
-      const generatedTagged = unique.map((q) => ({ ...q, sourceType: 'generated' }));
+      const targetCount = Math.max(1, updatedPrefs.questionCount || 1);
+      const workingFingerprints = new Set(union);
+      const picked: Question[] = [];
+      let remaining = targetCount;
+      let attempts = 0;
+      while (remaining > 0 && attempts < 3) {
+        attempts += 1;
+        const batch = await generateQuestions(
+          context.content,
+          [],
+          null,
+          { ...updatedPrefs, questionCount: remaining }
+        );
+        const { unique } = filterDuplicateQuestions(batch, workingFingerprints);
+        const selected = unique.slice(0, remaining);
+        selected.forEach((q) => addFingerprintsToSet(q, workingFingerprints));
+        picked.push(...selected);
+        remaining = targetCount - picked.length;
+        if (selected.length === 0) break;
+      }
+      if (picked.length < targetCount) {
+        setError('Some remediation questions failed validation; try again.');
+      }
+      const generatedTagged = picked.map((q) => ({ ...q, sourceType: 'generated' }));
       const withHistology = attachHistologyToQuestions(
         generatedTagged.map(normalizeQuestionShape),
         context.moduleId || context.guideTitle || ''
@@ -1698,6 +1766,7 @@ const App: React.FC = () => {
                   abOverride={abOverride}
                   onOverrideChange={handleOverrideChange}
                   lastGuideHash={lastGuideContext?.guideHash ?? null}
+                  integrityStats={integrityStats}
                 />
               ) : (
                 <div className="max-w-xl mx-auto mt-16 p-8 bg-white border border-slate-200 rounded-2xl text-center shadow-sm">

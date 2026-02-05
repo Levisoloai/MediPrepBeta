@@ -2,6 +2,7 @@ import { supabase } from './supabaseClient';
 import { PrefabQuestionSet, StudyGuideItem, UserPreferences, Question, QuestionType, DifficultyLevel, ExamFormat, CardStyle } from '../types';
 import { generateQuestionsStaged } from './geminiService';
 import { buildFingerprintSet, buildFingerprintVariants, filterDuplicateQuestions } from '../utils/questionDedupe';
+import { prepareQuestionForSession, recordIntegrityDropped, recordIntegrityRendered } from '../utils/questionIntegrity';
 
 type PrefabRow = {
   guide_hash: string;
@@ -109,11 +110,22 @@ export const getPrefabSet = async (guideHash: string): Promise<PrefabQuestionSet
   if (error || !data) return null;
 
   const row = data as PrefabRow;
+  const normalizedQuestions = normalizePrefabQuestions(row.questions || []);
+  const preparedQuestions = normalizedQuestions.flatMap((question) => {
+    const base: Question = { ...question, sourceType: 'prefab' };
+    const prepared = prepareQuestionForSession(base, { shuffleOptions: false });
+    if (!prepared) {
+      recordIntegrityDropped('prefab');
+      return [];
+    }
+    recordIntegrityRendered('prefab', prepared.integrity);
+    return [{ ...prepared.question, sourceType: 'prefab' as const }];
+  });
   return {
     guideHash: row.guide_hash,
     guideTitle: row.guide_title,
     items: row.items || [],
-    questions: row.questions || [],
+    questions: preparedQuestions,
     createdAt: row.created_at,
     promptVersion: row.prompt_version,
     model: row.model

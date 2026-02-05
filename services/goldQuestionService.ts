@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import { GoldQuestionRow, Question } from '../types';
+import { prepareQuestionForSession, recordIntegrityDropped, recordIntegrityRendered } from '../utils/questionIntegrity';
 
 type GoldStatus = 'draft' | 'approved';
 type ModuleId = 'heme' | 'pulm';
@@ -88,7 +89,17 @@ export const getApprovedGoldQuestions = async (module: ModuleId) => {
     .eq('module', module)
     .eq('status', 'approved');
   if (error) throw error;
-  return (data || []).map((row) => toQuestion(row));
+  const mapped = (data || []).map((row) => toQuestion(row));
+  const prepared = mapped.flatMap((question) => {
+    const result = prepareQuestionForSession(question, { shuffleOptions: false });
+    if (!result) {
+      recordIntegrityDropped('gold');
+      return [];
+    }
+    recordIntegrityRendered('gold', result.integrity);
+    return [result.question];
+  });
+  return prepared;
 };
 
 export const createGoldQuestion = async (input: {

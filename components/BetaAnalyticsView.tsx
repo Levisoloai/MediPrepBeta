@@ -14,6 +14,7 @@ import pdfjsWorker from 'pdfjs-dist/build/pdf.worker?url';
 import { cheatSheetPrefabs } from '../utils/cheatSheets';
 import { betaGuides } from '../utils/betaGuides';
 import { getCheatSheetPrefabs, upsertCheatSheetPrefab } from '../services/cheatSheetService';
+import type { IntegrityCounters } from '../utils/questionIntegrity';
 
 type FeedbackRow = {
   id: string;
@@ -101,6 +102,7 @@ type AbDebugProps = {
   abOverride?: AbOverrideOption;
   onOverrideChange?: (value: AbOverrideOption) => void;
   lastGuideHash?: string | null;
+  integrityStats?: Record<string, IntegrityCounters> | null;
 };
 
 const timeRanges: { id: TimeRange; label: string }[] = [
@@ -263,7 +265,8 @@ const BetaAnalyticsView: React.FC<AbDebugProps> = ({
   prefabExhausted,
   abOverride = 'auto',
   onOverrideChange,
-  lastGuideHash
+  lastGuideHash,
+  integrityStats
 }) => {
   const debugCounts = abDebug?.counts ?? { gold: 0, prefab: 0, generated: 0, other: 0 };
   const debugGuideTitle = abDebug?.guideTitle ?? 'n/a';
@@ -1775,6 +1778,40 @@ const BetaAnalyticsView: React.FC<AbDebugProps> = ({
           </div>
           <div className="mt-2 text-[10px] text-slate-400">
             Override applies to the last guide used in Practice.
+          </div>
+        </div>
+      )}
+
+      {integrityStats && Object.keys(integrityStats).length > 0 && (
+        <div className="mb-6 p-4 rounded-2xl border border-slate-200 bg-white/90 shadow-sm">
+          <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Integrity</div>
+          <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px] text-slate-600 font-semibold">
+            {['generated', 'prefab', 'gold', 'deep-dive', 'other'].map((source) => {
+              const stats = integrityStats[source];
+              if (!stats) return null;
+              return (
+                <div key={source} className="p-3 rounded-xl border border-slate-200 bg-white">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">{source}</div>
+                  <div className="mt-1 flex flex-wrap gap-3">
+                    <div>
+                      rendered <span className="text-slate-900 font-black">{stats.total_questions_rendered}</span>
+                    </div>
+                    <div>
+                      analysis <span className="text-slate-900 font-black">{stats.repaired_from_choice_analysis}</span>
+                    </div>
+                    <div>
+                      letter <span className="text-slate-900 font-black">{stats.repaired_from_letter}</span>
+                    </div>
+                    <div>
+                      dropped <span className="text-rose-700 font-black">{stats.dropped_unrepairable}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-2 text-[10px] text-slate-400">
+            Counts are local to this browser session.
           </div>
         </div>
       )}

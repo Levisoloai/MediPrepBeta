@@ -1,5 +1,5 @@
 import { UserPreferences, QuestionType, Question, StudyFile, ChatMessage, ExamFormat, Subject, BlueprintTopic, ClinicalCase, CaseLabResult, CaseEvaluation, StudyPlanItem, DifficultyLevel, CardStyle } from '../types';
-import { normalizeOptions, resolveCorrectAnswer } from '../utils/answerKey';
+import { prepareQuestionForSession, recordIntegrityDropped, recordIntegrityRendered } from '../utils/questionIntegrity';
 
 const XAI_BASE_URL = 'https://api.x.ai/v1';
 const DEFAULT_MODEL = import.meta.env.VITE_XAI_MODEL || 'grok-4-1-fast-reasoning';
@@ -153,7 +153,7 @@ const sanitizeQuestionText = (text: string) => {
 };
 
 const mapGeneratedQuestions = (rawQuestions: any[], preferences: UserPreferences): Question[] => {
-  return (rawQuestions || []).map((q: any) => {
+  return (rawQuestions || []).flatMap((q: any) => {
     const rawText = q.questionText || '';
     const sanitized = sanitizeQuestionText(rawText);
     const rawOptions = Array.isArray(q.options)
@@ -161,39 +161,25 @@ const mapGeneratedQuestions = (rawQuestions: any[], preferences: UserPreferences
       : sanitized.options.length > 0
       ? sanitized.options
       : undefined;
-    const normalizedOptions = rawOptions ? normalizeOptions(rawOptions) : [];
-    let resolvedCorrect = normalizedOptions.length > 0
-      ? resolveCorrectAnswer({ correctAnswer: q.correctAnswer || '', options: normalizedOptions, explanation: q.explanation || '' })
-      : String(q.correctAnswer || '').trim();
-    if (normalizedOptions.length > 0 && q.explanation) {
-      const inferredFromExplanation = resolveCorrectAnswer({
-        correctAnswer: '',
-        options: normalizedOptions,
-        explanation: q.explanation || ''
-      });
-      const rawAnswer = String(q.correctAnswer || '').trim();
-      const isLetterAnswer = /^[A-E](?:[\)\.\:\s]|$)/i.test(rawAnswer);
-      if (
-        inferredFromExplanation &&
-        inferredFromExplanation.toLowerCase() !== resolvedCorrect.toLowerCase() &&
-        (!rawAnswer || isLetterAnswer)
-      ) {
-        resolvedCorrect = inferredFromExplanation;
-      }
-    }
-    const shuffledOptions = normalizedOptions.length > 0 ? shuffleArray(normalizedOptions) : undefined;
-
-    return {
+    const base: Question = {
       id: q.id || Math.random().toString(36).slice(2, 9),
       type: q.type || preferences.questionType,
       questionText: sanitized.text || rawText || '',
-      options: shuffledOptions,
-      correctAnswer: resolvedCorrect,
+      options: rawOptions,
+      correctAnswer: q.correctAnswer || '',
       explanation: q.explanation || '',
       studyConcepts: Array.isArray(q.studyConcepts) ? q.studyConcepts : [],
       difficulty: q.difficulty || preferences.difficulty,
       histology: q.histology
     };
+
+    const prepared = prepareQuestionForSession(base, { shuffleOptions: true });
+    if (!prepared) {
+      recordIntegrityDropped('generated');
+      return [];
+    }
+    recordIntegrityRendered('generated', prepared.integrity);
+    return [prepared.question];
   });
 };
 
@@ -248,49 +234,38 @@ const coerceDeepDiveQuestion = (q: any) => {
   };
 };
 
-export const normalizeDeepDiveQuiz = (rawQuiz: any[], concept: string): Question[] => {
+export const normalizeDeepDiveQuiz = (
+  rawQuiz: any[],
+  concept: string,
+  opts?: { shuffleOptions?: boolean }
+): Question[] => {
   const coerced = (rawQuiz || []).map(coerceDeepDiveQuestion);
-  const looksNormalized = coerced.every((q) =>
-    typeof q.questionText === 'string' &&
-    Array.isArray(q.options) &&
-    typeof q.correctAnswer === 'string'
-  );
-  const hasLetterAnswer = coerced.some((q) => {
-    const ans = (q.correctAnswer || '').trim();
-    return /^([A-E])(?:[\)\.\:\s]|$)/i.test(ans);
-  });
+  const shuffleOptions = Boolean(opts?.shuffleOptions);
+  const now = Date.now();
 
-  const needsShuffleNormalization = !looksNormalized || hasLetterAnswer;
-  const normalized = needsShuffleNormalization
-    ? mapGeneratedQuestions(coerced, {
-        generationMode: 'questions',
-        questionType: QuestionType.MULTIPLE_CHOICE,
-        difficulty: DifficultyLevel.CLINICAL_VIGNETTE,
-        questionCount: coerced.length || 1,
-        autoQuestionCount: false,
-        customInstructions: '',
-        focusedOnWeakness: false,
-        examFormat: ExamFormat.NBME,
-        cardStyle: CardStyle.BASIC
-      })
-    : coerced.map((q, idx) => {
-        const normalizedOptions = normalizeOptions(q.options);
-        return {
-          id: q.id || `dd-${Date.now()}-${idx}`,
-          type: q.type || QuestionType.MULTIPLE_CHOICE,
-          questionText: q.questionText || '',
-          options: normalizedOptions,
-          correctAnswer: resolveCorrectAnswer({
-            correctAnswer: q.correctAnswer || '',
-            options: normalizedOptions,
-            explanation: q.explanation || ''
-          }),
-          explanation: q.explanation || '',
-          studyConcepts: Array.isArray(q.studyConcepts) ? q.studyConcepts : [],
-          difficulty: q.difficulty || DifficultyLevel.CLINICAL_VIGNETTE,
-          histology: q.histology
-        };
-      });
+  const normalized = coerced.flatMap((q, idx) => {
+    const base: Question = {
+      id: q.id || `dd-${now}-${idx}`,
+      type: q.type || QuestionType.MULTIPLE_CHOICE,
+      questionText: q.questionText || '',
+      options: q.options,
+      correctAnswer: q.correctAnswer || '',
+      explanation: q.explanation || '',
+      studyConcepts: Array.isArray(q.studyConcepts) ? q.studyConcepts : [],
+      difficulty: q.difficulty || DifficultyLevel.CLINICAL_VIGNETTE,
+      histology: q.histology,
+      adminReview: (q as any).adminReview,
+      sourceType: 'deep-dive'
+    };
+
+    const prepared = prepareQuestionForSession(base, { shuffleOptions });
+    if (!prepared) {
+      recordIntegrityDropped('deep-dive');
+      return [];
+    }
+    recordIntegrityRendered('deep-dive', prepared.integrity);
+    return [prepared.question];
+  });
 
   return normalized.map((q, idx) => {
     const fallbackReview = (coerced[idx] as any)?.adminReview;
@@ -390,6 +365,7 @@ Requirements:
 - JSON schema: { "questions": [ { "type", "questionText", "options", "correctAnswer", "explanation", "studyConcepts", "difficulty" } ] }
 - For MULTIPLE_CHOICE and TRUE_FALSE, include 4-5 options.
 - For DESCRIPTIVE, omit options or return an empty array.
+- For MULTIPLE_CHOICE and TRUE_FALSE: "correctAnswer" MUST exactly equal one of the strings in "options" (verbatim). Do NOT return letters (A-E).
 - Include 3-6 studyConcepts per question.
 - Follow NBME-style item writing:
   - One-best-answer with a focused lead-in question.
@@ -402,6 +378,7 @@ Requirements:
   **Key Clue:** 1 sentence naming the single most important clue.
   **Choice Analysis:** a Markdown table with columns: Option | Rationale. Include every answer choice.
     - The Option column must include the full option text. Avoid using letters alone.
+    - Mark exactly ONE row as correct. The correct row rationale must start with "Correct;".
     - For incorrect options: explain why it's wrong and what finding would make it correct.
       Include the label: "If it were instead: <finding>" in the rationale for incorrect choices.
     - For the correct option: name the key clue(s) that support it.
@@ -505,6 +482,7 @@ Requirements:
 - JSON schema: { "questions": [ { "type", "questionText", "options", "correctAnswer", "explanation", "studyConcepts", "difficulty" } ] }
 - For MULTIPLE_CHOICE and TRUE_FALSE, include 4-5 options.
 - For DESCRIPTIVE, omit options or return an empty array.
+- For MULTIPLE_CHOICE and TRUE_FALSE: "correctAnswer" MUST exactly equal one of the strings in "options" (verbatim). Do NOT return letters (A-E).
 - Include 3-6 studyConcepts per question.
 - Follow NBME-style item writing:
   - One-best-answer with a focused lead-in question.
@@ -517,6 +495,7 @@ Requirements:
   **Key Clue:** 1 sentence naming the single most important clue.
   **Choice Analysis:** a Markdown table with columns: Option | Rationale. Include every answer choice.
     - The Option column must include the full option text. Avoid using letters alone.
+    - Mark exactly ONE row as correct. The correct row rationale must start with "Correct;".
     - For incorrect options: explain why it's wrong and what finding would make it correct.
       Include the label: "If it were instead: <finding>" in the rationale for incorrect choices.
     - For the correct option: name the key clue(s) that support it.
@@ -678,11 +657,13 @@ Quiz requirements:
 - Return ONLY valid JSON with keys: lessonContent (string) and quiz (array).
 - Quiz item JSON schema: { "questionText", "options", "correctAnswer", "explanation", "studyConcepts", "difficulty" }.
 - Exactly 5 options per question.
+- "correctAnswer" MUST exactly equal one of the strings in "options" (verbatim). Do NOT return letters (A-E).
 - Explanations must follow the exact UWorld-style format:
   **Explanation:** 2-5 sentences explaining why the correct answer is correct.
   **Key Clue:** 1 sentence naming the single most important clue.
   **Choice Analysis:** a Markdown table with columns: Option | Rationale. Include every answer choice.
     - The Option column must include the full option text. Avoid using letters alone.
+    - Mark exactly ONE row as correct. The correct row rationale must start with "Correct;".
     - For incorrect options: explain why it's wrong and what finding would make it correct.
       Include the label: "If it were instead: <finding>" in the rationale for incorrect choices.
     - For the correct option: name the key clue(s) that support it.
@@ -701,7 +682,7 @@ Quiz requirements:
 
   return {
     lessonContent: parsed?.lessonContent || '',
-    quiz: normalizeDeepDiveQuiz(rawQuiz, concept)
+    quiz: normalizeDeepDiveQuiz(rawQuiz, concept, { shuffleOptions: true })
   };
 };
 
@@ -769,11 +750,13 @@ ${histologyNote}
 
 Return ONLY valid JSON with a 'quiz' array.
 Quiz item JSON schema: { "questionText", "options", "correctAnswer", "explanation", "studyConcepts", "difficulty" }.
+"correctAnswer" MUST exactly equal one of the strings in "options" (verbatim). Do NOT return letters (A-E).
 Explanations must follow the exact UWorld-style format:
   **Explanation:** 2-5 sentences explaining why the correct answer is correct.
   **Key Clue:** 1 sentence naming the single most important clue.
   **Choice Analysis:** a Markdown table with columns: Option | Rationale. Include every answer choice.
     - The Option column must include the full option text. Avoid using letters alone.
+    - Mark exactly ONE row as correct. The correct row rationale must start with "Correct;".
     - For incorrect options: explain why it's wrong and what finding would make it correct.
       Include the label: "If it were instead: <finding>" in the rationale for incorrect choices.
     - For the correct option: name the key clue(s) that support it.
@@ -790,7 +773,7 @@ Include exactly 5 options per question.
   const raw = await callXai(messages, DEFAULT_MODEL, 0.2, 120000, signal);
   const parsed = parseJsonFromText(raw);
   const rawQuiz = Array.isArray(parsed?.quiz) ? parsed.quiz : [];
-  return normalizeDeepDiveQuiz(rawQuiz, concept);
+  return normalizeDeepDiveQuiz(rawQuiz, concept, { shuffleOptions: true });
 };
 
 export const generateHistologyVignettes = async (
