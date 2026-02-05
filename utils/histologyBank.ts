@@ -210,6 +210,76 @@ export const histologyBank: HistologyEntry[] = [
     "attribution": "Ed Uthman"
   },
   {
+    "id": "heme-spur-cells",
+    "module": "heme",
+    "title": "Spur cells (acanthocytes)",
+    "vignette": "Advanced liver disease or abetalipoproteinemia; smear shows irregularly spiculated RBCs. Which morphology is shown?",
+    "caption": "Acanthocytes (spur cells) with irregular spicules on peripheral smear.",
+    "keywords": [
+      "spur",
+      "cells",
+      "acanthocyte",
+      "acanthocytosis",
+      "abetalipoproteinemia",
+      "liver",
+      "cirrhosis"
+    ],
+    "conceptTags": [
+      "spur cells",
+      "acanthocytes",
+      "abetalipoproteinemia",
+      "advanced liver disease"
+    ],
+    "requiredAny": [
+      "spur cell",
+      "acanthocyte",
+      "acanthocytosis",
+      "abetalipoproteinemia",
+      "liver disease"
+    ],
+    "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/e/e5/Acanthocytosis.jpg",
+    "source": "Wikimedia Commons",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Acanthocytosis.jpg",
+    "license": "CC BY 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/2.0/",
+    "attribution": "Rola Zamel, Razi Khan, Rebecca L Pollex, Robert A Hegele"
+  },
+  {
+    "id": "heme-burr-cells",
+    "module": "heme",
+    "title": "Burr cells (echinocytes)",
+    "vignette": "Uremia or pyruvate kinase deficiency; smear shows RBCs with evenly spaced projections. Which morphology is shown?",
+    "caption": "Echinocytes (burr cells) with short, evenly spaced projections.",
+    "keywords": [
+      "burr",
+      "cells",
+      "echinocyte",
+      "echinocytes",
+      "uremia",
+      "pyruvate",
+      "kinase",
+      "artifact"
+    ],
+    "conceptTags": [
+      "burr cells",
+      "echinocytes",
+      "uremia",
+      "pyruvate kinase deficiency"
+    ],
+    "requiredAny": [
+      "burr cell",
+      "echinocyte",
+      "uremia",
+      "pyruvate kinase"
+    ],
+    "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/c/c9/Micrograph_of_an_echinocyte_on_a_peripheral_blood_smear.jpg",
+    "source": "Wikimedia Commons",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Micrograph_of_an_echinocyte_on_a_peripheral_blood_smear.jpg",
+    "license": "CC0 1.0",
+    "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "attribution": "Mikael Häggström"
+  },
+  {
     "id": "heme-howell-jolly",
     "module": "heme",
     "title": "Howell-Jolly bodies",
@@ -364,7 +434,8 @@ export const histologyBank: HistologyEntry[] = [
       "reed sternberg",
       "hodgkin"
     ],
-    "imageUrl": "/histology/heme/curated/reed_sternberg_cell_clean11.jpg",
+    "imageCrop": "center",
+    "imageUrl": "/histology/heme/curated/reed_sternberg_cell.jpg",
     "source": "Wikimedia Commons",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:Reed-sternberg_cell.jpg",
     "license": "Public domain (US NIH)",

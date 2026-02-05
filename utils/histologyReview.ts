@@ -54,7 +54,7 @@ export const buildHistologyReviewQuestions = (args: {
     const questionText =
       mode === 'vignette' && vignette
         ? vignette
-        : 'Identify the morphology shown.';
+        : 'What is this histology most representative of?';
     const options = buildOptions(entries, entry, 5);
     return {
       id: crypto.randomUUID(),

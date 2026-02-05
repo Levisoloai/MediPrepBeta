@@ -20,7 +20,6 @@ import katex from 'katex';
 import { supabase } from './services/supabaseClient';
 import { fetchSeenFingerprints, recordSeenQuestions } from './services/seenQuestionsService';
 import { trackTutorUsage } from './services/tutorUsageService';
-import { getHistologyVignettes } from './services/histologyReviewService';
 
 type ViewMode = 'generate' | 'practice' | 'remediation' | 'deepdive' | 'histology' | 'analytics';
 
@@ -198,14 +197,7 @@ const App: React.FC = () => {
   } | null>(null);
   const [histologyQuestions, setHistologyQuestions] = useState<Question[]>([]);
   const [histologyStates, setHistologyStates] = useState<Record<string, QuestionState>>({});
-  const [histologyMode, setHistologyMode] = useState<HistologyReviewMode>(() => {
-    try {
-      const saved = localStorage.getItem('mediprep_histology_mode');
-      return saved === 'diagnosis' ? 'diagnosis' : 'vignette';
-    } catch {
-      return 'vignette';
-    }
-  });
+  const histologyMode: HistologyReviewMode = 'diagnosis';
   const [isHistologyLoading, setIsHistologyLoading] = useState(false);
   const [histologyError, setHistologyError] = useState<string | null>(null);
   const [lastGuideContext, setLastGuideContext] = useState<{
@@ -470,14 +462,6 @@ const App: React.FC = () => {
       // ignore storage errors
     }
   }, [sessionToolsOpen]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('mediprep_histology_mode', histologyMode);
-    } catch {
-      // ignore storage errors
-    }
-  }, [histologyMode]);
 
   useEffect(() => {
     const { pathname, search, hash } = window.location;
@@ -1026,12 +1010,8 @@ const App: React.FC = () => {
     setHistologyError(null);
     try {
       const entries = selectHistologyEntries('heme', 10);
-      const vignettes = histologyMode === 'vignette'
-        ? await getHistologyVignettes(entries)
-        : {};
       const questions = buildHistologyReviewQuestions({
         entries,
-        vignettes,
         mode: histologyMode
       });
       setHistologyQuestions(questions);
@@ -1562,31 +1542,12 @@ const App: React.FC = () => {
                 <div className="flex-1">
                   <h2 className="text-2xl font-black text-slate-800 tracking-tight">Histology Review</h2>
                   <p className="text-slate-500 text-sm font-medium">
-                    Heme morphology drill with image-first vignettes.
+                    Heme morphology drill with image-first diagnosis cards.
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-2xl p-1">
-                    <button
-                      onClick={() => setHistologyMode('vignette')}
-                      className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-colors ${
-                        histologyMode === 'vignette'
-                          ? 'bg-slate-900 text-white'
-                          : 'text-slate-400 hover:text-slate-600'
-                      }`}
-                    >
-                      Vignette
-                    </button>
-                    <button
-                      onClick={() => setHistologyMode('diagnosis')}
-                      className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-colors ${
-                        histologyMode === 'diagnosis'
-                          ? 'bg-slate-900 text-white'
-                          : 'text-slate-400 hover:text-slate-600'
-                      }`}
-                    >
-                      Diagnosis
-                    </button>
+                  <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-xl bg-slate-900 text-white">
+                    Diagnosis mode
                   </div>
                   <button
                     onClick={handleGenerateHistology}
