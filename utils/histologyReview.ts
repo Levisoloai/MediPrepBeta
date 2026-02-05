@@ -53,8 +53,8 @@ export const buildHistologyReviewQuestions = (args: {
     const vignette = (vignettes[entry.id] || '').trim();
     const questionText =
       mode === 'vignette' && vignette
-        ? `${vignette}\n\nWhich diagnosis or morphology best matches this image?`
-        : 'Which diagnosis or morphology best matches this image?';
+        ? vignette
+        : 'Identify the morphology shown.';
     const options = buildOptions(entries, entry, 5);
     return {
       id: crypto.randomUUID(),
@@ -71,6 +71,7 @@ export const buildHistologyReviewQuestions = (args: {
         id: entry.id,
         title: entry.title,
         imageUrl: resolveHistologyUrl(entry.imageUrl),
+        imageCrop: entry.imageCrop,
         caption: entry.caption,
         source: entry.source,
         sourceUrl: entry.sourceUrl,

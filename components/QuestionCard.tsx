@@ -14,6 +14,8 @@ interface QuestionCardProps {
   savedState?: QuestionState;
   onStateChange?: (state: QuestionState) => void;
   defaultShowHistology?: boolean;
+  variant?: 'standard' | 'flashcard';
+  revealLabel?: string;
 }
 
 const LAB_VALUES = [
@@ -101,7 +103,9 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   onDelete,
   savedState,
   onStateChange,
-  defaultShowHistology
+  defaultShowHistology,
+  variant = 'standard',
+  revealLabel
 }) => {
   // Initialize state from props (savedState) ONLY. 
   // We do not listen to prop changes for these values to avoid circular update loops (flickering).
@@ -111,6 +115,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   const [struckOptions, setStruckOptions] = useState<Set<number>>(new Set(savedState?.struckOptions || []));
   const [showLabs, setShowLabs] = useState(false);
   const [showHistology, setShowHistology] = useState(Boolean(defaultShowHistology));
+  const isFlashcard = variant === 'flashcard';
   const [rating, setRating] = useState<number | null>(null);
   const [highlightEnabled, setHighlightEnabled] = useState<boolean>(() => {
     try {
@@ -335,11 +340,13 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
     return Array.from(unique);
   }, [highlights]);
 
+  const allowHighlights = !isFlashcard && highlightEnabled;
+
   const highlightRegex = useMemo(() => {
-    if (!highlightEnabled || normalizedHighlights.length === 0) return null;
+    if (!allowHighlights || normalizedHighlights.length === 0) return null;
     const escaped = normalizedHighlights.map((h) => h.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
     return new RegExp(`(${escaped.join('|')})`, 'gi');
-  }, [highlightEnabled, normalizedHighlights]);
+  }, [allowHighlights, normalizedHighlights]);
 
   const addHighlight = (text: string) => {
     if (!text.trim()) return;
@@ -363,6 +370,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   };
 
   const isMC = question.type === QuestionType.MULTIPLE_CHOICE || question.type === QuestionType.TRUE_FALSE;
+  const inputLabel = isFlashcard ? 'Choose Answer' : 'Diagnostic Input';
 
   const handleReveal = () => {
     if (!revealAtRef.current) {
@@ -724,45 +732,47 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
              </span>
           </div>
           <div className="flex flex-col items-end gap-2">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-slate-400 uppercase tracking-widest font-black">Rate</span>
-              <div className="flex items-center gap-1">
-                {[1, 2, 3, 4, 5].map((value) => (
-                  <button
-                    key={value}
-                    onClick={() => handleRate(value)}
-                    className={`w-6 h-6 rounded-lg text-[10px] font-black transition-all border ${
-                      rating === value
-                        ? 'bg-slate-900 text-white border-slate-900'
-                        : 'bg-white text-slate-400 border-slate-200 hover:text-slate-700 hover:border-slate-400'
-                    }`}
-                    title={`Rate ${value} / 5`}
-                  >
-                    {value}
-                  </button>
-                ))}
+            {!isFlashcard && (
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-slate-400 uppercase tracking-widest font-black">Rate</span>
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map((value) => (
+                    <button
+                      key={value}
+                      onClick={() => handleRate(value)}
+                      className={`w-6 h-6 rounded-lg text-[10px] font-black transition-all border ${
+                        rating === value
+                          ? 'bg-slate-900 text-white border-slate-900'
+                          : 'bg-white text-slate-400 border-slate-200 hover:text-slate-700 hover:border-slate-400'
+                      }`}
+                      title={`Rate ${value} / 5`}
+                    >
+                      {value}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => setHighlightEnabled(prev => !prev)}
+                  className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-colors ${
+                    highlightEnabled
+                      ? 'bg-amber-100 text-amber-900 border-amber-200'
+                      : 'bg-white text-slate-400 border-slate-200 hover:text-slate-600'
+                  }`}
+                  title="Toggle text highlight"
+                >
+                  Highlight {highlightEnabled ? 'On' : 'Off'}
+                </button>
+                <button
+                  onClick={() => setIsReportOpen(true)}
+                  className="px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border border-rose-200 text-rose-600 bg-white hover:bg-rose-50 transition-colors flex items-center gap-1"
+                  title="Report an issue"
+                >
+                  <ExclamationTriangleIcon className="w-3.5 h-3.5" />
+                  Report
+                </button>
               </div>
-              <button
-                onClick={() => setHighlightEnabled(prev => !prev)}
-                className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-colors ${
-                  highlightEnabled
-                    ? 'bg-amber-100 text-amber-900 border-amber-200'
-                    : 'bg-white text-slate-400 border-slate-200 hover:text-slate-600'
-                }`}
-                title="Toggle text highlight"
-              >
-                Highlight {highlightEnabled ? 'On' : 'Off'}
-              </button>
-              <button
-                onClick={() => setIsReportOpen(true)}
-                className="px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border border-rose-200 text-rose-600 bg-white hover:bg-rose-50 transition-colors flex items-center gap-1"
-                title="Report an issue"
-              >
-                <ExclamationTriangleIcon className="w-3.5 h-3.5" />
-                Report
-              </button>
-            </div>
-            {feedbackNotice && (
+            )}
+            {!isFlashcard && feedbackNotice && (
               <div
                 className={`text-[10px] font-black uppercase tracking-widest ${
                   feedbackNotice.tone === 'success'
@@ -776,17 +786,19 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
               </div>
             )}
             <div className="flex gap-2 opacity-0 group-hover/card:opacity-100 transition-opacity">
-              <button 
-                onClick={() => setShowLabs(!showLabs)}
-                className={`p-2.5 rounded-xl transition-colors border ${
-                  showLabs
-                    ? 'bg-teal-50 text-teal-700 border-teal-200'
-                    : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50 border-transparent hover:border-teal-100'
-                }`}
-                title="Normal Lab Values"
-              >
-                <BeakerIcon className="w-5 h-5" />
-              </button>
+              {!isFlashcard && (
+                <button 
+                  onClick={() => setShowLabs(!showLabs)}
+                  className={`p-2.5 rounded-xl transition-colors border ${
+                    showLabs
+                      ? 'bg-teal-50 text-teal-700 border-teal-200'
+                      : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50 border-transparent hover:border-teal-100'
+                  }`}
+                  title="Normal Lab Values"
+                >
+                  <BeakerIcon className="w-5 h-5" />
+                </button>
+              )}
               {onChat && (
                 <button 
                   onClick={() => onChat(question)}
@@ -805,6 +817,15 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                   <TrashIcon className="w-5 h-5" />
                 </button>
               )}
+              {isFlashcard && (
+                <button
+                  onClick={() => setIsReportOpen(true)}
+                  className="p-2.5 rounded-xl text-rose-500 hover:text-rose-600 hover:bg-rose-50 transition-colors border border-transparent hover:border-rose-100"
+                  title="Report an issue"
+                >
+                  <ExclamationTriangleIcon className="w-5 h-5" />
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -812,7 +833,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
         <div
           ref={questionTextRef}
           onMouseUp={() => {
-            if (!highlightEnabled) return;
+            if (!allowHighlights) return;
             const selection = window.getSelection();
             if (!selection || selection.isCollapsed) return;
             const text = selection.toString().trim();
@@ -828,7 +849,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
           }}
         >
           <h3 className="text-slate-800 font-bold text-lg md:text-xl leading-relaxed mb-4 whitespace-pre-wrap tracking-tight">
-            {renderMessageContent(displayQuestionText, true)}
+            {renderMessageContent(displayQuestionText, allowHighlights)}
           </h3>
         </div>
 
@@ -850,11 +871,21 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                   {showAnswer ? (question.histology.title || 'Image') : 'Image (label hidden)'}
                 </div>
                 <div className="flex justify-center">
-                  <img
-                    src={question.histology.imageUrl}
-                    alt={question.histology.title || 'Representative image'}
-                    className="max-h-[320px] w-auto rounded-xl border border-slate-200 bg-white"
-                  />
+                  {question.histology.imageCrop === 'center' ? (
+                    <div className="w-full max-w-[520px] aspect-square overflow-hidden rounded-xl border border-slate-200 bg-white">
+                      <img
+                        src={question.histology.imageUrl}
+                        alt={question.histology.title || 'Representative image'}
+                        className="w-full h-full object-cover object-center"
+                      />
+                    </div>
+                  ) : (
+                    <img
+                      src={question.histology.imageUrl}
+                      alt={question.histology.title || 'Representative image'}
+                      className="max-h-[320px] w-auto rounded-xl border border-slate-200 bg-white"
+                    />
+                  )}
                 </div>
                 {question.histology.caption && showAnswer && (
                   <p className="mt-3 text-xs text-slate-500 leading-relaxed">
@@ -882,7 +913,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
           </div>
         )}
 
-        {highlightEnabled && highlights.length > 0 && (
+        {allowHighlights && highlights.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-6">
             {highlights.map((h, idx) => (
               <button
@@ -929,7 +960,9 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
 
         {isMC && Array.isArray(question.options) && question.options.length > 0 && (
           <div className="space-y-3 mb-10">
-            <div className="text-[10px] text-slate-400 text-right font-black uppercase tracking-widest mb-3">Diagnostic Input</div>
+            <div className="text-[10px] text-slate-400 text-right font-black uppercase tracking-widest mb-3">
+              {inputLabel}
+            </div>
             {question.options.map((option, idx) => {
               const isCorrect = normalizeOptionText(option) === normalizeOptionText(question.correctAnswer);
               const isSelected = selectedOption === option;
@@ -976,7 +1009,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
             onClick={handleReveal}
             className="w-full py-5 rounded-2xl flex items-center justify-center gap-3 font-black text-sm bg-slate-900 text-white hover:bg-slate-800 transition-all uppercase tracking-widest shadow-xl shadow-slate-900/20 active:scale-95"
           >
-            <EyeIcon className="w-5 h-5" /> Reveal Rationale
+            <EyeIcon className="w-5 h-5" /> {revealLabel || (isFlashcard ? 'Flip Card' : 'Reveal Rationale')}
           </button>
         )}
       </div>

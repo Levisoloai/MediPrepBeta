@@ -364,7 +364,7 @@ export const histologyBank: HistologyEntry[] = [
       "reed sternberg",
       "hodgkin"
     ],
-    "imageUrl": "/histology/heme/curated/reed_sternberg_cell.jpg",
+    "imageUrl": "/histology/heme/curated/reed_sternberg_cell_clean11.jpg",
     "source": "Wikimedia Commons",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:Reed-sternberg_cell.jpg",
     "license": "Public domain (US NIH)",

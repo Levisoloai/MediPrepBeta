@@ -282,6 +282,7 @@ export const attachHistologyToQuestions = (
         title: entry.title,
         imageUrl: resolveHistologyUrl(entry.imageUrl),
         caption: entry.caption,
+        imageCrop: entry.imageCrop,
         source: entry.source,
         sourceUrl: entry.sourceUrl,
         license: entry.license,

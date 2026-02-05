@@ -50,6 +50,7 @@ export interface Question {
     id: string;
     title: string;
     imageUrl: string;
+    imageCrop?: 'center' | 'none';
     caption?: string;
     source?: string;
     sourceUrl?: string;
@@ -193,6 +194,7 @@ export interface HistologyEntry {
   module: 'heme' | 'pulm';
   title: string;
   vignette?: string;
+  imageCrop?: 'center' | 'none';
   caption: string;
   keywords: string[];
   conceptTags: string[];

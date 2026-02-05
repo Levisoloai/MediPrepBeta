@@ -1644,6 +1644,8 @@ const App: React.FC = () => {
                       savedState={histologyStates[q.id]}
                       onStateChange={(s) => setHistologyStates((prev) => ({ ...prev, [q.id]: s }))}
                       defaultShowHistology
+                      variant="flashcard"
+                      revealLabel="Flip Card"
                     />
                   ))}
                 </div>
