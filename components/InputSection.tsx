@@ -56,6 +56,12 @@ const InputSection: React.FC<InputSectionProps> = ({
   mode = 'questions'
 }) => {
   const isCheatSheetMode = mode === 'cheatsheet' || mode === 'summary';
+  const formatSeconds = (totalSeconds: number) => {
+    const safe = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+    const mins = Math.floor(safe / 60);
+    const secs = safe % 60;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  };
   const [selectedGuide, setSelectedGuide] = useState<BetaGuide | null>(null);
   const [isReading, setIsReading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -70,9 +76,11 @@ const InputSection: React.FC<InputSectionProps> = ({
     if (saved) {
       const parsed = JSON.parse(saved);
       const safeCount = Math.min(20, Math.max(3, Number(parsed.questionCount) || 10));
+      const safeStyle = parsed.sessionStyle === 'block' ? 'block' : 'practice';
       return {
         ...parsed,
         questionCount: safeCount,
+        sessionStyle: safeStyle,
         autoQuestionCount: false
       };
     }
@@ -82,6 +90,7 @@ const InputSection: React.FC<InputSectionProps> = ({
       difficulty: DifficultyLevel.CLINICAL_VIGNETTE,
       questionCount: 10,
       autoQuestionCount: false,
+      sessionStyle: 'practice',
       customInstructions: '',
       focusedOnWeakness: false,
       examFormat: ExamFormat.NBME,
@@ -332,6 +341,48 @@ const InputSection: React.FC<InputSectionProps> = ({
             </div>
           )}
 
+          {!isCheatSheetMode && (
+            <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-xs font-bold text-slate-600">Session Style</span>
+                {preferences.sessionStyle === 'block' && (
+                  <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
+                    Time limit: {formatSeconds(preferences.questionCount * 90)}
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPreferences(p => ({ ...p, sessionStyle: 'practice' }))}
+                  className={`px-3 py-3 rounded-xl border text-[11px] font-black uppercase tracking-widest transition-colors ${
+                    preferences.sessionStyle !== 'block'
+                      ? 'bg-teal-600 text-white border-teal-600'
+                      : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  Practice (Immediate Feedback)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreferences(p => ({ ...p, sessionStyle: 'block' }))}
+                  className={`px-3 py-3 rounded-xl border text-[11px] font-black uppercase tracking-widest transition-colors ${
+                    preferences.sessionStyle === 'block'
+                      ? 'bg-indigo-600 text-white border-indigo-600'
+                      : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  NBME Block (Timed)
+                </button>
+              </div>
+              {preferences.sessionStyle === 'block' && (
+                <div className="mt-2 text-[11px] text-slate-500 font-semibold">
+                  No explanations until you submit the block or time expires.
+                </div>
+              )}
+            </div>
+          )}
+
           <div>
             <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Focus Instructions (Optional)</label>
             <textarea
@@ -427,7 +478,13 @@ const InputSection: React.FC<InputSectionProps> = ({
                 : 'bg-teal-600 text-white shadow-xl shadow-teal-500/30 hover:bg-teal-700 hover:shadow-teal-500/40'
             }`}
           >
-            {isLoading ? 'Processing...' : isCheatSheetMode ? 'Generate Cheat Sheet' : 'Generate Practice Questions'}
+            {isLoading
+              ? 'Processing...'
+              : isCheatSheetMode
+              ? 'Generate Cheat Sheet'
+              : preferences.sessionStyle === 'block'
+              ? 'Start NBME Block'
+              : 'Generate Practice Questions'}
           </button>
         </div>
       </div>

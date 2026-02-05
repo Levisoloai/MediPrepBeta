@@ -22,6 +22,7 @@ const REPLACEMENT_PREFS: UserPreferences = {
   difficulty: DifficultyLevel.CLINICAL_VIGNETTE,
   questionCount: 1,
   autoQuestionCount: false,
+  sessionStyle: 'practice',
   customInstructions: '',
   focusedOnWeakness: false,
   examFormat: ExamFormat.NBME,

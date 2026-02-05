@@ -197,6 +197,7 @@ const SEED_PREFS: UserPreferences = {
   difficulty: DifficultyLevel.CLINICAL_VIGNETTE,
   questionCount: 10,
   autoQuestionCount: false,
+  sessionStyle: 'practice',
   customInstructions: '',
   focusedOnWeakness: false,
   examFormat: ExamFormat.NBME,

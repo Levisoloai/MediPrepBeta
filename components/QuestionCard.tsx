@@ -16,6 +16,8 @@ interface QuestionCardProps {
   defaultShowHistology?: boolean;
   variant?: 'standard' | 'flashcard';
   revealLabel?: string;
+  revealEnabled?: boolean;
+  headerVariant?: 'full' | 'minimal';
 }
 
 const LAB_VALUES = [
@@ -105,7 +107,9 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   onStateChange,
   defaultShowHistology,
   variant = 'standard',
-  revealLabel
+  revealLabel,
+  revealEnabled = true,
+  headerVariant = 'full'
 }) => {
   // Initialize state from props (savedState) ONLY. 
   // We do not listen to prop changes for these values to avoid circular update loops (flickering).
@@ -116,6 +120,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   const [showLabs, setShowLabs] = useState(false);
   const [showHistology, setShowHistology] = useState(Boolean(defaultShowHistology));
   const isFlashcard = variant === 'flashcard';
+  const isHeaderMinimal = headerVariant === 'minimal';
   const [rating, setRating] = useState<number | null>(null);
   const [highlightEnabled, setHighlightEnabled] = useState<boolean>(() => {
     try {
@@ -732,7 +737,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
              </span>
           </div>
           <div className="flex flex-col items-end gap-2">
-            {!isFlashcard && (
+            {!isFlashcard && !isHeaderMinimal && (
               <div className="flex items-center gap-2">
                 <span className="text-[10px] text-slate-400 uppercase tracking-widest font-black">Rate</span>
                 <div className="flex items-center gap-1">
@@ -772,7 +777,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                 </button>
               </div>
             )}
-            {!isFlashcard && feedbackNotice && (
+            {!isFlashcard && !isHeaderMinimal && feedbackNotice && (
               <div
                 className={`text-[10px] font-black uppercase tracking-widest ${
                   feedbackNotice.tone === 'success'
@@ -785,48 +790,50 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                 {feedbackNotice.message}
               </div>
             )}
-            <div className="flex gap-2 opacity-0 group-hover/card:opacity-100 transition-opacity">
-              {!isFlashcard && (
-                <button 
-                  onClick={() => setShowLabs(!showLabs)}
-                  className={`p-2.5 rounded-xl transition-colors border ${
-                    showLabs
-                      ? 'bg-teal-50 text-teal-700 border-teal-200'
-                      : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50 border-transparent hover:border-teal-100'
-                  }`}
-                  title="Normal Lab Values"
-                >
-                  <BeakerIcon className="w-5 h-5" />
-                </button>
-              )}
-              {onChat && (
-                <button 
-                  onClick={() => onChat(question)}
-                  className="p-2.5 rounded-xl text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors border border-transparent hover:border-indigo-100"
-                  title="Ask AI Tutor"
-                >
-                  <ChatBubbleLeftRightIcon className="w-5 h-5" />
-                </button>
-              )}
-              {onDelete && (
-                <button 
-                  onClick={() => onDelete(question.id)}
-                  className="p-2.5 rounded-xl text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors border border-transparent hover:border-red-100"
-                  title="Dismiss Prediction"
-                >
-                  <TrashIcon className="w-5 h-5" />
-                </button>
-              )}
-              {isFlashcard && (
-                <button
-                  onClick={() => setIsReportOpen(true)}
-                  className="p-2.5 rounded-xl text-rose-500 hover:text-rose-600 hover:bg-rose-50 transition-colors border border-transparent hover:border-rose-100"
-                  title="Report an issue"
-                >
-                  <ExclamationTriangleIcon className="w-5 h-5" />
-                </button>
-              )}
-            </div>
+            {!isHeaderMinimal && (
+              <div className="flex gap-2 opacity-0 group-hover/card:opacity-100 transition-opacity">
+                {!isFlashcard && (
+                  <button 
+                    onClick={() => setShowLabs(!showLabs)}
+                    className={`p-2.5 rounded-xl transition-colors border ${
+                      showLabs
+                        ? 'bg-teal-50 text-teal-700 border-teal-200'
+                        : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50 border-transparent hover:border-teal-100'
+                    }`}
+                    title="Normal Lab Values"
+                  >
+                    <BeakerIcon className="w-5 h-5" />
+                  </button>
+                )}
+                {onChat && (
+                  <button 
+                    onClick={() => onChat(question)}
+                    className="p-2.5 rounded-xl text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors border border-transparent hover:border-indigo-100"
+                    title="Ask AI Tutor"
+                  >
+                    <ChatBubbleLeftRightIcon className="w-5 h-5" />
+                  </button>
+                )}
+                {onDelete && (
+                  <button 
+                    onClick={() => onDelete(question.id)}
+                    className="p-2.5 rounded-xl text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors border border-transparent hover:border-red-100"
+                    title="Dismiss Prediction"
+                  >
+                    <TrashIcon className="w-5 h-5" />
+                  </button>
+                )}
+                {isFlashcard && (
+                  <button
+                    onClick={() => setIsReportOpen(true)}
+                    className="p-2.5 rounded-xl text-rose-500 hover:text-rose-600 hover:bg-rose-50 transition-colors border border-transparent hover:border-rose-100"
+                    title="Report an issue"
+                  >
+                    <ExclamationTriangleIcon className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -1004,7 +1011,13 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
           </div>
         )}
 
-        {!showAnswer && (
+        {!showAnswer && revealEnabled === false && (
+          <div className="mb-8 text-[11px] text-slate-500 font-semibold">
+            Block mode: answers shown after submission.
+          </div>
+        )}
+
+        {!showAnswer && revealEnabled !== false && (
           <button
             onClick={handleReveal}
             className="w-full py-5 rounded-2xl flex items-center justify-center gap-3 font-black text-sm bg-slate-900 text-white hover:bg-slate-800 transition-all uppercase tracking-widest shadow-xl shadow-slate-900/20 active:scale-95"

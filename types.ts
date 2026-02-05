@@ -228,6 +228,7 @@ export interface UserPreferences {
   difficulty: DifficultyLevel;
   questionCount: number;
   autoQuestionCount: boolean;
+  sessionStyle?: 'practice' | 'block';
   customInstructions: string;
   focusedOnWeakness: boolean;
   weakConcepts?: string[];

@@ -19,6 +19,7 @@ import { cheatSheetPrefabs } from './utils/cheatSheets';
 import type { BetaGuide } from './utils/betaGuides';
 import { getCheatSheetPrefab } from './services/cheatSheetService';
 import { getIntegrityStats, prepareQuestionForSession } from './utils/questionIntegrity';
+import { formatMsAsMMSS } from './utils/time';
 import { SparklesIcon, XMarkIcon, ChatBubbleLeftRightIcon, PaperAirplaneIcon, ExclamationTriangleIcon, CheckIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/solid';
 import katex from 'katex';
 import { supabase } from './services/supabaseClient';
@@ -57,6 +58,12 @@ const normalizeQuestionShape = (question: Question): Question => {
 
 const App: React.FC = () => {
   const LAST_GUIDE_CONTEXT_KEY = 'mediprep_last_guide_context';
+  const PRACTICE_SESSION_STYLE_KEY = 'mediprep_practice_session_style';
+  const BLOCK_STAGE_KEY = 'mediprep_block_stage';
+  const BLOCK_STARTED_AT_KEY = 'mediprep_block_started_at_ms';
+  const BLOCK_DURATION_KEY = 'mediprep_block_duration_ms';
+  const BLOCK_CURRENT_INDEX_KEY = 'mediprep_block_current_index';
+  const BLOCK_MARKED_IDS_KEY = 'mediprep_block_marked_ids';
   const allowedViews = new Set<ViewMode>(['generate', 'practice', 'remediation', 'deepdive', 'histology', 'analytics', 'cheatsheet']);
   const loadBetaPrefs = (): UserPreferences => {
     const defaults: UserPreferences = {
@@ -65,6 +72,7 @@ const App: React.FC = () => {
       difficulty: DifficultyLevel.CLINICAL_VIGNETTE,
       questionCount: 10,
       autoQuestionCount: false,
+      sessionStyle: 'practice',
       customInstructions: '',
       focusedOnWeakness: false,
       examFormat: ExamFormat.NBME,
@@ -79,7 +87,8 @@ const App: React.FC = () => {
         ...defaults,
         ...parsed,
         questionCount: safeCount,
-        autoQuestionCount: Boolean(parsed.autoQuestionCount)
+        autoQuestionCount: Boolean(parsed.autoQuestionCount),
+        sessionStyle: parsed.sessionStyle === 'block' ? 'block' : 'practice'
       };
     } catch {
       return defaults;
@@ -141,6 +150,62 @@ const App: React.FC = () => {
     status: 'verifying' | 'success' | 'error';
     message?: string;
   } | null>(null);
+
+  const [practiceSessionStyle, setPracticeSessionStyle] = useState<'practice' | 'block'>(() => {
+    try {
+      const saved = localStorage.getItem(PRACTICE_SESSION_STYLE_KEY);
+      return saved === 'block' ? 'block' : 'practice';
+    } catch {
+      return 'practice';
+    }
+  });
+  const [blockStage, setBlockStage] = useState<'taking' | 'review'>(() => {
+    try {
+      const saved = localStorage.getItem(BLOCK_STAGE_KEY);
+      return saved === 'review' ? 'review' : 'taking';
+    } catch {
+      return 'taking';
+    }
+  });
+  const [blockStartedAtMs, setBlockStartedAtMs] = useState<number | null>(() => {
+    try {
+      const saved = localStorage.getItem(BLOCK_STARTED_AT_KEY);
+      const value = saved ? Number(saved) : NaN;
+      return Number.isFinite(value) && value > 0 ? value : null;
+    } catch {
+      return null;
+    }
+  });
+  const [blockDurationMs, setBlockDurationMs] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem(BLOCK_DURATION_KEY);
+      const value = saved ? Number(saved) : NaN;
+      return Number.isFinite(value) && value > 0 ? value : 0;
+    } catch {
+      return 0;
+    }
+  });
+  const [blockCurrentIndex, setBlockCurrentIndex] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem(BLOCK_CURRENT_INDEX_KEY);
+      const value = saved ? Number(saved) : NaN;
+      return Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0;
+    } catch {
+      return 0;
+    }
+  });
+  const [blockMarkedIds, setBlockMarkedIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(BLOCK_MARKED_IDS_KEY);
+      const parsed = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) ? parsed.map((id) => String(id)) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [blockReviewShowAll, setBlockReviewShowAll] = useState(false);
+  const [blockSubmitConfirmOpen, setBlockSubmitConfirmOpen] = useState(false);
+  const [blockNowMs, setBlockNowMs] = useState(() => Date.now());
 
   const [practiceQuestions, setPracticeQuestions] = useState<Question[]>(() => {
     try {
@@ -471,6 +536,107 @@ const App: React.FC = () => {
       // ignore storage errors
     }
   }, [sessionToolsOpen]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(PRACTICE_SESSION_STYLE_KEY, practiceSessionStyle);
+    } catch {
+      // ignore storage errors
+    }
+  }, [practiceSessionStyle]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(BLOCK_STAGE_KEY, blockStage);
+    } catch {
+      // ignore storage errors
+    }
+  }, [blockStage]);
+
+  useEffect(() => {
+    try {
+      if (blockStartedAtMs) localStorage.setItem(BLOCK_STARTED_AT_KEY, String(blockStartedAtMs));
+      else localStorage.removeItem(BLOCK_STARTED_AT_KEY);
+    } catch {
+      // ignore storage errors
+    }
+  }, [blockStartedAtMs]);
+
+  useEffect(() => {
+    try {
+      if (blockDurationMs > 0) localStorage.setItem(BLOCK_DURATION_KEY, String(blockDurationMs));
+      else localStorage.removeItem(BLOCK_DURATION_KEY);
+    } catch {
+      // ignore storage errors
+    }
+  }, [blockDurationMs]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(BLOCK_CURRENT_INDEX_KEY, String(blockCurrentIndex));
+    } catch {
+      // ignore storage errors
+    }
+  }, [blockCurrentIndex]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(BLOCK_MARKED_IDS_KEY, JSON.stringify(blockMarkedIds));
+    } catch {
+      // ignore storage errors
+    }
+  }, [blockMarkedIds]);
+
+  useEffect(() => {
+    // Clamp index and marks if question set changes (dismissals, regen, etc).
+    if (blockCurrentIndex >= practiceQuestions.length && practiceQuestions.length > 0) {
+      setBlockCurrentIndex(practiceQuestions.length - 1);
+    }
+    if (practiceQuestions.length === 0 && blockCurrentIndex !== 0) {
+      setBlockCurrentIndex(0);
+    }
+    if (blockMarkedIds.length > 0) {
+      const ids = new Set(practiceQuestions.map((q) => q.id));
+      const next = blockMarkedIds.filter((id) => ids.has(id));
+      if (next.length !== blockMarkedIds.length) setBlockMarkedIds(next);
+    }
+  }, [practiceQuestions]);
+
+  useEffect(() => {
+    // If metadata is missing (rare refresh edge), reconstruct a sane timer from current question count.
+    if (practiceSessionStyle !== 'block') return;
+    if (practiceQuestions.length === 0) return;
+    if (blockStartedAtMs && blockDurationMs > 0) return;
+    setBlockStartedAtMs(Date.now());
+    setBlockDurationMs(practiceQuestions.length * 90 * 1000);
+    setBlockStage('taking');
+  }, [practiceSessionStyle, practiceQuestions.length]);
+
+  useEffect(() => {
+    if (practiceSessionStyle !== 'block') return;
+    if (blockStage !== 'taking') return;
+    if (!blockStartedAtMs || blockDurationMs <= 0) return;
+    setBlockNowMs(Date.now());
+    const id = window.setInterval(() => setBlockNowMs(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [practiceSessionStyle, blockStage, blockStartedAtMs, blockDurationMs]);
+
+  useEffect(() => {
+    if (practiceSessionStyle !== 'block') return;
+    if (blockStage !== 'taking') return;
+    if (!blockStartedAtMs || blockDurationMs <= 0) return;
+    const endsAt = blockStartedAtMs + blockDurationMs;
+    if (blockNowMs >= endsAt) {
+      setBlockReviewShowAll(false);
+      setBlockStage('review');
+    }
+  }, [practiceSessionStyle, blockStage, blockStartedAtMs, blockDurationMs, blockNowMs]);
+
+  useEffect(() => {
+    if (blockStage === 'review' && blockSubmitConfirmOpen) {
+      setBlockSubmitConfirmOpen(false);
+    }
+  }, [blockStage, blockSubmitConfirmOpen]);
 
   useEffect(() => {
     const { pathname, search, hash } = window.location;
@@ -1021,6 +1187,25 @@ const App: React.FC = () => {
       await markQuestionsSeenByFingerprint(moduleId, normalized);
       setPracticeStates({});
       setPrefabMeta(prefabMetaNext);
+      const nextSessionStyle: 'practice' | 'block' = effectivePrefs.sessionStyle === 'block' ? 'block' : 'practice';
+      setPracticeSessionStyle(nextSessionStyle);
+      if (nextSessionStyle === 'block') {
+        setIsChatOpen(false);
+        setActiveQuestionForChat(null);
+        setBlockStage('taking');
+        setBlockStartedAtMs(Date.now());
+        setBlockDurationMs(Math.max(1, effectivePrefs.questionCount || 1) * 90 * 1000);
+        setBlockCurrentIndex(0);
+        setBlockMarkedIds([]);
+        setBlockReviewShowAll(false);
+      } else {
+        setBlockStage('taking');
+        setBlockStartedAtMs(null);
+        setBlockDurationMs(0);
+        setBlockCurrentIndex(0);
+        setBlockMarkedIds([]);
+        setBlockReviewShowAll(false);
+      }
       if (validationWarning) {
         setError('Some questions failed validation; try again.');
       }
@@ -1179,6 +1364,25 @@ const App: React.FC = () => {
       });
       markQuestionsSeen(moduleId, withHistology);
       await markQuestionsSeenByFingerprint(moduleId, withHistology);
+      const nextSessionStyle: 'practice' | 'block' = effectivePrefs.sessionStyle === 'block' ? 'block' : 'practice';
+      setPracticeSessionStyle(nextSessionStyle);
+      if (nextSessionStyle === 'block') {
+        setIsChatOpen(false);
+        setActiveQuestionForChat(null);
+        setBlockStage('taking');
+        setBlockStartedAtMs(Date.now());
+        setBlockDurationMs(Math.max(1, effectivePrefs.questionCount || 1) * 90 * 1000);
+        setBlockCurrentIndex(0);
+        setBlockMarkedIds([]);
+        setBlockReviewShowAll(false);
+      } else {
+        setBlockStage('taking');
+        setBlockStartedAtMs(null);
+        setBlockDurationMs(0);
+        setBlockCurrentIndex(0);
+        setBlockMarkedIds([]);
+        setBlockReviewShowAll(false);
+      }
       setView('practice');
     } catch (err: any) {
       setError(err?.message || 'Failed to generate custom questions.');
@@ -1218,6 +1422,13 @@ const App: React.FC = () => {
     setLastGuideContext(null);
     setPrefabExhausted(false);
     setRemediationMeta(null);
+    setPracticeSessionStyle('practice');
+    setBlockStage('taking');
+    setBlockStartedAtMs(null);
+    setBlockDurationMs(0);
+    setBlockCurrentIndex(0);
+    setBlockMarkedIds([]);
+    setBlockReviewShowAll(false);
     setView('generate');
   };
 
@@ -1612,6 +1823,21 @@ const App: React.FC = () => {
   const activeStates = isRemediationView ? remediationStates : practiceStates;
   const activeSummary = isRemediationView ? remediationSummary : practiceSummary;
   const setActiveStates = isRemediationView ? setRemediationStates : setPracticeStates;
+  const isBlockPractice = view === 'practice' && practiceSessionStyle === 'block' && practiceQuestions.length > 0;
+
+  const effectiveNowMs = blockStage === 'taking' ? blockNowMs : Date.now();
+  const blockEndsAtMs =
+    blockStartedAtMs && blockDurationMs > 0 ? blockStartedAtMs + blockDurationMs : null;
+  const blockRemainingMs = blockEndsAtMs ? Math.max(0, blockEndsAtMs - effectiveNowMs) : 0;
+  const blockAnsweredCount = practiceQuestions.reduce((acc, q) => {
+    return acc + (practiceStates[q.id]?.selectedOption ? 1 : 0);
+  }, 0);
+  const blockUnansweredCount = Math.max(0, practiceQuestions.length - blockAnsweredCount);
+  const blockTimeUsedMs = blockStartedAtMs
+    ? Math.min(blockDurationMs || 0, Math.max(0, effectiveNowMs - blockStartedAtMs))
+    : 0;
+  const blockPaceMsPerAnswered =
+    blockAnsweredCount > 0 ? Math.floor(blockTimeUsedMs / blockAnsweredCount) : null;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col md:flex-row overflow-hidden relative selection:bg-teal-100">
@@ -1876,7 +2102,303 @@ const App: React.FC = () => {
             </div>
           )}
           
-          {(view === 'practice' || view === 'remediation') && (
+          {isBlockPractice && (
+            <div
+              className="h-full flex flex-col transition-all duration-300 ease-out p-6 md:p-10"
+              style={{
+                marginRight: isChatOpen && window.innerWidth >= 1024 ? sidebarWidth : 0
+              }}
+            >
+              <div className="mb-4 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                <div className="flex-1">
+                  <h2 className="text-2xl font-black text-slate-800 tracking-tight">NBME Block</h2>
+                  <p className="text-slate-500 text-sm font-medium">
+                    Timed session. Explanations unlock after submission.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-end gap-2 w-full lg:w-auto">
+                  <div
+                    className={`px-4 py-2 rounded-full border text-[11px] font-black uppercase tracking-widest ${
+                      blockRemainingMs <= 60_000
+                        ? 'bg-rose-50 text-rose-700 border-rose-200'
+                        : blockRemainingMs <= 5 * 60_000
+                        ? 'bg-amber-50 text-amber-700 border-amber-200'
+                        : 'bg-white text-slate-600 border-slate-200'
+                    }`}
+                  >
+                    Time {formatMsAsMMSS(blockRemainingMs)}
+                  </div>
+                  <div className="px-4 py-2 rounded-full border border-slate-200 bg-white text-[11px] font-black uppercase tracking-widest text-slate-600">
+                    Q {Math.min(practiceQuestions.length, blockCurrentIndex + 1)}/{practiceQuestions.length}
+                  </div>
+                  <div className="px-4 py-2 rounded-full border border-slate-200 bg-white text-[11px] font-black uppercase tracking-widest text-slate-600">
+                    Answered {blockAnsweredCount}/{practiceQuestions.length}
+                  </div>
+                  <div className="px-4 py-2 rounded-full border border-slate-200 bg-white text-[11px] font-black uppercase tracking-widest text-slate-600">
+                    Marked {blockMarkedIds.length}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const current = practiceQuestions[blockCurrentIndex];
+                      if (!current) return;
+                      setBlockMarkedIds((prev) =>
+                        prev.includes(current.id) ? prev.filter((id) => id !== current.id) : [...prev, current.id]
+                      );
+                    }}
+                    className={`px-4 py-2 rounded-full border text-[11px] font-black uppercase tracking-widest transition-colors ${
+                      practiceQuestions[blockCurrentIndex] && blockMarkedIds.includes(practiceQuestions[blockCurrentIndex].id)
+                        ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    {practiceQuestions[blockCurrentIndex] && blockMarkedIds.includes(practiceQuestions[blockCurrentIndex].id)
+                      ? 'Unmark'
+                      : 'Mark'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (blockStage !== 'taking') return;
+                      if (blockUnansweredCount > 0) {
+                        setBlockSubmitConfirmOpen(true);
+                        return;
+                      }
+                      setBlockReviewShowAll(false);
+                      setBlockStage('review');
+                    }}
+                    className="px-4 py-2 rounded-full bg-slate-900 text-white text-[11px] font-black uppercase tracking-widest hover:bg-slate-800"
+                  >
+                    Submit Block
+                  </button>
+                </div>
+              </div>
+
+              <div className="mb-6 rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm">
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Navigator</div>
+                <div className="mt-3 grid grid-cols-6 sm:grid-cols-10 md:grid-cols-12 gap-2">
+                  {practiceQuestions.map((q, idx) => {
+                    const answered = Boolean(practiceStates[q.id]?.selectedOption);
+                    const marked = blockMarkedIds.includes(q.id);
+                    const isCurrent = idx === blockCurrentIndex;
+                    const base =
+                      'relative w-10 h-10 rounded-xl border text-[11px] font-black transition-all flex items-center justify-center';
+                    const cls = answered
+                      ? `${base} bg-teal-600 text-white border-teal-600 hover:bg-teal-700`
+                      : `${base} bg-white text-slate-700 border-slate-200 hover:bg-slate-50`;
+                    return (
+                      <button
+                        key={q.id}
+                        type="button"
+                        onClick={() => setBlockCurrentIndex(idx)}
+                        className={isCurrent ? `${cls} ring-2 ring-indigo-500` : cls}
+                        title={answered ? 'Answered' : 'Unanswered'}
+                      >
+                        {idx + 1}
+                        {marked && (
+                          <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-amber-400 border-2 border-white" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {blockStage === 'taking' ? (
+                <div className="flex-1 overflow-y-auto pb-32 pr-2 custom-scrollbar">
+                  {practiceQuestions[blockCurrentIndex] ? (
+                    <>
+                      <QuestionCard
+                        key={`${practiceQuestions[blockCurrentIndex].id}:blocktaking`}
+                        question={practiceQuestions[blockCurrentIndex]}
+                        index={blockCurrentIndex}
+                        userId={user?.id}
+                        savedState={{
+                          ...(practiceStates[practiceQuestions[blockCurrentIndex].id] || {
+                            selectedOption: null,
+                            showAnswer: false,
+                            struckOptions: []
+                          }),
+                          showAnswer: false
+                        }}
+                        onStateChange={(s) =>
+                          setPracticeStates((prev) => ({
+                            ...prev,
+                            [practiceQuestions[blockCurrentIndex].id]: { ...s, showAnswer: false }
+                          }))
+                        }
+                        revealEnabled={false}
+                        headerVariant="minimal"
+                      />
+
+                      <div className="mt-6 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setBlockCurrentIndex((prev) => Math.max(0, prev - 1))}
+                          disabled={blockCurrentIndex <= 0}
+                          className={`px-4 py-2 rounded-xl border text-[11px] font-black uppercase tracking-widest ${
+                            blockCurrentIndex <= 0
+                              ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          Prev
+                        </button>
+                        <div className="text-[11px] text-slate-500 font-semibold text-center">
+                          Tip: right-click an option to strike it out.
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setBlockCurrentIndex((prev) => Math.min(practiceQuestions.length - 1, prev + 1))
+                          }
+                          disabled={blockCurrentIndex >= practiceQuestions.length - 1}
+                          className={`px-4 py-2 rounded-xl border text-[11px] font-black uppercase tracking-widest ${
+                            blockCurrentIndex >= practiceQuestions.length - 1
+                              ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <EmptyState onViewChange={(newView) => setView(newView as ViewMode)} />
+                  )}
+                </div>
+              ) : (
+                <div className="flex-1 overflow-y-auto space-y-6 pb-32 pr-2 custom-scrollbar">
+                  <div className="p-5 rounded-3xl border border-slate-200 bg-white shadow-sm">
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                      <div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                          Block Summary
+                        </div>
+                        <div className="mt-2 text-3xl font-black text-slate-900">
+                          {Math.round(practiceSummary.overallAccuracy * 100)}%
+                        </div>
+                        <div className="mt-1 text-sm text-slate-600 font-semibold">
+                          {practiceSummary.totalCorrect} correct out of {practiceSummary.totalAnswered} answered
+                          {blockUnansweredCount > 0 ? ` (${blockUnansweredCount} unanswered)` : ''}
+                        </div>
+                        <div className="mt-2 text-[11px] text-slate-500 font-semibold">
+                          Time used: {formatMsAsMMSS(blockTimeUsedMs)}
+                          {blockPaceMsPerAnswered !== null ? ` | Pace: ${formatMsAsMMSS(blockPaceMsPerAnswered)} / q` : ''}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleGenerateRemediation}
+                          disabled={practiceSummary.totalAnswered === 0 || practiceSummary.weakConcepts.length === 0}
+                          className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest ${
+                            practiceSummary.totalAnswered === 0 || practiceSummary.weakConcepts.length === 0
+                              ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                              : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                          }`}
+                        >
+                          Generate remediation
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setView('generate')}
+                          className="px-4 py-2 rounded-xl border border-slate-200 bg-white text-[11px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50"
+                        >
+                          Back to selection
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setBlockReviewShowAll((prev) => !prev)}
+                          className="px-4 py-2 rounded-xl border border-slate-200 bg-white text-[11px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50"
+                        >
+                          {blockReviewShowAll ? 'Show missed only' : 'Show all'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {(blockReviewShowAll
+                    ? practiceQuestions
+                    : practiceQuestions.filter((q) => {
+                        const sel = practiceStates[q.id]?.selectedOption;
+                        return !sel || sel !== q.correctAnswer;
+                      })
+                  ).length === 0 ? (
+                    <div className="p-8 rounded-3xl border border-emerald-200 bg-emerald-50 text-emerald-800 shadow-sm">
+                      <div className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Perfect block</div>
+                      <div className="mt-2 text-sm font-semibold">No missed questions to review.</div>
+                    </div>
+                  ) : (
+                    <div className="space-y-8">
+                      {practiceQuestions
+                        .map((q, originalIndex) => ({ q, originalIndex }))
+                        .filter(({ q }) => {
+                          if (blockReviewShowAll) return true;
+                          const sel = practiceStates[q.id]?.selectedOption;
+                          return !sel || sel !== q.correctAnswer;
+                        })
+                        .map(({ q, originalIndex }) => {
+                          const saved = practiceStates[q.id];
+                          return (
+                            <QuestionCard
+                              key={`${q.id}:review`}
+                              question={q}
+                              index={originalIndex}
+                              userId={user?.id}
+                              onChat={openChatForQuestion}
+                              savedState={{
+                                selectedOption: saved?.selectedOption ?? null,
+                                struckOptions: saved?.struckOptions ?? [],
+                                showAnswer: true
+                              }}
+                            />
+                          );
+                        })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {blockSubmitConfirmOpen && blockStage === 'taking' && (
+                <div className="fixed inset-0 z-[220] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+                  <div className="w-full max-w-md rounded-3xl bg-white border border-slate-200 shadow-2xl p-6">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Submit Block</div>
+                    <div className="mt-2 text-xl font-black text-slate-900">Submit anyway?</div>
+                    <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+                      You have <span className="font-black text-slate-900">{blockUnansweredCount}</span> unanswered question
+                      {blockUnansweredCount === 1 ? '' : 's'}.
+                    </p>
+                    <div className="mt-5 flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setBlockSubmitConfirmOpen(false)}
+                        className="px-4 py-2 rounded-xl border border-slate-200 bg-white text-[11px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBlockSubmitConfirmOpen(false);
+                          setBlockReviewShowAll(false);
+                          setBlockStage('review');
+                        }}
+                        className="px-4 py-2 rounded-xl bg-slate-900 text-white text-[11px] font-black uppercase tracking-widest hover:bg-slate-800"
+                      >
+                        Submit
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {!isBlockPractice && (view === 'practice' || view === 'remediation') && (
             <div 
               className="h-full flex flex-col transition-all duration-300 ease-out p-6 md:p-10"
               style={{ 
