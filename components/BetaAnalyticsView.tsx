@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { getPrefabSet, listPrefabSets, seedPrefabSet, replacePrefabQuestion, restorePrefabQuestion, getActivePrefabQuestions } from '../services/prefabService';
 import { deepDivePrefabTopics } from '../utils/deepDivePrefabs';
-import { getDeepDivePrefab, seedDeepDivePrefab, appendDeepDivePrefab, replaceDeepDivePrefabQuestion, restoreDeepDivePrefabQuestion } from '../services/deepDivePrefabService';
+import { getDeepDivePrefab, seedDeepDivePrefab, appendDeepDivePrefab, replaceDeepDivePrefabQuestion, restoreDeepDivePrefabQuestion, regenerateDeepDivePrimer } from '../services/deepDivePrefabService';
 import { startDeepDive, extendDeepDiveQuiz, generateCheatSheetText } from '../services/geminiService';
 import { buildStudyGuideItems } from '../utils/studyGuide';
 import { CardStyle, DifficultyLevel, ExamFormat, GoldQuestionRow, Question, QuestionType, StudyGuideItem, UserPreferences } from '../types';
@@ -179,6 +179,16 @@ const removalReasons = [
   'Other'
 ];
 
+const primerReasons = [
+  'Too short',
+  'Too long',
+  'Needs clearer structure',
+  'Missing key topics',
+  'Too advanced',
+  'Too basic',
+  'Other'
+];
+
 const SEED_PREFS: UserPreferences = {
   generationMode: 'questions',
   questionType: QuestionType.MULTIPLE_CHOICE,
@@ -325,6 +335,10 @@ const BetaAnalyticsView: React.FC<AbDebugProps> = ({
   const [selectedDeepDive, setSelectedDeepDive] = useState<DeepDivePrefabDetail | null>(null);
   const [deepDiveDrawerError, setDeepDiveDrawerError] = useState<string | null>(null);
   const [isDeepDiveDrawerLoading, setIsDeepDiveDrawerLoading] = useState(false);
+  const [primerReason, setPrimerReason] = useState(primerReasons[0]);
+  const [primerNote, setPrimerNote] = useState('');
+  const [isPrimerLoading, setIsPrimerLoading] = useState(false);
+  const [primerError, setPrimerError] = useState<string | null>(null);
   const [cheatSheetPrefabsState, setCheatSheetPrefabsState] = useState<Record<'heme' | 'pulm', { title: string; content: string }>>({
     heme: cheatSheetPrefabs.heme,
     pulm: cheatSheetPrefabs.pulm
@@ -982,6 +996,9 @@ const BetaAnalyticsView: React.FC<AbDebugProps> = ({
     setSelectedDeepDiveMeta({ source, concept });
     setSelectedDeepDive(null);
     setDeepDiveDrawerError(null);
+    setPrimerError(null);
+    setPrimerReason(primerReasons[0]);
+    setPrimerNote('');
     setIsDeepDiveDrawerLoading(true);
     setIsDeepDiveDrawerOpen(true);
     try {
@@ -1277,6 +1294,31 @@ const BetaAnalyticsView: React.FC<AbDebugProps> = ({
       });
     } catch (err: any) {
       setDeepDiveDrawerError(err?.message || 'Failed to reload deep dive prefab.');
+    }
+  };
+
+  const handleRegenerateDeepDivePrimer = async () => {
+    if (!selectedDeepDiveMeta) return;
+    if (isPrimerLoading) return;
+    const note = primerNote.trim();
+    if (primerReason === 'Other' && !note) {
+      alert('Please add a note when selecting "Other".');
+      return;
+    }
+    setIsPrimerLoading(true);
+    setPrimerError(null);
+    try {
+      await regenerateDeepDivePrimer(
+        selectedDeepDiveMeta.source,
+        selectedDeepDiveMeta.concept,
+        primerReason,
+        note
+      );
+      await refreshSelectedDeepDive();
+    } catch (err: any) {
+      setPrimerError(err?.message || 'Failed to regenerate primer.');
+    } finally {
+      setIsPrimerLoading(false);
     }
   };
 
@@ -3160,6 +3202,46 @@ const BetaAnalyticsView: React.FC<AbDebugProps> = ({
               )}
               {!isDeepDiveDrawerLoading && !deepDiveDrawerError && selectedDeepDive && (
                 <>
+                  {primerError && (
+                    <div className="text-sm text-rose-600 font-semibold">{primerError}</div>
+                  )}
+
+                  <div className="border border-slate-200 rounded-2xl p-4 bg-white">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                      Primer Controls
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <select
+                        value={primerReason}
+                        onChange={(e) => setPrimerReason(e.target.value)}
+                        className="px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-600 bg-white"
+                      >
+                        {primerReasons.map((reason) => (
+                          <option key={reason} value={reason}>{reason}</option>
+                        ))}
+                      </select>
+                      <input
+                        type="text"
+                        value={primerNote}
+                        onChange={(e) => setPrimerNote(e.target.value)}
+                        placeholder="Optional note (required if Other)"
+                        className="px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-600"
+                      />
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-2 mt-3">
+                      <div className="text-[10px] text-slate-400">
+                        Note required when reason is “Other”.
+                      </div>
+                      <button
+                        onClick={handleRegenerateDeepDivePrimer}
+                        disabled={isPrimerLoading}
+                        className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-60"
+                      >
+                        {isPrimerLoading ? 'Regenerating…' : 'Reseed Primer'}
+                      </button>
+                    </div>
+                  </div>
+
                   {selectedDeepDive.lessonContent && (
                     <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50/60">
                       <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">

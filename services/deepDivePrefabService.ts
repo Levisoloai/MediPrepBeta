@@ -2,7 +2,7 @@ import { supabase } from './supabaseClient';
 import { hashText, normalizeText } from '../utils/studyGuide';
 import { buildFingerprintSet, filterDuplicateQuestions } from '../utils/questionDedupe';
 import { Question } from '../types';
-import { extendDeepDiveQuiz, normalizeDeepDiveQuiz } from './geminiService';
+import { extendDeepDiveQuiz, normalizeDeepDiveQuiz, regenerateDeepDiveLesson } from './geminiService';
 
 type DeepDiveCacheRow = {
   topic_key: string;
@@ -110,6 +110,64 @@ const updateDeepDiveQuiz = async (topicKey: string, quiz: Question[]) => {
   if (error) {
     throw error;
   }
+};
+
+const updateDeepDiveLessonContent = async (topicKey: string, lessonContent: string) => {
+  const { error } = await supabase
+    .from('deep_dive_cache')
+    .update({
+      lesson_content: lessonContent,
+      model: import.meta.env.VITE_XAI_MODEL || 'grok-4-1-fast-reasoning'
+    })
+    .eq('topic_key', topicKey);
+
+  if (error) {
+    throw error;
+  }
+};
+
+const primerReasonInstructions: Record<string, string> = {
+  'Too short':
+    'Expand with more explanation, include key mechanisms and pitfalls, but keep it concise.',
+  'Too long':
+    'Condense the primer: keep only the highest-yield facts and avoid redundancy.',
+  'Needs clearer structure':
+    'Use tighter headings and a short comparison table if helpful.',
+  'Missing key topics':
+    'Include the essential differential diagnosis and hallmark clues.',
+  'Too advanced':
+    'Simplify to core exam-level concepts and remove overly granular details.',
+  'Too basic':
+    'Add nuance, thresholds, and decision points to make it more board-relevant.',
+  Other:
+    'Follow reviewer note exactly.'
+};
+
+export const regenerateDeepDivePrimer = async (
+  topicContext: string,
+  concept: string,
+  reason: string,
+  note?: string
+) => {
+  const existing = await getDeepDivePrefab(topicContext, concept);
+  if (!existing) {
+    throw new Error('Deep dive prefab not found.');
+  }
+
+  const instructionParts: string[] = [];
+  if (reason && primerReasonInstructions[reason]) {
+    instructionParts.push(primerReasonInstructions[reason]);
+  }
+  if (note) {
+    instructionParts.push(`Reviewer note: ${note}`);
+  }
+
+  const lessonContent = await regenerateDeepDiveLesson(topicContext, concept, instructionParts.join('\n'));
+  if (!lessonContent.trim()) {
+    throw new Error('Generated primer was empty. Please try again.');
+  }
+  await updateDeepDiveLessonContent(existing.topicKey, lessonContent);
+  return lessonContent;
 };
 
 export const replaceDeepDivePrefabQuestion = async (

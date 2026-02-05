@@ -705,6 +705,37 @@ Quiz requirements:
   };
 };
 
+export const regenerateDeepDiveLesson = async (
+  topicContext: string,
+  concept: string,
+  reviewerNote?: string,
+  signal?: AbortSignal
+): Promise<string> => {
+  const reviewerInstruction = reviewerNote ? `Reviewer feedback: ${reviewerNote}` : '';
+  const prompt = `
+Act as an elite medical professor.
+Context: ${topicContext}.
+Target Concept: "${concept}".
+
+Task: Create a structured primer using ONLY Markdown. Use tables for comparisons. No HTML.
+- Include: concise definition, key pathophysiology, high-yield clinical clues, and common pitfalls.
+- Keep it succinct but complete (aim for 8-14 short paragraphs or bullets total).
+- Do NOT mention or imply any images are provided.
+${reviewerInstruction}
+
+Return ONLY valid JSON with key: lessonContent (string).
+`;
+
+  const messages: XaiMessage[] = [
+    { role: 'system', content: 'You are a precise medical educator. Output only JSON.' },
+    { role: 'user', content: prompt }
+  ];
+
+  const raw = await callXai(messages, DEFAULT_MODEL, 0.2, 90000, signal);
+  const parsed = parseJsonFromText(raw);
+  return parsed?.lessonContent || '';
+};
+
 export const extendDeepDiveQuiz = async (
   _subject: Subject | null,
   topicContext: string,
