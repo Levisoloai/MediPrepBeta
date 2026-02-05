@@ -22,6 +22,21 @@ interface InputSectionProps {
   ) => void;
   mode?: 'questions' | 'cheatsheet' | 'summary';
   onUsePrefab?: (guide: BetaGuide) => void;
+  onGenerateCustom?: (
+    content: string,
+    lectureFiles: StudyFile[],
+    studyGuideFile: StudyFile | null,
+    prefs: UserPreferences,
+    context?: {
+      guideHash: string;
+      guideItems: StudyGuideItem[];
+      guideTitle: string;
+      moduleId: 'heme' | 'pulm';
+    },
+    topic?: string
+  ) => void;
+  customOpen?: boolean;
+  onCustomToggle?: (open: boolean) => void;
   isLoading: boolean;
   onOpenOnboarding?: () => void;
 }
@@ -30,7 +45,16 @@ const MAX_TEXT_CHARS = 120000;
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
-const InputSection: React.FC<InputSectionProps> = ({ onGenerate, onUsePrefab, isLoading, onOpenOnboarding, mode = 'questions' }) => {
+const InputSection: React.FC<InputSectionProps> = ({
+  onGenerate,
+  onUsePrefab,
+  onGenerateCustom,
+  customOpen,
+  onCustomToggle,
+  isLoading,
+  onOpenOnboarding,
+  mode = 'questions'
+}) => {
   const isCheatSheetMode = mode === 'cheatsheet' || mode === 'summary';
   const [selectedGuide, setSelectedGuide] = useState<BetaGuide | null>(null);
   const [isReading, setIsReading] = useState(false);
@@ -38,6 +62,8 @@ const InputSection: React.FC<InputSectionProps> = ({ onGenerate, onUsePrefab, is
   const [studyGuideText, setStudyGuideText] = useState('');
   const [isTruncated, setIsTruncated] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [showCustomGenerator, setShowCustomGenerator] = useState(false);
+  const [customTopic, setCustomTopic] = useState('');
 
   const [preferences, setPreferences] = useState<UserPreferences>(() => {
     const saved = localStorage.getItem('mediprep_beta_prefs');
@@ -66,6 +92,12 @@ const InputSection: React.FC<InputSectionProps> = ({ onGenerate, onUsePrefab, is
   useEffect(() => {
     localStorage.setItem('mediprep_beta_prefs', JSON.stringify(preferences));
   }, [preferences]);
+
+  useEffect(() => {
+    if (typeof customOpen === 'boolean') {
+      setShowCustomGenerator(customOpen);
+    }
+  }, [customOpen]);
 
   const handleSelectGuide = async (guide: BetaGuide) => {
     if (isReading) return;
@@ -138,6 +170,36 @@ const InputSection: React.FC<InputSectionProps> = ({ onGenerate, onUsePrefab, is
     );
   };
 
+  const handleCustomSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedGuide || !studyGuideText.trim() || !onGenerateCustom) return;
+
+    const { guideHash, guideItems } = await buildStudyGuideItems(studyGuideText);
+    onGenerateCustom(
+      studyGuideText,
+      [],
+      null,
+      {
+        ...preferences,
+        generationMode: 'questions',
+        focusedOnWeakness: false
+      },
+      {
+        guideHash,
+        guideItems,
+        guideTitle: selectedGuide.title,
+        moduleId: selectedGuide.id
+      },
+      customTopic
+    );
+  };
+
+  const toggleCustomGenerator = () => {
+    const next = !showCustomGenerator;
+    setShowCustomGenerator(next);
+    onCustomToggle?.(next);
+  };
+
   return (
     <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-white h-full flex flex-col overflow-hidden relative">
       <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-teal-400 to-indigo-400" />
@@ -180,9 +242,9 @@ const InputSection: React.FC<InputSectionProps> = ({ onGenerate, onUsePrefab, is
               </>
             ) : (
               <>
-                <div><span className="text-slate-800 font-black">2.</span> Adjust question count and difficulty.</div>
-                <div><span className="text-slate-800 font-black">3.</span> Generate questions and begin practicing.</div>
-                <div><span className="text-slate-800 font-black">4.</span> Try Deep Dive for focused concept drills.</div>
+                <div><span className="text-slate-800 font-black">2.</span> Adjust question count.</div>
+                <div><span className="text-slate-800 font-black">3.</span> Use Custom Generator to set difficulty + topic.</div>
+                <div><span className="text-slate-800 font-black">4.</span> Generate questions and begin practicing.</div>
               </>
             )}
           </div>
@@ -281,6 +343,63 @@ const InputSection: React.FC<InputSectionProps> = ({ onGenerate, onUsePrefab, is
               className="w-full p-3 rounded-2xl border border-slate-200 text-xs bg-white focus:ring-2 focus:ring-teal-500/20 outline-none resize-none h-20 transition-all"
             />
           </div>
+
+          {!isCheatSheetMode && (
+            <div className="border border-slate-200 rounded-2xl p-4 bg-white/80">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Custom Generator</div>
+                  <div className="text-sm font-semibold text-slate-700">
+                    Want to set difficulty + topic?
+                  </div>
+                </div>
+                <button
+                  onClick={toggleCustomGenerator}
+                  className="px-3 py-2 rounded-xl border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:bg-slate-50"
+                >
+                  {showCustomGenerator ? 'Hide' : 'Try generating your own questions'}
+                </button>
+              </div>
+
+              {showCustomGenerator && (
+                <div className="mt-4 space-y-3">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">
+                    Topic Focus (Optional)
+                    <input
+                      value={customTopic}
+                      onChange={(e) => setCustomTopic(e.target.value)}
+                      placeholder="e.g., Hemolytic anemia, ARDS, COPD exacerbation"
+                      className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 text-sm text-slate-700 bg-white"
+                    />
+                  </label>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">
+                    Difficulty
+                    <select
+                      value={preferences.difficulty}
+                      onChange={(e) => setPreferences(p => ({ ...p, difficulty: e.target.value as DifficultyLevel }))}
+                      className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 text-sm text-slate-700 bg-white"
+                    >
+                      <option value={DifficultyLevel.EASY}>Easy</option>
+                      <option value={DifficultyLevel.MEDIUM}>Medium</option>
+                      <option value={DifficultyLevel.HARD}>Hard</option>
+                      <option value={DifficultyLevel.CLINICAL_VIGNETTE}>Clinical Vignette (USMLE Style)</option>
+                    </select>
+                  </label>
+                  <button
+                    onClick={handleCustomSubmit}
+                    disabled={isLoading || !selectedGuide || !studyGuideText.trim() || isReading || !onGenerateCustom}
+                    className={`w-full py-3 rounded-xl font-black uppercase tracking-widest text-xs transition-all ${
+                      isLoading || isReading || !selectedGuide || !studyGuideText.trim() || !onGenerateCustom
+                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                        : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                    }`}
+                  >
+                    {isLoading ? 'Processing...' : 'Generate Custom Questions'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

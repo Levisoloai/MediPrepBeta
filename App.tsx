@@ -207,6 +207,7 @@ const App: React.FC = () => {
   const [cheatSheetContent, setCheatSheetContent] = useState<string>('');
   const [cheatSheetTitle, setCheatSheetTitle] = useState<string | null>(null);
   const [cheatSheetSource, setCheatSheetSource] = useState<'prefab' | 'generated' | null>(null);
+  const [customGeneratorOpen, setCustomGeneratorOpen] = useState(false);
   const [lastGuideContext, setLastGuideContext] = useState<{
     content: string;
     prefs: UserPreferences;
@@ -1078,6 +1079,80 @@ const App: React.FC = () => {
     }
   };
 
+  const handleGenerateCustom = async (
+    content: string,
+    _lectureFiles: StudyFile[],
+    _studyGuideFile: StudyFile | null,
+    prefs: UserPreferences,
+    context?: {
+      guideHash: string;
+      guideItems: StudyGuideItem[];
+      guideTitle: string;
+      moduleId: 'heme' | 'pulm';
+    },
+    topic?: string
+  ) => {
+    if (!isXaiConfigured) {
+      setError("xAI API Key is missing. Please add 'VITE_XAI_API_KEY' to your environment variables.");
+      return;
+    }
+
+    if (!content.trim()) {
+      setError("Please select a module before generating questions.");
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    const guideHash = context?.guideHash;
+    const guideItems = context?.guideItems;
+    const guideTitle = context?.guideTitle;
+    const guideModule = context?.moduleId;
+    const moduleId = guideHash || 'custom';
+
+    try {
+      const topicInstruction = topic?.trim() ? `Focus topic: ${topic.trim()}.` : '';
+      const effectivePrefs: UserPreferences = {
+        ...prefs,
+        customInstructions: [prefs.customInstructions, topicInstruction].filter(Boolean).join('\n')
+      };
+      const seenFingerprintSet = await ensureSeenFingerprints(moduleId);
+      const generated = await generateQuestions(content, [], null, effectivePrefs);
+      const { unique } = filterDuplicateQuestions(generated, seenFingerprintSet);
+      const selected = unique.slice(0, effectivePrefs.questionCount).map((q) => ({
+        ...q,
+        sourceType: 'generated',
+        guideHash
+      }));
+      const normalized = selected.map(normalizeQuestionShape);
+      const withHistology = attachHistologyToQuestions(normalized, guideModule || guideTitle || '');
+      setPracticeQuestions(withHistology.map(normalizeQuestionShape));
+      setRemediationQuestions([]);
+      setRemediationStates({});
+      setPracticeStates({});
+      setPrefabMeta(null);
+      setPrefabExhausted(false);
+      setRemediationMeta(null);
+      setCustomGeneratorOpen(false);
+      setLastGuideContext({
+        content,
+        prefs: effectivePrefs,
+        guideHash,
+        guideItems,
+        guideTitle,
+        moduleId: guideModule
+      });
+      markQuestionsSeen(moduleId, withHistology);
+      await markQuestionsSeenByFingerprint(moduleId, withHistology);
+      setView('practice');
+    } catch (err: any) {
+      setError(err?.message || 'Failed to generate custom questions.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleGenerateHistology = async () => {
     setIsHistologyLoading(true);
     setHistologyError(null);
@@ -1569,6 +1644,9 @@ const App: React.FC = () => {
               <div className="w-full h-full">
                  <InputSection 
                    onGenerate={handleGenerate} 
+                   onGenerateCustom={handleGenerateCustom}
+                   customOpen={customGeneratorOpen}
+                   onCustomToggle={setCustomGeneratorOpen}
                    isLoading={isLoading}
                    mode="questions"
                    onOpenOnboarding={() => {
@@ -1848,12 +1926,21 @@ const App: React.FC = () => {
                    <div className="text-sm font-semibold mt-1">
                      Generate a fresh set to keep going.
                    </div>
-                   <div className="mt-3">
+                   <div className="mt-3 flex flex-wrap gap-2">
                      <button
                        onClick={handleGenerateMore}
                        className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700"
                      >
                        Generate more
+                     </button>
+                     <button
+                       onClick={() => {
+                         setView('generate');
+                         setCustomGeneratorOpen(true);
+                       }}
+                       className="px-3 py-2 rounded-lg border border-indigo-200 text-indigo-700 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100"
+                     >
+                       Try generating your own questions
                      </button>
                    </div>
                  </div>
