@@ -280,7 +280,14 @@ const App: React.FC = () => {
     guideHash?: string;
     guideItems?: StudyGuideItem[];
     guideTitle?: string;
-    moduleId?: 'heme' | 'pulm';
+    moduleId?: 'heme' | 'pulm' | 'mixed';
+    mixedModules?: Array<{
+      content: string;
+      guideHash: string;
+      guideItems: StudyGuideItem[];
+      guideTitle: string;
+      moduleId: 'heme' | 'pulm';
+    }>;
   } | null>(() => {
     try {
       const saved = localStorage.getItem(LAST_GUIDE_CONTEXT_KEY);
@@ -931,7 +938,14 @@ const App: React.FC = () => {
       guideHash: string;
       guideItems: StudyGuideItem[];
       guideTitle: string;
-      moduleId: 'heme' | 'pulm';
+      moduleId: 'heme' | 'pulm' | 'mixed';
+      mixedModules?: Array<{
+        content: string;
+        guideHash: string;
+        guideItems: StudyGuideItem[];
+        guideTitle: string;
+        moduleId: 'heme' | 'pulm';
+      }>;
     }
   ) => {
     if (!isXaiConfigured) {
@@ -951,9 +965,18 @@ const App: React.FC = () => {
     const guideItems = context?.guideItems;
     const guideTitle = context?.guideTitle;
     const guideModule = context?.moduleId;
+    const mixedModules = guideModule === 'mixed' ? context?.mixedModules : null;
+    const isMixed = Array.isArray(mixedModules) && mixedModules.length >= 2;
     const moduleId = guideHash || 'custom';
 
-    const seenFingerprintSet = await ensureSeenFingerprints(moduleId);
+    const seenFingerprintSet = isMixed ? new Set<string>() : await ensureSeenFingerprints(moduleId);
+
+    if (isMixed && mixedModules) {
+      const sets = await Promise.all(
+        mixedModules.map((mod) => ensureSeenFingerprints(mod.guideHash))
+      );
+      sets.forEach((set) => set.forEach((fp) => seenFingerprintSet.add(fp)));
+    }
 
     const histologyInstruction =
       guideModule
@@ -972,7 +995,8 @@ const App: React.FC = () => {
       guideHash,
       guideItems,
       guideTitle,
-      moduleId: guideModule
+      moduleId: guideModule,
+      mixedModules: isMixed && mixedModules ? mixedModules : undefined
     });
 
     try {
@@ -990,8 +1014,197 @@ const App: React.FC = () => {
         return picked;
       };
 
+      if (isMixed && mixedModules) {
+        const hemeMod = mixedModules.find((mod) => mod.moduleId === 'heme') || mixedModules[0];
+        const pulmMod = mixedModules.find((mod) => mod.moduleId === 'pulm') || mixedModules[1];
+        const desiredCount = Math.max(1, effectivePrefs.questionCount || 1);
+        const hemeTarget = Math.ceil(desiredCount / 2);
+        const pulmTarget = Math.max(0, desiredCount - hemeTarget);
+
+        const takeGoldFor = async (
+          mod: { content: string; guideHash: string; moduleId: 'heme' | 'pulm' },
+          count: number
+        ) => {
+          if (count <= 0) return [];
+          const approvedGold = await getApprovedGoldQuestions(mod.moduleId);
+          const picked = pickFromPool(approvedGold, count, true);
+          return picked.map((q) => ({
+            ...q,
+            sourceType: 'gold' as const,
+            cardStyle: effectivePrefs.cardStyle || q.cardStyle,
+            guideHash: mod.guideHash
+          }));
+        };
+
+        const takePrefabFor = async (
+          mod: { content: string; guideHash: string; moduleId: 'heme' | 'pulm' },
+          count: number
+        ) => {
+          if (count <= 0) return [];
+          const prefab = await getPrefabSet(mod.guideHash);
+          if (!prefab) return [];
+          const active = getActivePrefabQuestions(prefab.questions || []);
+          const picked = pickFromPool(active, count, true);
+          return picked.map((q) => ({ ...q, sourceType: 'prefab' as const, guideHash: mod.guideHash }));
+        };
+
+        const takeGeneratedFor = async (
+          mod: { content: string; guideHash: string; moduleId: 'heme' | 'pulm' },
+          count: number
+        ) => {
+          if (count <= 0) return [];
+          const picked: Question[] = [];
+          let remaining = count;
+          let attempts = 0;
+          while (remaining > 0 && attempts < 3) {
+            attempts += 1;
+            const generated = await generateQuestions(mod.content, [], null, {
+              ...effectivePrefs,
+              questionCount: remaining
+            });
+            const { unique } = filterDuplicateQuestions(generated, workingFingerprints);
+            const selected = unique.slice(0, remaining);
+            selected.forEach((q) => addFingerprintsToSet(q, workingFingerprints));
+            picked.push(...selected);
+            remaining = count - picked.length;
+            if (selected.length === 0) break;
+          }
+          if (picked.length < count) {
+            validationWarning = true;
+          }
+          return picked.map((q) => ({ ...q, sourceType: 'generated' as const, guideHash: mod.guideHash }));
+        };
+
+        const buildModuleSet = async (
+          mod: { content: string; guideHash: string; moduleId: 'heme' | 'pulm' },
+          count: number
+        ) => {
+          if (count <= 0) return [];
+          const primaryVariant = getGuideVariant(mod.guideHash) as 'gold' | 'guide' | 'split';
+
+          let goldQuestions: Question[] = [];
+          let guideQuestions: Question[] = [];
+
+          if (primaryVariant === 'split') {
+            const goldTarget = Math.ceil(count / 2);
+            const guideTarget = Math.max(0, count - goldTarget);
+            goldQuestions = await takeGoldFor(mod, goldTarget);
+            guideQuestions = await takePrefabFor(mod, guideTarget);
+            let remaining = count - goldQuestions.length - guideQuestions.length;
+            if (remaining > 0) {
+              const goldFallback = await takeGoldFor(mod, remaining);
+              goldQuestions = [...goldQuestions, ...goldFallback];
+              remaining = count - goldQuestions.length - guideQuestions.length;
+            }
+            if (remaining > 0) {
+              const prefabFallback = await takePrefabFor(mod, remaining);
+              guideQuestions = [...guideQuestions, ...prefabFallback];
+              remaining = count - goldQuestions.length - guideQuestions.length;
+            }
+            if (remaining > 0) {
+              const generatedFallback = await takeGeneratedFor(mod, remaining);
+              guideQuestions = [...guideQuestions, ...generatedFallback];
+            }
+          } else if (primaryVariant === 'gold') {
+            goldQuestions = await takeGoldFor(mod, count);
+            let remaining = count - goldQuestions.length;
+            if (remaining > 0) {
+              const prefabFallback = await takePrefabFor(mod, remaining);
+              guideQuestions = [...guideQuestions, ...prefabFallback];
+              remaining = count - goldQuestions.length - guideQuestions.length;
+            }
+            if (remaining > 0) {
+              const generatedFallback = await takeGeneratedFor(mod, remaining);
+              guideQuestions = [...guideQuestions, ...generatedFallback];
+            }
+          } else {
+            guideQuestions = await takePrefabFor(mod, count);
+            let remaining = count - guideQuestions.length;
+            if (remaining > 0) {
+              const generatedFallback = await takeGeneratedFor(mod, remaining);
+              guideQuestions = [...guideQuestions, ...generatedFallback];
+              remaining = count - guideQuestions.length;
+            }
+            if (remaining > 0) {
+              const goldFallback = await takeGoldFor(mod, remaining);
+              goldQuestions = [...goldQuestions, ...goldFallback];
+            }
+          }
+
+          return [...goldQuestions, ...guideQuestions].map((q) => ({
+            ...q,
+            cardStyle: effectivePrefs.cardStyle || q.cardStyle,
+            guideHash: mod.guideHash
+          }));
+        };
+
+        const hemePicked = await buildModuleSet(hemeMod, hemeTarget);
+        const pulmPicked = await buildModuleSet(pulmMod, pulmTarget);
+
+        const combined = shuffleList([...hemePicked, ...pulmPicked])
+          .map((q) => ({ ...q, abVariant: 'mixed' as const }))
+          .map(normalizeQuestionShape);
+
+        const hemeHash = hemeMod.guideHash;
+        const pulmHash = pulmMod.guideHash;
+        const attachedById = new Map<string, Question>();
+
+        const hemeSubset = combined.filter((q) => q.guideHash === hemeHash);
+        const pulmSubset = combined.filter((q) => q.guideHash === pulmHash);
+
+        attachHistologyToQuestions(hemeSubset, 'heme', { existingQuestions: practiceQuestions })
+          .forEach((q) => attachedById.set(q.id, q));
+        attachHistologyToQuestions(pulmSubset, 'pulm', { existingQuestions: practiceQuestions })
+          .forEach((q) => attachedById.set(q.id, q));
+
+        const withHistology = combined.map((q) => attachedById.get(q.id) || q).map(normalizeQuestionShape);
+
+        setPracticeQuestions(withHistology);
+        setRemediationQuestions([]);
+        setRemediationStates({});
+        setPracticeStates({});
+        setPrefabMeta(null);
+        setPrefabExhausted(false);
+        setRemediationMeta(null);
+
+        // Persist seen questions per guide hash so mixed blocks still dedupe correctly.
+        const hemeSeenList = withHistology.filter((q) => q.guideHash === hemeHash);
+        const pulmSeenList = withHistology.filter((q) => q.guideHash === pulmHash);
+        markQuestionsSeen(hemeHash, hemeSeenList);
+        markQuestionsSeen(pulmHash, pulmSeenList);
+        await markQuestionsSeenByFingerprint(hemeHash, hemeSeenList);
+        await markQuestionsSeenByFingerprint(pulmHash, pulmSeenList);
+
+        const nextSessionStyle: 'practice' | 'block' = effectivePrefs.sessionStyle === 'block' ? 'block' : 'practice';
+        setPracticeSessionStyle(nextSessionStyle);
+        if (nextSessionStyle === 'block') {
+          setIsChatOpen(false);
+          setActiveQuestionForChat(null);
+          setBlockStage('taking');
+          setBlockStartedAtMs(Date.now());
+          setBlockDurationMs(Math.max(1, effectivePrefs.questionCount || 1) * 90 * 1000);
+          setBlockCurrentIndex(0);
+          setBlockMarkedIds([]);
+          setBlockReviewShowAll(false);
+        } else {
+          setBlockStage('taking');
+          setBlockStartedAtMs(null);
+          setBlockDurationMs(0);
+          setBlockCurrentIndex(0);
+          setBlockMarkedIds([]);
+          setBlockReviewShowAll(false);
+        }
+
+        if (validationWarning) {
+          setError('Some questions failed validation; try again.');
+        }
+        setView('practice');
+        return;
+      }
+
       const takeGold = async (count: number) => {
-        if (!guideModule || count <= 0) return [];
+        if (guideModule !== 'heme' && guideModule !== 'pulm') return [];
+        if (count <= 0) return [];
         const approvedGold = await getApprovedGoldQuestions(guideModule);
         const picked = pickFromPool(approvedGold, count, true);
         return picked.map((q) => ({
@@ -1051,7 +1264,7 @@ const App: React.FC = () => {
       let prefabExhaustedNext = false;
       let usedFallback = false;
 
-      if (guideModule && guideHash) {
+      if ((guideModule === 'heme' || guideModule === 'pulm') && guideHash) {
         const primaryVariant = getGuideVariant(guideHash) as 'gold' | 'guide' | 'split';
 
         if (primaryVariant === 'split') {
@@ -1233,7 +1446,14 @@ const App: React.FC = () => {
       guideHash: string;
       guideItems: StudyGuideItem[];
       guideTitle: string;
-      moduleId: 'heme' | 'pulm';
+      moduleId: 'heme' | 'pulm' | 'mixed';
+      mixedModules?: Array<{
+        content: string;
+        guideHash: string;
+        guideItems: StudyGuideItem[];
+        guideTitle: string;
+        moduleId: 'heme' | 'pulm';
+      }>;
     }
   ) => {
     if (!isXaiConfigured) {

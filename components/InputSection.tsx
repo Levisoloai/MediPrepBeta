@@ -6,18 +6,34 @@ import pdfjsWorker from 'pdfjs-dist/build/pdf.worker?url';
 import { buildStudyGuideItems } from '../utils/studyGuide';
 import { betaGuides, BetaGuide } from '../utils/betaGuides';
 
+type GenerateContext =
+  | {
+      guideHash: string;
+      guideItems: StudyGuideItem[];
+      guideTitle: string;
+      moduleId: 'heme' | 'pulm';
+    }
+  | {
+      guideHash: string;
+      guideItems: StudyGuideItem[];
+      guideTitle: string;
+      moduleId: 'mixed';
+      mixedModules: Array<{
+        content: string;
+        guideHash: string;
+        guideItems: StudyGuideItem[];
+        guideTitle: string;
+        moduleId: 'heme' | 'pulm';
+      }>;
+    };
+
 interface InputSectionProps {
   onGenerate: (
     content: string,
     lectureFiles: StudyFile[],
     studyGuideFile: StudyFile | null,
     prefs: UserPreferences,
-    context?: {
-      guideHash: string;
-      guideItems: StudyGuideItem[];
-      guideTitle: string;
-      moduleId: 'heme' | 'pulm';
-    },
+    context?: GenerateContext,
     subjectId?: string
   ) => void;
   mode?: 'questions' | 'cheatsheet' | 'summary';
@@ -63,9 +79,12 @@ const InputSection: React.FC<InputSectionProps> = ({
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
   const [selectedGuide, setSelectedGuide] = useState<BetaGuide | null>(null);
+  const [mixedBlockEnabled, setMixedBlockEnabled] = useState(false);
   const [isReading, setIsReading] = useState(false);
+  const [readingGuideId, setReadingGuideId] = useState<'heme' | 'pulm' | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [studyGuideText, setStudyGuideText] = useState('');
+  const [guideTextById, setGuideTextById] = useState<{ heme: string; pulm: string }>({ heme: '', pulm: '' });
   const [isTruncated, setIsTruncated] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showCustomGenerator, setShowCustomGenerator] = useState(false);
@@ -103,21 +122,24 @@ const InputSection: React.FC<InputSectionProps> = ({
   }, [preferences]);
 
   useEffect(() => {
+    if (preferences.sessionStyle !== 'block' && mixedBlockEnabled) {
+      setMixedBlockEnabled(false);
+    }
+  }, [preferences.sessionStyle, mixedBlockEnabled]);
+
+  useEffect(() => {
     if (typeof customOpen === 'boolean') {
       setShowCustomGenerator(customOpen);
     }
   }, [customOpen]);
 
-  const handleSelectGuide = async (guide: BetaGuide) => {
-    if (isReading) return;
-    if (selectedGuide?.id === guide.id && studyGuideText) return;
-    setSelectedGuide(guide);
-    setStudyGuideText('');
+  const loadGuideText = async (guide: BetaGuide) => {
+    if (isReading) return null;
+    setIsReading(true);
+    setReadingGuideId(guide.id);
+    setUploadProgress(0);
     setIsTruncated(false);
     setLoadError(null);
-    setIsReading(true);
-    setUploadProgress(0);
-
     try {
       const response = await fetch(guide.pdfUrl);
       if (!response.ok) {
@@ -144,19 +166,98 @@ const InputSection: React.FC<InputSectionProps> = ({
         }
       }
 
-      setStudyGuideText(fullText.trim());
+      const text = fullText.trim();
+      setGuideTextById((prev) => ({ ...prev, [guide.id]: text }));
+      return text;
     } catch (err) {
       console.error('Guide extraction failed', err);
       setLoadError('Failed to load this guide. Please try again or check the PDF path.');
-      setStudyGuideText('');
+      setGuideTextById((prev) => ({ ...prev, [guide.id]: '' }));
+      return null;
     } finally {
       setIsReading(false);
+      setReadingGuideId(null);
       setUploadProgress(0);
+    }
+  };
+
+  const handleSelectGuide = async (guide: BetaGuide) => {
+    if (isReading) return;
+    if (mixedBlockEnabled) setMixedBlockEnabled(false);
+    setSelectedGuide(guide);
+    setStudyGuideText('');
+    const existing = guideTextById[guide.id]?.trim();
+    if (existing) {
+      setStudyGuideText(existing);
+      return;
+    }
+    const text = await loadGuideText(guide);
+    setStudyGuideText(text || '');
+  };
+
+  const enableMixedBlock = async () => {
+    if (isReading) return;
+    setMixedBlockEnabled(true);
+    setSelectedGuide(null);
+    // Ensure both guides are loaded (sequential for clearer progress feedback).
+    for (const guide of betaGuides) {
+      const existing = guideTextById[guide.id]?.trim();
+      if (existing) continue;
+      // eslint-disable-next-line no-await-in-loop
+      await loadGuideText(guide);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (mixedBlockEnabled) {
+      const hemeText = guideTextById.heme?.trim();
+      const pulmText = guideTextById.pulm?.trim();
+      if (!hemeText || !pulmText) return;
+
+      const [{ guideHash: hemeHash, guideItems: hemeItemsRaw }, { guideHash: pulmHash, guideItems: pulmItemsRaw }] =
+        await Promise.all([buildStudyGuideItems(hemeText), buildStudyGuideItems(pulmText)]);
+
+      const hemeItems = hemeItemsRaw.map((item) => ({ ...item, id: `heme-${item.id}` }));
+      const pulmItems = pulmItemsRaw.map((item) => ({ ...item, id: `pulm-${item.id}` }));
+      const mixedHash = `mixed_${hemeHash}_${pulmHash}`;
+      const combinedContent = `${hemeText}\n\n${pulmText}`;
+
+      onGenerate(
+        combinedContent,
+        [],
+        null,
+        {
+          ...preferences,
+          generationMode: isCheatSheetMode ? 'summary' : 'questions',
+          focusedOnWeakness: false
+        },
+        {
+          guideHash: mixedHash,
+          guideItems: [...hemeItems, ...pulmItems],
+          guideTitle: 'Pulm + Heme (Mixed Block)',
+          moduleId: 'mixed',
+          mixedModules: [
+            {
+              content: hemeText,
+              guideHash: hemeHash,
+              guideItems: hemeItems,
+              guideTitle: 'Hematology',
+              moduleId: 'heme'
+            },
+            {
+              content: pulmText,
+              guideHash: pulmHash,
+              guideItems: pulmItems,
+              guideTitle: 'Pulmonology',
+              moduleId: 'pulm'
+            }
+          ]
+        }
+      );
+      return;
+    }
+
     if (!selectedGuide || !studyGuideText.trim()) return;
 
     const { guideHash, guideItems } = await buildStudyGuideItems(studyGuideText);
@@ -181,6 +282,7 @@ const InputSection: React.FC<InputSectionProps> = ({
 
   const handleCustomSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (mixedBlockEnabled) return;
     if (!selectedGuide || !studyGuideText.trim() || !onGenerateCustom) return;
 
     const { guideHash, guideItems } = await buildStudyGuideItems(studyGuideText);
@@ -208,6 +310,11 @@ const InputSection: React.FC<InputSectionProps> = ({
     setShowCustomGenerator(next);
     onCustomToggle?.(next);
   };
+
+  const canSubmit =
+    mixedBlockEnabled
+      ? Boolean(guideTextById.heme?.trim() && guideTextById.pulm?.trim())
+      : Boolean(selectedGuide && studyGuideText.trim());
 
   return (
     <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-white h-full flex flex-col overflow-hidden relative">
@@ -262,8 +369,10 @@ const InputSection: React.FC<InputSectionProps> = ({
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {betaGuides.map((guide) => {
-              const isSelected = selectedGuide?.id === guide.id;
-              const isLoaded = isSelected && studyGuideText.trim().length > 0;
+              const hasText = Boolean(guideTextById[guide.id]?.trim());
+              const isSelected = mixedBlockEnabled || selectedGuide?.id === guide.id;
+              const isLoadingThis = isReading && readingGuideId === guide.id;
+              const isLoaded = hasText;
               return (
                 <button
                   key={guide.id}
@@ -284,7 +393,15 @@ const InputSection: React.FC<InputSectionProps> = ({
                     )}
                   </div>
                   <div className="mt-4 text-[10px] uppercase tracking-widest font-black text-slate-400">
-                    {isSelected ? (isReading ? 'Loading guide…' : isLoaded ? 'Guide loaded' : 'Selected') : 'Select module'}
+                    {isLoadingThis
+                      ? 'Loading guide…'
+                      : isLoaded
+                      ? 'Guide loaded'
+                      : mixedBlockEnabled
+                      ? 'Needed for mixed block'
+                      : isSelected
+                      ? 'Selected'
+                      : 'Select module'}
                   </div>
                 </button>
               );
@@ -321,7 +438,7 @@ const InputSection: React.FC<InputSectionProps> = ({
           <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
             <div className="text-xs font-bold text-slate-600">Selected Module</div>
             <div className="text-sm font-semibold text-teal-700 mt-1">
-              {selectedGuide ? selectedGuide.title : 'None selected'}
+              {mixedBlockEnabled ? 'Pulm + Heme (Mixed)' : selectedGuide ? selectedGuide.title : 'None selected'}
             </div>
           </div>
 
@@ -380,6 +497,48 @@ const InputSection: React.FC<InputSectionProps> = ({
                   No explanations until you submit the block or time expires.
                 </div>
               )}
+            </div>
+          )}
+
+          {!isCheatSheetMode && preferences.sessionStyle === 'block' && (
+            <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-xs font-bold text-slate-600">Block Mix</span>
+                {mixedBlockEnabled && (
+                  <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
+                    Pulm + Heme
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setMixedBlockEnabled(false)}
+                  disabled={isReading}
+                  className={`px-3 py-3 rounded-xl border text-[11px] font-black uppercase tracking-widest transition-colors ${
+                    !mixedBlockEnabled
+                      ? 'bg-slate-900 text-white border-slate-900'
+                      : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                  } ${isReading ? 'opacity-60 cursor-not-allowed' : ''}`}
+                >
+                  Single Module
+                </button>
+                <button
+                  type="button"
+                  onClick={enableMixedBlock}
+                  disabled={isReading}
+                  className={`px-3 py-3 rounded-xl border text-[11px] font-black uppercase tracking-widest transition-colors ${
+                    mixedBlockEnabled
+                      ? 'bg-indigo-600 text-white border-indigo-600'
+                      : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                  } ${isReading ? 'opacity-60 cursor-not-allowed' : ''}`}
+                >
+                  Pulm + Heme
+                </button>
+              </div>
+              <div className="mt-2 text-[11px] text-slate-500 font-semibold">
+                Splits questions roughly 50/50 to simulate exam conditions.
+              </div>
             </div>
           )}
 
@@ -471,9 +630,9 @@ const InputSection: React.FC<InputSectionProps> = ({
           )}
           <button
             onClick={handleSubmit}
-            disabled={isLoading || !selectedGuide || !studyGuideText.trim() || isReading}
+            disabled={isLoading || isReading || !canSubmit}
             className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest text-sm transition-all transform active:scale-95 ${
-              isLoading || isReading || !selectedGuide || !studyGuideText.trim()
+              isLoading || isReading || !canSubmit
                 ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
                 : 'bg-teal-600 text-white shadow-xl shadow-teal-500/30 hover:bg-teal-700 hover:shadow-teal-500/40'
             }`}
