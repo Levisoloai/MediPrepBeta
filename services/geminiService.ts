@@ -271,11 +271,13 @@ export const normalizeDeepDiveQuiz = (rawQuiz: any[], concept: string): Question
           }),
           explanation: q.explanation || '',
           studyConcepts: Array.isArray(q.studyConcepts) ? q.studyConcepts : [],
-          difficulty: q.difficulty || DifficultyLevel.CLINICAL_VIGNETTE
+          difficulty: q.difficulty || DifficultyLevel.CLINICAL_VIGNETTE,
+          histology: q.histology
         };
       });
 
-  return normalized.map((q) => {
+  return normalized.map((q, idx) => {
+    const fallbackReview = (coerced[idx] as any)?.adminReview;
     const hasUworldSections =
       q.explanation?.includes('**Explanation:**') &&
       q.explanation?.includes('**Choice Analysis:**') &&
@@ -289,7 +291,8 @@ export const normalizeDeepDiveQuiz = (rawQuiz: any[], concept: string): Question
       ...q,
       explanation,
       studyConcepts: q.studyConcepts && q.studyConcepts.length ? q.studyConcepts : (concept ? [concept] : []),
-      difficulty: q.difficulty || DifficultyLevel.CLINICAL_VIGNETTE
+      difficulty: q.difficulty || DifficultyLevel.CLINICAL_VIGNETTE,
+      adminReview: q.adminReview || fallbackReview
     };
   });
 };
@@ -650,7 +653,8 @@ export const extendDeepDiveQuiz = async (
   concept: string,
   count: number = 5,
   signal?: AbortSignal,
-  difficulty: 'easier' | 'same' | 'harder' = 'same'
+  difficulty: 'easier' | 'same' | 'harder' = 'same',
+  reviewerNote?: string
 ): Promise<Question[]> => {
   const difficultyInstruction =
     difficulty === 'easier'
@@ -658,6 +662,7 @@ export const extendDeepDiveQuiz = async (
       : difficulty === 'harder'
       ? 'Make these harder: add a key lab/imaging nuance, require multi-step reasoning, keep one-best-answer.'
       : 'Match the current difficulty level.';
+  const reviewerInstruction = reviewerNote ? `Reviewer feedback: ${reviewerNote}` : '';
   const histologyNote = /hematology|pulmonology/i.test(topicContext)
     ? 'When relevant, include morphology/histology cues (peripheral smear, biopsy). If you reference an image, explicitly say: "A representative histology image is provided below."'
     : '';
@@ -670,6 +675,7 @@ Task: Generate ${count} NEW practice questions to test this concept further.
 - Ensure questions are distinct from standard basic questions.
 - Focus on high-yield board vignettes.
  ${difficultyInstruction}
+${reviewerInstruction}
 ${histologyNote}
 
 Return ONLY valid JSON with a 'quiz' array.

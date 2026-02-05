@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { getPrefabSet, listPrefabSets, seedPrefabSet, replacePrefabQuestion, restorePrefabQuestion, getActivePrefabQuestions } from '../services/prefabService';
 import { deepDivePrefabTopics } from '../utils/deepDivePrefabs';
-import { getDeepDivePrefab, seedDeepDivePrefab, appendDeepDivePrefab } from '../services/deepDivePrefabService';
+import { getDeepDivePrefab, seedDeepDivePrefab, appendDeepDivePrefab, replaceDeepDivePrefabQuestion, restoreDeepDivePrefabQuestion } from '../services/deepDivePrefabService';
 import { startDeepDive, extendDeepDiveQuiz } from '../services/geminiService';
 import { buildStudyGuideItems } from '../utils/studyGuide';
 import { CardStyle, DifficultyLevel, ExamFormat, GoldQuestionRow, Question, QuestionType, StudyGuideItem, UserPreferences } from '../types';
@@ -1106,9 +1106,8 @@ const BetaAnalyticsView: React.FC<AbDebugProps> = ({
   const selectedDeepDives = deepDiveSeeds.filter((seed) => deepDiveSelected[seed.id]);
   const missingDeepDives = deepDiveSeeds.filter((seed) => seed.status === 'missing' || seed.status === 'error');
 
-  const getReasonValue = (questionId: string) => {
-    const existing = selectedPrefab?.questions?.find((question) => question.id === questionId)?.adminReview?.reason;
-    return reviewReasons[questionId] || existing || removalReasons[0];
+  const getReasonValue = (questionId: string, existingReason?: string) => {
+    return reviewReasons[questionId] || existingReason || removalReasons[0];
   };
 
   const refreshSelectedPrefab = async () => {
@@ -1119,6 +1118,76 @@ const BetaAnalyticsView: React.FC<AbDebugProps> = ({
     } catch (err: any) {
       setSelectedPrefab(null);
       setPrefabError(err?.message || 'Failed to load prefab questions.');
+    }
+  };
+
+  const refreshSelectedDeepDive = async () => {
+    if (!selectedDeepDiveMeta) return;
+    try {
+      const cached = await getDeepDivePrefab(selectedDeepDiveMeta.source, selectedDeepDiveMeta.concept);
+      if (!cached) {
+        setSelectedDeepDive(null);
+        setDeepDiveDrawerError('No cached deep dive found for this topic.');
+        return;
+      }
+      setSelectedDeepDive({
+        topicKey: cached.topicKey,
+        topicContext: cached.topicContext,
+        concept: cached.concept,
+        lessonContent: cached.lessonContent || '',
+        quiz: Array.isArray(cached.quiz) ? cached.quiz : [],
+        createdAt: cached.createdAt,
+        model: cached.model
+      });
+    } catch (err: any) {
+      setDeepDiveDrawerError(err?.message || 'Failed to reload deep dive prefab.');
+    }
+  };
+
+  const handleDeepDiveRetireReplace = async (questionId: string) => {
+    if (!selectedDeepDiveMeta) return;
+    const existing = selectedDeepDive?.quiz?.find((question) => question.id === questionId)?.adminReview?.reason;
+    const reason = getReasonValue(questionId, existing);
+    const existingNote = selectedDeepDive?.quiz?.find((question) => question.id === questionId)?.adminReview?.note;
+    const note = (reviewNotes[questionId] ?? existingNote ?? '').trim();
+    if (reason === 'Other' && !note) {
+      alert('Please add a note when selecting "Other".');
+      return;
+    }
+
+    setReviewLoading((prev) => ({ ...prev, [questionId]: true }));
+    try {
+      await replaceDeepDivePrefabQuestion(
+        selectedDeepDiveMeta.source,
+        selectedDeepDiveMeta.concept,
+        questionId,
+        reason,
+        note,
+        adminUserId || undefined
+      );
+      await refreshSelectedDeepDive();
+    } catch (err: any) {
+      alert(err?.message || 'Failed to replace the question.');
+    } finally {
+      setReviewLoading((prev) => ({ ...prev, [questionId]: false }));
+    }
+  };
+
+  const handleDeepDiveRestoreQuestion = async (questionId: string) => {
+    if (!selectedDeepDiveMeta) return;
+    setReviewLoading((prev) => ({ ...prev, [questionId]: true }));
+    try {
+      await restoreDeepDivePrefabQuestion(
+        selectedDeepDiveMeta.source,
+        selectedDeepDiveMeta.concept,
+        questionId,
+        adminUserId || undefined
+      );
+      await refreshSelectedDeepDive();
+    } catch (err: any) {
+      alert(err?.message || 'Failed to restore the question.');
+    } finally {
+      setReviewLoading((prev) => ({ ...prev, [questionId]: false }));
     }
   };
 
@@ -2692,7 +2761,7 @@ const BetaAnalyticsView: React.FC<AbDebugProps> = ({
                 const isRetired = question.adminReview?.status === 'retired';
                 const slotNumber = Number.isFinite(question.prefabIndex) ? (question.prefabIndex as number) + 1 : idx + 1;
                 const isWorking = Boolean(reviewLoading[question.id]);
-                const reasonValue = getReasonValue(question.id);
+                const reasonValue = getReasonValue(question.id, question.adminReview?.reason);
                 return (
                   <div key={`${question.id}-${idx}`} className="border border-slate-200 rounded-2xl p-5 bg-slate-50/50">
                     <div className="flex items-start justify-between mb-3 gap-3">
@@ -2891,10 +2960,31 @@ const BetaAnalyticsView: React.FC<AbDebugProps> = ({
                     <div className="text-sm text-slate-400">No questions found for this deep dive.</div>
                   )}
 
-                  {selectedDeepDive.quiz.map((question, idx) => (
+                  {selectedDeepDive.quiz.map((question, idx) => {
+                    const questionId = question.id || '';
+                    const isRetired = question.adminReview?.status === 'retired';
+                    const isWorking = questionId ? Boolean(reviewLoading[questionId]) : false;
+                    const reasonValue = getReasonValue(questionId, question.adminReview?.reason);
+                    return (
                     <div key={`${question.id || 'dd'}-${idx}`} className="border border-slate-200 rounded-2xl p-5 bg-white">
-                      <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">
-                        Question {idx + 1}
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                          Question {idx + 1}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                              isRetired ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'
+                            }`}
+                          >
+                            {isRetired ? 'Retired' : 'Active'}
+                          </span>
+                          {question.adminReview?.replacedFromId && (
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-indigo-50 text-indigo-600">
+                              Replacement
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div className="text-sm font-semibold text-slate-800 leading-relaxed whitespace-pre-wrap mb-3">
                         {question.questionText}
@@ -2926,8 +3016,73 @@ const BetaAnalyticsView: React.FC<AbDebugProps> = ({
                         <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Explanation</div>
                         <div className="text-sm text-slate-600 whitespace-pre-wrap">{question.explanation}</div>
                       </div>
+
+                      <div className="mt-4 border-t border-slate-200 pt-4">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Admin Review</div>
+                        {!isRetired ? (
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              <select
+                                value={reasonValue}
+                                onChange={(e) => setReviewReasons((prev) => ({ ...prev, [questionId]: e.target.value }))}
+                                className="px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-600 bg-white"
+                                disabled={!questionId}
+                              >
+                                {removalReasons.map((reason) => (
+                                  <option key={reason} value={reason}>{reason}</option>
+                                ))}
+                              </select>
+                              <input
+                                type="text"
+                                value={questionId ? (reviewNotes[questionId] ?? question.adminReview?.note ?? '') : ''}
+                                onChange={(e) => setReviewNotes((prev) => ({ ...prev, [questionId]: e.target.value }))}
+                                placeholder="Optional note (required if Other)"
+                                className="px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-600"
+                                disabled={!questionId}
+                              />
+                            </div>
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="text-[10px] text-slate-400">
+                                Note required when reason is “Other”.
+                              </div>
+                              <button
+                                onClick={() => questionId && handleDeepDiveRetireReplace(questionId)}
+                                disabled={isWorking || !questionId}
+                                className="px-4 py-2 rounded-xl bg-rose-600 text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-60"
+                              >
+                                {isWorking ? 'Working…' : 'Retire & Replace'}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="text-xs text-slate-500">
+                              Reason: <span className="font-semibold text-slate-700">{question.adminReview?.reason || '—'}</span>
+                            </div>
+                            {question.adminReview?.note && (
+                              <div className="text-xs text-slate-500">
+                                Note: <span className="font-semibold text-slate-700">{question.adminReview.note}</span>
+                              </div>
+                            )}
+                            {question.adminReview?.replacedById && (
+                              <div className="text-[10px] text-slate-400 uppercase tracking-widest">
+                                Replacement: {maskId(question.adminReview.replacedById)}
+                              </div>
+                            )}
+                            <div className="flex items-center justify-end">
+                              <button
+                                onClick={() => questionId && handleDeepDiveRestoreQuestion(questionId)}
+                                disabled={isWorking || !questionId}
+                                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 disabled:opacity-60"
+                              >
+                                {isWorking ? 'Working…' : 'Restore'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  ))}
+                  )})}
                 </>
               )}
             </div>

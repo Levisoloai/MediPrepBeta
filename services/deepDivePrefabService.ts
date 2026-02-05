@@ -1,6 +1,8 @@
 import { supabase } from './supabaseClient';
 import { hashText, normalizeText } from '../utils/studyGuide';
 import { buildFingerprintSet, filterDuplicateQuestions } from '../utils/questionDedupe';
+import { Question } from '../types';
+import { extendDeepDiveQuiz, normalizeDeepDiveQuiz } from './geminiService';
 
 type DeepDiveCacheRow = {
   topic_key: string;
@@ -97,4 +99,133 @@ export const appendDeepDivePrefab = async (
   }
 
   return row;
+};
+
+const updateDeepDiveQuiz = async (topicKey: string, quiz: Question[]) => {
+  const { error } = await supabase
+    .from('deep_dive_cache')
+    .update({ quiz })
+    .eq('topic_key', topicKey);
+
+  if (error) {
+    throw error;
+  }
+};
+
+export const replaceDeepDivePrefabQuestion = async (
+  topicContext: string,
+  concept: string,
+  questionId: string,
+  reason: string,
+  note?: string,
+  adminId?: string
+) => {
+  const existing = await getDeepDivePrefab(topicContext, concept);
+  if (!existing) {
+    throw new Error('Deep dive prefab not found.');
+  }
+
+  const normalized = normalizeDeepDiveQuiz(existing.quiz, concept);
+  const index = normalized.findIndex((q) => q.id === questionId);
+  if (index === -1) {
+    throw new Error('Question not found in deep dive prefab.');
+  }
+
+  const target = normalized[index];
+  const reviewedAt = new Date().toISOString();
+  const retiredTarget: Question = {
+    ...target,
+    adminReview: {
+      ...(target.adminReview || {}),
+      status: 'retired',
+      reason,
+      note,
+      reviewedAt,
+      reviewedBy: adminId || target.adminReview?.reviewedBy
+    }
+  };
+
+  normalized[index] = retiredTarget;
+
+  const reviewerNote = [reason, note].filter(Boolean).join(' • ');
+  const candidates = await extendDeepDiveQuiz(null, topicContext, concept, 1, undefined, 'same', reviewerNote || undefined);
+  const existingSet = buildFingerprintSet(normalized);
+  const { unique } = filterDuplicateQuestions(candidates, existingSet);
+  if (!unique.length) {
+    throw new Error('Replacement matched an existing question. Please try again.');
+  }
+
+  const replacement = unique[0];
+  const replacementQuestion: Question = {
+    ...replacement,
+    adminReview: {
+      status: 'active',
+      reviewedAt,
+      reviewedBy: adminId || target.adminReview?.reviewedBy,
+      replacedFromId: target.id
+    }
+  };
+
+  normalized[index] = {
+    ...retiredTarget,
+    adminReview: {
+      ...(retiredTarget.adminReview || {}),
+      replacedById: replacementQuestion.id
+    }
+  };
+
+  normalized.splice(index + 1, 0, replacementQuestion);
+  await updateDeepDiveQuiz(existing.topicKey, normalized);
+  return normalized;
+};
+
+export const restoreDeepDivePrefabQuestion = async (
+  topicContext: string,
+  concept: string,
+  questionId: string,
+  adminId?: string
+) => {
+  const existing = await getDeepDivePrefab(topicContext, concept);
+  if (!existing) {
+    throw new Error('Deep dive prefab not found.');
+  }
+
+  const normalized = normalizeDeepDiveQuiz(existing.quiz, concept);
+  const index = normalized.findIndex((q) => q.id === questionId);
+  if (index === -1) {
+    throw new Error('Question not found in deep dive prefab.');
+  }
+
+  const target = normalized[index];
+  const reviewedAt = new Date().toISOString();
+  normalized[index] = {
+    ...target,
+    adminReview: {
+      ...(target.adminReview || {}),
+      status: 'active',
+      reviewedAt,
+      reviewedBy: adminId || target.adminReview?.reviewedBy
+    }
+  };
+
+  const replacementId = target.adminReview?.replacedById;
+  if (replacementId) {
+    const replacementIndex = normalized.findIndex((q) => q.id === replacementId);
+    if (replacementIndex !== -1) {
+      const replacement = normalized[replacementIndex];
+      normalized[replacementIndex] = {
+        ...replacement,
+        adminReview: {
+          ...(replacement.adminReview || {}),
+          status: 'retired',
+          reviewedAt,
+          reviewedBy: adminId || replacement.adminReview?.reviewedBy,
+          reason: replacement.adminReview?.reason || 'Restored original'
+        }
+      };
+    }
+  }
+
+  await updateDeepDiveQuiz(existing.topicKey, normalized);
+  return normalized;
 };

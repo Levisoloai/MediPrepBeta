@@ -157,7 +157,9 @@ const DeepDiveView: React.FC<DeepDiveViewProps> = ({ prefilledTopic, clearPrefil
     try {
       const cached = await getDeepDivePrefab(selectedSource, prefabMatch?.concept || conceptTrimmed);
       if (cached) {
-        const normalizedQuiz = normalizeDeepDiveQuiz(cached.quiz, cached.concept || conceptTrimmed).slice(0, initialCount);
+        const rawQuiz = Array.isArray(cached.quiz) ? cached.quiz : [];
+        const activeQuiz = rawQuiz.filter((q: any) => q?.adminReview?.status !== 'retired');
+        const normalizedQuiz = normalizeDeepDiveQuiz(activeQuiz, cached.concept || conceptTrimmed).slice(0, initialCount);
         const withHistology = attachHistologyToQuestions(normalizedQuiz, selectedSource);
         setLessonContent(cached.lessonContent);
         setQuiz(withHistology);
