@@ -515,8 +515,8 @@ const DeepDiveView: React.FC<DeepDiveViewProps> = ({ prefilledTopic, clearPrefil
 
   if (state === 'select') {
     return (
-      <div className="flex items-center justify-center h-full p-6 animate-in fade-in overflow-y-auto custom-scrollbar">
-        <div className="max-w-lg w-full bg-white rounded-2xl shadow-xl border border-indigo-100 p-8 my-4">
+      <div className="flex items-start justify-center min-h-full p-6 pt-10 animate-in fade-in">
+        <div className="max-w-lg w-full bg-white rounded-2xl shadow-xl border border-indigo-100 p-8">
            <div className="text-center mb-8">
              <div className="w-16 h-16 bg-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-4 text-indigo-600">
                <AcademicCapIcon className="w-8 h-8" />
@@ -556,24 +556,26 @@ const DeepDiveView: React.FC<DeepDiveViewProps> = ({ prefilledTopic, clearPrefil
              {prefabTopicsForSource.length > 0 && (
                <div>
                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">Prefab Topics</label>
-                 <div className="flex flex-wrap gap-2">
-                   {prefabTopicsForSource.map((topic) => {
-                     const isActive = normalizeValue(concept) === normalizeValue(topic.concept);
-                     return (
-                       <button
-                         key={topic.concept}
-                         type="button"
-                         onClick={() => setConcept(topic.concept)}
-                         className={`px-3 py-2 rounded-xl border text-xs font-semibold transition-all ${
-                           isActive
-                             ? 'bg-indigo-600 text-white border-indigo-600 shadow'
-                             : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-700'
-                         }`}
-                       >
-                         {topic.concept}
-                       </button>
-                     );
-                   })}
+                 <div className="max-h-[42vh] overflow-y-auto pr-1 custom-scrollbar">
+                   <div className="flex flex-wrap gap-2">
+                     {prefabTopicsForSource.map((topic) => {
+                       const isActive = normalizeValue(concept) === normalizeValue(topic.concept);
+                       return (
+                         <button
+                           key={topic.concept}
+                           type="button"
+                           onClick={() => setConcept(topic.concept)}
+                           className={`px-3 py-2 rounded-xl border text-xs font-semibold transition-all ${
+                             isActive
+                               ? 'bg-indigo-600 text-white border-indigo-600 shadow'
+                               : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-700'
+                           }`}
+                         >
+                           {topic.concept}
+                         </button>
+                       );
+                     })}
+                   </div>
                  </div>
                  <p className="text-[10px] text-slate-400 mt-2">Prefab topics load instantly when cached and help keep costs low.</p>
                </div>
