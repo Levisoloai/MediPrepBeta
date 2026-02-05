@@ -1,16 +1,19 @@
 import { Question } from '../types';
 
-const stripOptionPrefix = (text: string) =>
-  String(text ?? '').replace(/^[A-E](?:[\)\.\:]|\s)\s*/i, '').trim();
+const stripOptionPrefix = (text: string) => {
+  let cleaned = String(text ?? '').trim();
+  cleaned = cleaned.replace(/^[A-E]\s*[\)\.\:]\s*/i, '');
+  cleaned = cleaned.replace(/^[A-E]\s*-\s*/i, '');
+  return cleaned.trim();
+};
 
 const normalizeOptionText = (text: string) => stripOptionPrefix(text).toLowerCase();
 
 const parseChoiceAnalysis = (explanation?: string) => {
   if (!explanation) return null;
-  const marker = '**Choice Analysis:**';
-  const idx = explanation.indexOf(marker);
-  if (idx === -1) return null;
-  const after = explanation.slice(idx + marker.length);
+  const markerMatch = explanation.match(/\*\*(?:Answer\s+)?Choice Analysis:\*\*/i);
+  if (!markerMatch || markerMatch.index === undefined) return null;
+  const after = explanation.slice(markerMatch.index + markerMatch[0].length);
   const lines = after.split('\n').map((line) => line.trim());
   const tableLines = lines.filter((line) => line.startsWith('|'));
   if (tableLines.length < 3) return null;
@@ -26,7 +29,7 @@ const extractCorrectFromExplanation = (explanation: string, options: string[]) =
     if (cols.length < 2) continue;
     const optionText = cols[0];
     const rationale = cols[1] || '';
-    if (!/^correct[:\s]/i.test(rationale)) continue;
+    if (!/^correct\b/i.test(rationale)) continue;
     const normalizedOption = normalizeOptionText(optionText);
     const matched = normalizedOptions.find((opt) => opt.toLowerCase() === normalizedOption)
       || normalizedOptions.find((opt) => opt.toLowerCase().includes(normalizedOption) || normalizedOption.includes(opt.toLowerCase()));
@@ -43,25 +46,25 @@ export const resolveCorrectAnswer = (input: {
   const { correctAnswer, options, explanation } = input;
   if (options.length === 0) return String(correctAnswer ?? '').trim();
 
+  const answer = String(correctAnswer ?? '').trim();
+  const normalizedOptions = options.map((opt) => stripOptionPrefix(opt)).filter(Boolean);
+  if (answer) {
+    const letterMatch = answer.match(/\b([A-E])\b/i);
+    if (letterMatch) {
+      const idx = letterMatch[1].toUpperCase().charCodeAt(0) - 65;
+      if (normalizedOptions[idx]) return normalizedOptions[idx];
+    }
+    const normalizedAnswer = stripOptionPrefix(answer).toLowerCase();
+    const exact = normalizedOptions.find((opt) => opt.toLowerCase() === normalizedAnswer);
+    if (exact) return exact;
+    const partial = normalizedOptions.find((opt) => opt.toLowerCase().includes(normalizedAnswer) || normalizedAnswer.includes(opt.toLowerCase()));
+    if (partial) return partial;
+  }
   if (explanation) {
     const inferred = extractCorrectFromExplanation(explanation, options);
     if (inferred) return inferred;
   }
-
-  const answer = String(correctAnswer ?? '').trim();
-  if (!answer) return '';
-  const normalizedOptions = options.map((opt) => stripOptionPrefix(opt)).filter(Boolean);
-  const letterMatch = answer.match(/\b([A-E])\b/i);
-  if (letterMatch) {
-    const idx = letterMatch[1].toUpperCase().charCodeAt(0) - 65;
-    if (normalizedOptions[idx]) return normalizedOptions[idx];
-  }
-  const normalizedAnswer = stripOptionPrefix(answer).toLowerCase();
-  const exact = normalizedOptions.find((opt) => opt.toLowerCase() === normalizedAnswer);
-  if (exact) return exact;
-  const partial = normalizedOptions.find((opt) => opt.toLowerCase().includes(normalizedAnswer) || normalizedAnswer.includes(opt.toLowerCase()));
-  if (partial) return partial;
-  return stripOptionPrefix(answer);
+  return answer ? stripOptionPrefix(answer) : '';
 };
 
 export const normalizeOptions = (raw: any): string[] => {

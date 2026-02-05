@@ -162,17 +162,33 @@ const mapGeneratedQuestions = (rawQuestions: any[], preferences: UserPreferences
       ? sanitized.options
       : undefined;
     const normalizedOptions = rawOptions ? normalizeOptions(rawOptions) : [];
-    const shuffledOptions = normalizedOptions.length > 0 ? shuffleArray(normalizedOptions) : undefined;
-    const correctAnswer = shuffledOptions
-      ? resolveCorrectAnswer({ correctAnswer: q.correctAnswer || '', options: shuffledOptions, explanation: q.explanation || '' })
+    let resolvedCorrect = normalizedOptions.length > 0
+      ? resolveCorrectAnswer({ correctAnswer: q.correctAnswer || '', options: normalizedOptions, explanation: q.explanation || '' })
       : String(q.correctAnswer || '').trim();
+    if (normalizedOptions.length > 0 && q.explanation) {
+      const inferredFromExplanation = resolveCorrectAnswer({
+        correctAnswer: '',
+        options: normalizedOptions,
+        explanation: q.explanation || ''
+      });
+      const rawAnswer = String(q.correctAnswer || '').trim();
+      const isLetterAnswer = /^[A-E](?:[\)\.\:\s]|$)/i.test(rawAnswer);
+      if (
+        inferredFromExplanation &&
+        inferredFromExplanation.toLowerCase() !== resolvedCorrect.toLowerCase() &&
+        (!rawAnswer || isLetterAnswer)
+      ) {
+        resolvedCorrect = inferredFromExplanation;
+      }
+    }
+    const shuffledOptions = normalizedOptions.length > 0 ? shuffleArray(normalizedOptions) : undefined;
 
     return {
       id: q.id || Math.random().toString(36).slice(2, 9),
       type: q.type || preferences.questionType,
       questionText: sanitized.text || rawText || '',
       options: shuffledOptions,
-      correctAnswer: correctAnswer,
+      correctAnswer: resolvedCorrect,
       explanation: q.explanation || '',
       studyConcepts: Array.isArray(q.studyConcepts) ? q.studyConcepts : [],
       difficulty: q.difficulty || preferences.difficulty,
