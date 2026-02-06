@@ -408,34 +408,139 @@ const DeepDiveView: React.FC<DeepDiveViewProps> = ({ prefilledTopic, clearPrefil
     setIsExporting(true);
     try {
       const element = contentRef.current;
+
+      const formatConceptTitle = (raw: string) =>
+        (raw || '')
+          .replace(/_/g, ' ')
+          .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+          .replace(/\s+/g, ' ')
+          .trim();
+
+      const conceptTitle = formatConceptTitle(concept) || 'Deep Dive';
+      const exportStamp = new Date().toLocaleString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      // Table rects (CSS px) to improve page breaks. We calculate these BEFORE capture so layout is stable.
+      const elementRect = element.getBoundingClientRect();
+      const tableRects = Array.from(element.querySelectorAll('table')).map((table) => {
+        const r = table.getBoundingClientRect();
+        return {
+          topCss: r.top - elementRect.top,
+          bottomCss: r.bottom - elementRect.top
+        };
+      });
+
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         backgroundColor: '#ffffff',
-        windowWidth: 800,
+        windowWidth: 800
       });
 
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pdfWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      
-      let heightLeft = imgHeight;
-      let position = 0;
+      const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
 
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pdfHeight;
+      const marginX = 12;
+      const marginTop = 10;
+      const marginBottom = 10;
+      const headerHeight = 16;
+      const footerHeight = 10;
 
-      while (heightLeft > 0) {
-        position -= pdfHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight;
+      const bodyX = marginX;
+      const bodyY = marginTop + headerHeight;
+      const bodyW = pageWidth - marginX * 2;
+      const bodyH = pageHeight - bodyY - (footerHeight + marginBottom);
+
+      // Scale is set by fitting the captured canvas to the PDF body width.
+      const mmPerPx = bodyW / canvas.width;
+      const pageBodyHeightPx = Math.floor(bodyH / mmPerPx);
+      const contentHeightPx = canvas.height;
+
+      // Map DOM table positions -> canvas pixel space.
+      const yScale = element.scrollHeight > 0 ? canvas.height / element.scrollHeight : 1;
+      const tableRangesPx = tableRects
+        .map((r) => ({ top: r.topCss * yScale, bottom: r.bottomCss * yScale }))
+        .filter((r) => Number.isFinite(r.top) && Number.isFinite(r.bottom) && r.bottom > 0 && r.bottom > r.top);
+
+      const minSlicePx = Math.floor(pageBodyHeightPx * 0.35);
+      const slices: Array<{ startY: number; endY: number }> = [];
+
+      let startY = 0;
+      while (startY < contentHeightPx) {
+        let endY = Math.min(contentHeightPx, startY + pageBodyHeightPx);
+
+        // Avoid cutting through a table when we can reasonably shift the break upward.
+        if (endY < contentHeightPx && tableRangesPx.length > 0) {
+          const hit = tableRangesPx.find((t) => t.top < endY && t.bottom > endY && t.top - startY >= minSlicePx);
+          if (hit) {
+            endY = Math.max(startY + 1, Math.floor(hit.top));
+          }
+        }
+
+        if (endY <= startY) {
+          endY = Math.min(contentHeightPx, startY + pageBodyHeightPx);
+        }
+
+        slices.push({ startY, endY });
+        startY = endY;
       }
 
-      pdf.save(`MediPrep_DeepDive_${concept.replace(/\s+/g, '_')}.pdf`);
+      const totalPages = slices.length;
+      const jpegQuality = 0.88;
+
+      const drawHeaderFooter = (pageIndex: number) => {
+        pdf.setTextColor(100);
+        pdf.setFontSize(9);
+        pdf.text('MediPrep Deep Dive', marginX, marginTop + 4);
+
+        pdf.setTextColor(20);
+        pdf.setFontSize(14);
+        pdf.text(conceptTitle, marginX, marginTop + 11);
+
+        pdf.setTextColor(120);
+        pdf.setFontSize(8);
+        pdf.text(`Exported ${exportStamp}`, pageWidth - marginX, marginTop + 4, { align: 'right' });
+
+        pdf.setTextColor(140);
+        pdf.setFontSize(8);
+        pdf.text('medi-prep-beta.vercel.app', marginX, pageHeight - marginBottom - 3);
+        pdf.text(`Page ${pageIndex + 1} / ${totalPages}`, pageWidth - marginX, pageHeight - marginBottom - 3, {
+          align: 'right'
+        });
+      };
+
+      for (let i = 0; i < slices.length; i += 1) {
+        const { startY: sliceStart, endY: sliceEnd } = slices[i];
+        const sliceHeightPx = sliceEnd - sliceStart;
+
+        const sliceCanvas = document.createElement('canvas');
+        sliceCanvas.width = canvas.width;
+        sliceCanvas.height = sliceHeightPx;
+        const ctx = sliceCanvas.getContext('2d');
+        if (!ctx) continue;
+
+        ctx.drawImage(canvas, 0, sliceStart, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
+
+        const imgData = sliceCanvas.toDataURL('image/jpeg', jpegQuality);
+        const sliceHeightMm = sliceHeightPx * mmPerPx;
+
+        if (i > 0) pdf.addPage();
+        drawHeaderFooter(i);
+        pdf.addImage(imgData, 'JPEG', bodyX, bodyY, bodyW, sliceHeightMm);
+      }
+
+      const fileSlug = conceptTitle
+        .replace(/\s+/g, '_')
+        .replace(/[^A-Za-z0-9_]/g, '')
+        .slice(0, 80);
+
+      pdf.save(`MediPrep_DeepDive_${fileSlug || 'Export'}.pdf`);
     } catch (err) {
       console.error("PDF Export Error", err);
       alert("Failed to export PDF.");
@@ -698,7 +803,7 @@ const DeepDiveView: React.FC<DeepDiveViewProps> = ({ prefilledTopic, clearPrefil
          </div>
          
          <div className="flex-1 overflow-y-auto bg-white rounded-2xl shadow-xl border border-slate-100 p-10 md:p-14 mb-6 custom-scrollbar">
-            <div ref={contentRef} className="max-w-4xl mx-auto">
+            <div className="max-w-4xl mx-auto">
                <div className="mb-10 border-b border-slate-100 pb-6 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                      <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-black">MP</div>
@@ -711,7 +816,7 @@ const DeepDiveView: React.FC<DeepDiveViewProps> = ({ prefilledTopic, clearPrefil
                     Reference Summary
                   </div>
                </div>
-               <div className="space-y-4">
+               <div ref={contentRef} className="space-y-4">
                   {renderMarkdown(lessonContent)}
                </div>
             </div>
