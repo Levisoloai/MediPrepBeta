@@ -4,6 +4,7 @@ import InputSection from './components/InputSection';
 import QuestionCard from './components/QuestionCard';
 import EmptyState from './components/EmptyState';
 import DeepDiveView from './components/DeepDiveView';
+import CoagCascadeView from './components/CoagCascadeView';
 import BetaAnalyticsView from './components/BetaAnalyticsView';
 import SummaryView from './components/SummaryView';
 import AuthModal from './components/AuthModal';
@@ -27,7 +28,7 @@ import { supabase } from './services/supabaseClient';
 import { fetchSeenFingerprints, recordSeenQuestions } from './services/seenQuestionsService';
 import { trackTutorUsage } from './services/tutorUsageService';
 
-type ViewMode = 'generate' | 'practice' | 'remediation' | 'deepdive' | 'histology' | 'analytics' | 'cheatsheet';
+type ViewMode = 'generate' | 'practice' | 'remediation' | 'cascade' | 'deepdive' | 'histology' | 'analytics' | 'cheatsheet';
 
 const normalizeStudyConcepts = (raw: any): string[] => {
   if (Array.isArray(raw)) {
@@ -65,7 +66,7 @@ const App: React.FC = () => {
   const BLOCK_DURATION_KEY = 'mediprep_block_duration_ms';
   const BLOCK_CURRENT_INDEX_KEY = 'mediprep_block_current_index';
   const BLOCK_MARKED_IDS_KEY = 'mediprep_block_marked_ids';
-  const allowedViews = new Set<ViewMode>(['generate', 'practice', 'remediation', 'deepdive', 'histology', 'analytics', 'cheatsheet']);
+  const allowedViews = new Set<ViewMode>(['generate', 'practice', 'remediation', 'cascade', 'deepdive', 'histology', 'analytics', 'cheatsheet']);
   const loadBetaPrefs = (): UserPreferences => {
     const defaults: UserPreferences = {
       generationMode: 'questions',
@@ -2061,7 +2062,7 @@ const App: React.FC = () => {
   const canViewAnalytics = isAdmin;
 
   const isRemediationView = view === 'remediation';
-  const isImmersiveView = view === 'practice' || view === 'deepdive' || view === 'remediation' || view === 'histology';
+  const isImmersiveView = view === 'practice' || view === 'deepdive' || view === 'remediation' || view === 'histology' || view === 'cascade';
   const activeQuestions = isRemediationView ? remediationQuestions : practiceQuestions;
   const activeStates = isRemediationView ? remediationStates : practiceStates;
   const activeSummary = isRemediationView ? remediationSummary : practiceSummary;
@@ -2348,6 +2349,8 @@ const App: React.FC = () => {
               )}
             </div>
           )}
+
+          {view === 'cascade' && <CoagCascadeView user={user} />}
           
           {isBlockPractice && (
             <div

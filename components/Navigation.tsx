@@ -1,7 +1,7 @@
 import React from 'react';
-import { BeakerIcon, PencilSquareIcon, AcademicCapIcon, SparklesIcon, UserCircleIcon, ChartBarIcon, ArrowPathIcon, PhotoIcon, DocumentTextIcon } from '@heroicons/react/24/solid';
+import { BeakerIcon, PencilSquareIcon, AcademicCapIcon, SparklesIcon, UserCircleIcon, ChartBarIcon, ArrowPathIcon, PhotoIcon, DocumentTextIcon, Squares2X2Icon } from '@heroicons/react/24/solid';
 
-type ViewMode = 'generate' | 'practice' | 'remediation' | 'deepdive' | 'histology' | 'analytics' | 'cheatsheet';
+type ViewMode = 'generate' | 'practice' | 'remediation' | 'cascade' | 'deepdive' | 'histology' | 'analytics' | 'cheatsheet';
 
 interface NavigationProps {
   currentView: ViewMode;
@@ -30,6 +30,7 @@ const Navigation: React.FC<NavigationProps> = ({
     { id: 'generate', label: 'Generate', icon: BeakerIcon },
     { id: 'practice', label: 'Practice', icon: PencilSquareIcon, count: practiceCount },
     ...(showRemediation ? [{ id: 'remediation', label: 'Remediation', icon: ArrowPathIcon, count: remediationCount }] : []),
+    { id: 'cascade', label: 'Cascade', icon: Squares2X2Icon },
     { id: 'cheatsheet', label: 'Cheat Sheet', icon: DocumentTextIcon },
     { id: 'histology', label: 'Histology', icon: PhotoIcon },
     { id: 'deepdive', label: 'Deep Dive', icon: AcademicCapIcon },
