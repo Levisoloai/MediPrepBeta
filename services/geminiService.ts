@@ -297,30 +297,41 @@ const betaDisabled = (feature: string) => {
 
 const sanitizeTutorResponse = (text: string) => {
   if (!text) return '';
-  const lines = text.split('\n');
-  const cleanedLines = lines
-    .map((line) => line.replace(/\t/g, ' ').trimEnd())
+  let cleaned = stripCodeFences(text)
+    .replace(/\r\n/g, '\n')
+    .replace(/\t/g, ' ');
+
+  // Remove stray triple-backticks that can leak through.
+  cleaned = cleaned.replace(/```+/g, '');
+
+  // Remove markdown-only cosmetics but keep structure (newlines, bullets, tables).
+  cleaned = cleaned
+    .split('\n')
     .map((line) => {
-      let next = line;
-      next = next.replace(/^#{1,6}\s*/, '');
-      next = next.replace(/^\*\*\*+\s*/, '');
-      next = next.replace(/^\*\*\s*/, '');
-      next = next.replace(/^\*\s+/, '');
-      next = next.replace(/^-\s+/, '');
-      next = next.replace(/^•\s+/, '');
-      next = next.replace(/^\d+\.\s+/, '');
-      next = next.replace(/`{3,}/g, '');
-      next = next.replace(/\*\*(.*?)\*\*/g, '$1');
-      next = next.replace(/__(.*?)__/g, '$1');
-      if (/\|/.test(next) && (next.match(/\|/g) || []).length >= 2) {
-        next = next.replace(/\|/g, ' - ');
-      }
+      let next = line.trimEnd();
+      next = next.replace(/^#{1,6}\s*/, ''); // heading markers
+      next = next.replace(/\*\*(.*?)\*\*/g, '$1'); // bold
+      next = next.replace(/__(.*?)__/g, '$1'); // underline
       return next;
     })
-    .filter((line) => line.trim() !== '');
+    .join('\n')
+    .trim();
 
-  return cleanedLines.join('\n');
+  // Collapse excessive blank lines (keep readability for tables/bullets).
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+
+  // Hard cap to avoid runaway responses.
+  const maxChars = 4500;
+  if (cleaned.length > maxChars) {
+    cleaned = `${cleaned.slice(0, maxChars).trimEnd()}\n\n(Truncated)`;
+  }
+
+  return cleaned;
 };
+
+// Test-only helper to keep the sanitizer behavior stable.
+// We avoid exporting the internal function directly to keep the public surface area small.
+export const sanitizeTutorResponseForTest = (text: string) => sanitizeTutorResponse(text);
 
 type TutorStudentState = Partial<Pick<QuestionState, 'selectedOption' | 'showAnswer' | 'struckOptions'>>;
 
@@ -641,20 +652,34 @@ export const chatWithTutor = async (
   const revealAllowed = Boolean(studentState?.showAnswer);
   const questionContext = formatTutorQuestionContext(question, studentState);
   const systemInstruction = `
-You are a concise Socratic medical tutor.
-Help the student reason through the question without dumping long explanations.
-
-Style rules:
-- Plain text only. No markdown, no headings, no bold, no bullet lists, no tables.
-- Keep it tight: 4-8 short paragraphs max.
-- Ask 3-5 guiding questions (use "Q1)", "Q2)" style).
-- Mention only 2-3 key abnormalities if labs matter.
-- End with a single "Check:" question.
-- During the attempt phase, do not reveal the final answer or "Answer key" unless the student asks directly.
-- If reveal is allowed, you may explain the correct answer openly and contrast it with 1-2 close distractors.
-- When referencing choices, use their letter (A, B, C...) and the option text.
+You are a medical tutor optimized for learning and recall.
+You have two modes depending on "Reveal allowed".
+Output must be plain text (no markdown rendering assumptions), but you MAY use:
+- Newlines
+- Bullets starting with "- "
+- Pipe tables using "|" characters
 
 Reveal allowed: ${revealAllowed ? 'yes' : 'no'}
+
+If reveal allowed is NO (attempt phase):
+- Do NOT reveal the final answer or the answer key unless the student explicitly asks for it.
+- Be Socratic: ask 3-5 guiding questions labeled "Q1)", "Q2)", etc.
+- Give 1-2 short hints max. If helpful, provide a non-spoilery "memory hook" about the concept (not the answer choice).
+- Keep it concise.
+
+If reveal allowed is YES (review phase):
+- Teach directly and help memorization.
+- Use this structure:
+  Bottom line: <state the correct answer and 1-sentence why>
+  Key idea: <1-2 sentences>
+  Compare table: (max 4 rows) contrasting the correct choice vs 2-3 close distractors
+  Mnemonic: <1 line, only if genuinely helpful>
+  Anki prompts:
+  - Front: ...  Back: ...
+  - Front: ...  Back: ...
+- When referencing choices, use the letter and shortened option text.
+- Keep the compare table compact.
+
 ${contextSnippet}
 
 Question context:

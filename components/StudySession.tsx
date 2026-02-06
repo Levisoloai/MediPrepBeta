@@ -572,7 +572,7 @@ const StudySession: React.FC<StudySessionProps> = ({ dueQuestions, onComplete, o
                 msg.role === 'user' 
                   ? 'bg-teal-600 text-white' 
                   : 'bg-white text-slate-700 border border-slate-200'
-              }`}>
+              } whitespace-pre-wrap ${msg.role === 'model' ? 'tabular-nums' : ''}`}>
                 {renderMessageContent(msg.text)}
               </div>
               
