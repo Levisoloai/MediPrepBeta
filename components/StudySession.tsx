@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { StoredQuestion, QuestionType, ChatMessage, CardStyle } from '../types';
 import { processReview, calculateNextIntervals } from '../services/storageService';
 import { chatWithTutor } from '../services/geminiService';
-import { CheckCircleIcon, ArrowLeftIcon, TrophyIcon, ChatBubbleLeftRightIcon, XMarkIcon, PaperAirplaneIcon, ArrowPathIcon, SparklesIcon, BoltIcon, LightBulbIcon } from '@heroicons/react/24/solid';
+import { CheckCircleIcon, ArrowLeftIcon, TrophyIcon, ChatBubbleLeftRightIcon, XMarkIcon, PaperAirplaneIcon, ArrowPathIcon, SparklesIcon, BoltIcon, LightBulbIcon, ChevronDoubleLeftIcon, ChevronDoubleRightIcon } from '@heroicons/react/24/solid';
 import katex from 'katex';
 import TutorMessage from './TutorMessage';
 
@@ -20,11 +20,13 @@ const StudySession: React.FC<StudySessionProps> = ({ dueQuestions, onComplete, o
   
   // Chat State
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isChatCollapsed, setIsChatCollapsed] = useState(() => localStorage.getItem('mediprep_study_tutor_collapsed') === '1');
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [tutorModel, setTutorModel] = useState<'flash' | 'pro'>('flash');
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const CHAT_COLLAPSED_WIDTH = 64;
 
   // Chat Resizing State
   const [sidebarWidth, setSidebarWidth] = useState(400);
@@ -66,6 +68,14 @@ const StudySession: React.FC<StudySessionProps> = ({ dueQuestions, onComplete, o
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatHistory, isChatOpen]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('mediprep_study_tutor_collapsed', isChatCollapsed ? '1' : '0');
+    } catch {
+      // ignore storage errors
+    }
+  }, [isChatCollapsed]);
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -423,7 +433,7 @@ const StudySession: React.FC<StudySessionProps> = ({ dueQuestions, onComplete, o
       <div 
         className="flex flex-col h-full transition-all duration-300 ease-out"
         style={{ 
-          marginRight: isChatOpen && window.innerWidth >= 1024 ? sidebarWidth : 0 
+          marginRight: isChatOpen && window.innerWidth >= 1024 ? (isChatCollapsed ? CHAT_COLLAPSED_WIDTH : sidebarWidth) : 0
         }}
       >
         <div className="flex-1 flex flex-col max-w-3xl mx-auto w-full">
@@ -442,7 +452,10 @@ const StudySession: React.FC<StudySessionProps> = ({ dueQuestions, onComplete, o
                 {currentIndex + 1} / {sessionQueue.length}
               </span>
               <button 
-                onClick={() => setIsChatOpen(!isChatOpen)}
+                onClick={() => {
+                  if (!isChatOpen) setIsChatCollapsed(false);
+                  setIsChatOpen(!isChatOpen);
+                }}
                 className={`p-2 rounded-lg transition-colors ${isChatOpen ? 'bg-teal-100 text-teal-600' : 'bg-white text-slate-400 hover:text-teal-600 hover:bg-teal-50 border border-slate-200 shadow-sm'}`}
               >
                 <ChatBubbleLeftRightIcon className="w-5 h-5" />
@@ -520,109 +533,142 @@ const StudySession: React.FC<StudySessionProps> = ({ dueQuestions, onComplete, o
       <div 
         ref={sidebarRef}
         className={`fixed inset-y-0 right-0 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-50 flex flex-col ${isChatOpen ? 'translate-x-0' : 'translate-x-full'}`}
-        style={{ width: sidebarWidth }}
+        style={{ width: isChatCollapsed ? CHAT_COLLAPSED_WIDTH : sidebarWidth }}
       >
-        {/* Resize Handle */}
-        <div 
-          className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize hover:bg-teal-500/20 active:bg-teal-500 transition-colors z-50"
-          onMouseDown={startResizing}
-        />
-
-        {/* Chat Header */}
-        <div className="p-4 border-b border-slate-100 bg-slate-50">
-          <div className="flex items-center justify-between mb-3">
-             <div className="flex items-center gap-2 text-teal-700 font-bold text-sm">
-                <ChatBubbleLeftRightIcon className="w-5 h-5" />
-                AI Tutor
-             </div>
-             <button onClick={() => setIsChatOpen(false)} className="text-slate-400 hover:text-slate-600 p-1">
-                <XMarkIcon className="w-6 h-6" />
-             </button>
-          </div>
-          
-          {/* Model Toggle */}
-          <div className="bg-slate-200 p-1 rounded-lg flex text-[10px] font-bold">
-            <button 
-              onClick={() => setTutorModel('flash')}
-              className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded transition-all ${tutorModel === 'flash' ? 'bg-white text-teal-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+        {isChatCollapsed ? (
+          <div className="h-full flex flex-col items-center justify-between py-4">
+            <button
+              type="button"
+              onClick={() => setIsChatCollapsed(false)}
+              className="p-2 rounded-xl text-slate-500 hover:text-teal-700 hover:bg-teal-50 transition-colors"
+              title="Expand tutor"
             >
-              <BoltIcon className="w-3 h-3" /> Fast (Flash)
+              <ChevronDoubleLeftIcon className="w-5 h-5" />
             </button>
-            <button 
-              onClick={() => setTutorModel('pro')}
-              className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded transition-all ${tutorModel === 'pro' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            <button
+              type="button"
+              onClick={() => setIsChatOpen(false)}
+              className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              title="Close tutor"
             >
-              <SparklesIcon className="w-3 h-3" /> Deep (Pro)
+              <XMarkIcon className="w-6 h-6" />
             </button>
           </div>
-        </div>
+        ) : (
+          <>
+            {/* Resize Handle */}
+            <div 
+              className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize hover:bg-teal-500/20 active:bg-teal-500 transition-colors z-50"
+              onMouseDown={startResizing}
+            />
 
-        {/* Chat Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50 text-sm">
-          {chatHistory.length === 0 && (
-             <div className="text-center text-slate-400 text-xs mt-10 px-4">
-               <p className="mb-2 font-semibold">Ask about this question!</p>
-               <p>"Why is B incorrect?"</p>
-               <p>"Explain the mechanism."</p>
-             </div>
-          )}
-          
-          {chatHistory.map((msg, idx) => (
-            <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-              <div className={`max-w-[90%] rounded-2xl px-4 py-3 shadow-sm text-sm leading-relaxed ${
-                msg.role === 'user' 
-                  ? 'bg-teal-600 text-white' 
-                  : 'bg-white text-slate-700 border border-slate-200'
-              } whitespace-pre-wrap ${msg.role === 'model' ? 'tabular-nums' : ''}`}>
-                {msg.role === 'model' ? (
-                  <TutorMessage text={msg.text} renderInline={renderMessageContent} />
-                ) : (
-                  renderMessageContent(msg.text)
-                )}
+            {/* Chat Header */}
+            <div className="p-4 border-b border-slate-100 bg-slate-50">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2 text-teal-700 font-bold text-sm">
+                  <ChatBubbleLeftRightIcon className="w-5 h-5" />
+                  AI Tutor
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsChatCollapsed(true)}
+                    className="text-slate-400 hover:text-slate-600 p-1"
+                    title="Collapse tutor"
+                  >
+                    <ChevronDoubleRightIcon className="w-6 h-6" />
+                  </button>
+                  <button onClick={() => setIsChatOpen(false)} className="text-slate-400 hover:text-slate-600 p-1" title="Close tutor">
+                    <XMarkIcon className="w-6 h-6" />
+                  </button>
+                </div>
               </div>
               
-              {/* Regenerate Button for last AI message */}
-              {msg.role === 'model' && idx === chatHistory.length - 1 && !isChatLoading && (
+              {/* Model Toggle */}
+              <div className="bg-slate-200 p-1 rounded-lg flex text-[10px] font-bold">
                 <button 
-                  onClick={handleRegenerate}
-                  className="mt-1 flex items-center gap-1 text-[10px] text-slate-400 hover:text-teal-600 font-medium transition-colors"
+                  onClick={() => setTutorModel('flash')}
+                  className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded transition-all ${tutorModel === 'flash' ? 'bg-white text-teal-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                 >
-                  <ArrowPathIcon className="w-3 h-3" /> Regenerate
+                  <BoltIcon className="w-3 h-3" /> Fast (Flash)
                 </button>
-              )}
+                <button 
+                  onClick={() => setTutorModel('pro')}
+                  className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded transition-all ${tutorModel === 'pro' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  <SparklesIcon className="w-3 h-3" /> Deep (Pro)
+                </button>
+              </div>
             </div>
-          ))}
-          
-          {isChatLoading && (
-            <div className="flex justify-start">
-               <div className="bg-white border border-slate-200 rounded-2xl px-4 py-3 shadow-sm flex items-center gap-2">
-                 <div className="w-2 h-2 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
-                 <div className="w-2 h-2 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                 <div className="w-2 h-2 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-               </div>
-            </div>
-          )}
-          <div ref={chatEndRef} />
-        </div>
 
-        {/* Chat Input */}
-        <form onSubmit={handleSendMessage} className="p-4 bg-white border-t border-slate-100 flex gap-3 shrink-0">
-          <input 
-            type="text" 
-            value={chatInput} 
-            onChange={(e) => setChatInput(e.target.value)} 
-            placeholder={tutorModel === 'pro' ? "Ask a complex question..." : "Ask a quick question..."}
-            className="flex-1 px-4 py-3 rounded-xl border border-slate-200 outline-none text-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all duration-200 ease-in-out bg-slate-50 focus:bg-white focus:scale-[1.02] focus:shadow-md origin-bottom" 
-            disabled={isChatLoading} 
-          />
-          <button 
-            type="submit" 
-            disabled={!chatInput.trim() || isChatLoading} 
-            className="bg-teal-600 text-white p-3 rounded-xl hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg shadow-teal-500/20"
-          >
-            <PaperAirplaneIcon className="w-5 h-5" />
-          </button>
-        </form>
+            {/* Chat Messages */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50 text-sm">
+              {chatHistory.length === 0 && (
+                <div className="text-center text-slate-400 text-xs mt-10 px-4">
+                  <p className="mb-2 font-semibold">Ask about this question!</p>
+                  <p>"Why is B incorrect?"</p>
+                  <p>"Explain the mechanism."</p>
+                </div>
+              )}
+              
+              {chatHistory.map((msg, idx) => (
+                <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                  <div className={`max-w-[90%] rounded-2xl px-4 py-3 shadow-sm text-sm leading-relaxed ${
+                    msg.role === 'user' 
+                      ? 'bg-teal-600 text-white' 
+                      : 'bg-white text-slate-700 border border-slate-200'
+                  } whitespace-pre-wrap ${msg.role === 'model' ? 'tabular-nums' : ''}`}>
+                    {msg.role === 'model' ? (
+                      <TutorMessage text={msg.text} renderInline={renderMessageContent} />
+                    ) : (
+                      renderMessageContent(msg.text)
+                    )}
+                  </div>
+                  
+                  {/* Regenerate Button for last AI message */}
+                  {msg.role === 'model' && idx === chatHistory.length - 1 && !isChatLoading && (
+                    <button 
+                      onClick={handleRegenerate}
+                      className="mt-1 flex items-center gap-1 text-[10px] text-slate-400 hover:text-teal-600 font-medium transition-colors"
+                    >
+                      <ArrowPathIcon className="w-3 h-3" /> Regenerate
+                    </button>
+                  )}
+                </div>
+              ))}
+              
+              {isChatLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-white border border-slate-200 rounded-2xl px-4 py-3 shadow-sm flex items-center gap-2">
+                    <div className="w-2 h-2 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
+                    <div className="w-2 h-2 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+                    <div className="w-2 h-2 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                  </div>
+                </div>
+              )}
+              <div ref={chatEndRef} />
+            </div>
+
+            {/* Chat Input */}
+            <form onSubmit={handleSendMessage} className="p-4 bg-white border-t border-slate-100 flex gap-3 shrink-0">
+              <input 
+                type="text" 
+                value={chatInput} 
+                onChange={(e) => setChatInput(e.target.value)} 
+                placeholder={tutorModel === 'pro' ? "Ask a complex question..." : "Ask a quick question..."}
+                className="flex-1 px-4 py-3 rounded-xl border border-slate-200 outline-none text-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all duration-200 ease-in-out bg-slate-50 focus:bg-white focus:scale-[1.02] focus:shadow-md origin-bottom" 
+                disabled={isChatLoading} 
+              />
+              <button 
+                type="submit" 
+                disabled={!chatInput.trim() || isChatLoading} 
+                className="bg-teal-600 text-white p-3 rounded-xl hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-lg shadow-teal-500/20"
+              >
+                <PaperAirplaneIcon className="w-5 h-5" />
+              </button>
+            </form>
+          </>
+        )}
       </div>
     </div>
   );

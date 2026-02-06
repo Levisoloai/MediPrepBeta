@@ -4,7 +4,7 @@ import { Subject, Question, QuestionState, ChatMessage } from '../types';
 import { getSubjects } from '../services/storageService';
 import { startDeepDive, extendDeepDiveQuiz, chatWithTutor, normalizeDeepDiveQuiz } from '../services/geminiService';
 import { buildFingerprintSet, filterDuplicateQuestions } from '../utils/questionDedupe';
-import { AcademicCapIcon, ArrowRightIcon, BookOpenIcon, TrophyIcon, ArrowDownTrayIcon, PlusIcon, ArrowPathIcon, ChatBubbleLeftRightIcon, PaperAirplaneIcon, XMarkIcon, ArrowLeftIcon } from '@heroicons/react/24/solid';
+import { AcademicCapIcon, ArrowRightIcon, BookOpenIcon, TrophyIcon, ArrowDownTrayIcon, PlusIcon, ArrowPathIcon, ChatBubbleLeftRightIcon, PaperAirplaneIcon, XMarkIcon, ArrowLeftIcon, ChevronDoubleLeftIcon, ChevronDoubleRightIcon } from '@heroicons/react/24/solid';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import katex from 'katex';
 import TutorMessage from './TutorMessage';
@@ -71,12 +71,15 @@ const DeepDiveView: React.FC<DeepDiveViewProps> = ({ prefilledTopic, clearPrefil
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [deepDiveStates, setDeepDiveStates] = useState<Record<string, QuestionState>>({});
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isChatCollapsed, setIsChatCollapsed] = useState(() => localStorage.getItem('mediprep_dd_tutor_collapsed') === '1');
   const [activeChatQuestion, setActiveChatQuestion] = useState<Question | null>(null);
   const [chatHistoryByQuestion, setChatHistoryByQuestion] = useState<Record<string, ChatMessage[]>>({});
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [tutorModel, setTutorModel] = useState<'flash' | 'pro'>('pro');
   const [tutorSessionId, setTutorSessionId] = useState<string | null>(null);
+  const CHAT_COLLAPSED_WIDTH = 64;
+  const CHAT_WIDTH = 360;
   
   const contentRef = useRef<HTMLDivElement>(null);
   const deepDiveAbortRef = useRef<AbortController | null>(null);
@@ -98,6 +101,14 @@ const DeepDiveView: React.FC<DeepDiveViewProps> = ({ prefilledTopic, clearPrefil
     localStorage.setItem('mediprep_dd_extra_count', extraCount.toString());
     localStorage.setItem('mediprep_dd_extra_diff', extraDifficulty);
   }, [selectedSource, concept, state, lessonContent, quiz, quizAnswers, currentQuestionIndex, extraCount, extraDifficulty]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('mediprep_dd_tutor_collapsed', isChatCollapsed ? '1' : '0');
+    } catch {
+      // ignore storage errors
+    }
+  }, [isChatCollapsed]);
 
   useEffect(() => {
     getSubjects().then(setSubjects);
@@ -284,6 +295,7 @@ const DeepDiveView: React.FC<DeepDiveViewProps> = ({ prefilledTopic, clearPrefil
     const sessionId = crypto.randomUUID();
     setActiveChatQuestion(question);
     setIsChatOpen(true);
+    setIsChatCollapsed(false);
     setChatInput('');
     setTutorSessionId(sessionId);
     trackTutorUsage({
@@ -897,68 +909,109 @@ const DeepDiveView: React.FC<DeepDiveViewProps> = ({ prefilledTopic, clearPrefil
               {currentQuestionIndex < quiz.length - 1 ? 'Next Question' : 'View Results'} <ArrowRightIcon className="w-5 h-5" />
             </button>
           </div>
-         <div className={`fixed inset-y-0 right-0 bg-white/95 backdrop-blur-xl shadow-2xl transform transition-transform duration-300 ease-out z-[102] flex flex-col border-l border-slate-200 ${isChatOpen ? 'translate-x-0' : 'translate-x-full'}`} style={{ width: 360 }}>
-           <div className="p-5 border-b border-slate-100 bg-white/50">
-             <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2.5">
-                   <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
-                     <ChatBubbleLeftRightIcon className="w-5 h-5" />
-                   </div>
-                   <div>
-                     <h3 className="font-bold text-slate-800 text-sm">Socratic Tutor</h3>
-                     <p className="text-[10px] text-slate-400">Deep Dive Assist</p>
-                   </div>
-                </div>
-                <button onClick={() => setIsChatOpen(false)} className="text-slate-400 hover:text-slate-600 p-2 hover:bg-slate-100 rounded-full transition-colors">
-                   <XMarkIcon className="w-5 h-5" />
+          <div
+            className={`fixed inset-y-0 right-0 bg-white/95 backdrop-blur-xl shadow-2xl transform transition-transform duration-300 ease-out z-[102] flex flex-col border-l border-slate-200 ${isChatOpen ? 'translate-x-0' : 'translate-x-full'}`}
+            style={{ width: isChatCollapsed ? CHAT_COLLAPSED_WIDTH : CHAT_WIDTH }}
+          >
+            {isChatCollapsed ? (
+              <div className="h-full flex flex-col items-center justify-between py-4">
+                <button
+                  type="button"
+                  onClick={() => setIsChatCollapsed(false)}
+                  className="p-2 rounded-xl text-slate-500 hover:text-indigo-700 hover:bg-indigo-50 transition-colors"
+                  title="Expand tutor"
+                >
+                  <ChevronDoubleLeftIcon className="w-5 h-5" />
                 </button>
-             </div>
-             <div className="flex p-1 bg-slate-100 rounded-xl">
-               <button onClick={() => setTutorModel('flash')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${tutorModel === 'flash' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500'}`}>Quick</button>
-               <button onClick={() => setTutorModel('pro')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${tutorModel === 'pro' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500'}`}>Deep</button>
-             </div>
-           </div>
-           <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
-             {currentChatHistory.map((msg, idx) => (
-             <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                 <div className={`max-w-[90%] rounded-2xl px-5 py-3.5 text-sm leading-relaxed shadow-sm whitespace-pre-wrap ${msg.role === 'model' ? 'tabular-nums' : ''} ${
-                   msg.role === 'user' ? 'bg-indigo-600 text-white rounded-br-sm' : 'bg-white text-slate-700 border border-slate-200 rounded-bl-sm'
-                 }`}>
-                   {msg.role === 'model' ? (
-                     <TutorMessage text={msg.text} renderInline={renderChatContent} />
-                   ) : (
-                     renderChatContent(msg.text)
-                   )}
-                 </div>
-               </div>
-             ))}
-             {isChatLoading && (
-               <div className="flex justify-start">
-                  <div className="bg-white border border-slate-100 rounded-2xl px-4 py-3 shadow-sm flex items-center gap-1.5">
-                    <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce" />
-                    <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                    <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                <button
+                  type="button"
+                  onClick={() => setIsChatOpen(false)}
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                  title="Close tutor"
+                >
+                  <XMarkIcon className="w-5 h-5" />
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="p-5 border-b border-slate-100 bg-white/50">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+                        <ChatBubbleLeftRightIcon className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-800 text-sm">Socratic Tutor</h3>
+                        <p className="text-[10px] text-slate-400">Deep Dive Assist</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setIsChatCollapsed(true)}
+                        className="text-slate-400 hover:text-slate-600 p-2 hover:bg-slate-100 rounded-full transition-colors"
+                        title="Collapse tutor"
+                      >
+                        <ChevronDoubleRightIcon className="w-5 h-5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsChatOpen(false)}
+                        className="text-slate-400 hover:text-slate-600 p-2 hover:bg-slate-100 rounded-full transition-colors"
+                        title="Close tutor"
+                      >
+                        <XMarkIcon className="w-5 h-5" />
+                      </button>
+                    </div>
                   </div>
-               </div>
-             )}
-             <div ref={chatEndRef} />
-           </div>
-           <form onSubmit={handleSendChatMessage} className="p-4 bg-white border-t border-slate-100 flex gap-3 shrink-0 items-center">
-             <input 
-               type="text" 
-               value={chatInput} 
-               onChange={(e) => setChatInput(e.target.value)} 
-               placeholder="Ask a follow-up..."
-               className="flex-1 px-4 py-3.5 rounded-xl border border-slate-200 outline-none text-sm focus:border-indigo-500 transition-all bg-slate-50" 
-             />
-             <button 
-               type="submit" 
-               className="bg-indigo-600 text-white p-3.5 rounded-xl hover:bg-indigo-700 active:scale-90 transition-transform"
-             >
-               <PaperAirplaneIcon className="w-5 h-5" />
-             </button>
-           </form>
-         </div>
+                  <div className="flex p-1 bg-slate-100 rounded-xl">
+                    <button onClick={() => setTutorModel('flash')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${tutorModel === 'flash' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500'}`}>Quick</button>
+                    <button onClick={() => setTutorModel('pro')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${tutorModel === 'pro' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500'}`}>Deep</button>
+                  </div>
+                </div>
+                <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
+                  {currentChatHistory.map((msg, idx) => (
+                    <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                      <div className={`max-w-[90%] rounded-2xl px-5 py-3.5 text-sm leading-relaxed shadow-sm whitespace-pre-wrap ${msg.role === 'model' ? 'tabular-nums' : ''} ${
+                        msg.role === 'user' ? 'bg-indigo-600 text-white rounded-br-sm' : 'bg-white text-slate-700 border border-slate-200 rounded-bl-sm'
+                      }`}>
+                        {msg.role === 'model' ? (
+                          <TutorMessage text={msg.text} renderInline={renderChatContent} />
+                        ) : (
+                          renderChatContent(msg.text)
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {isChatLoading && (
+                    <div className="flex justify-start">
+                      <div className="bg-white border border-slate-100 rounded-2xl px-4 py-3 shadow-sm flex items-center gap-1.5">
+                        <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce" />
+                        <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+                        <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                      </div>
+                    </div>
+                  )}
+                  <div ref={chatEndRef} />
+                </div>
+                <form onSubmit={handleSendChatMessage} className="p-4 bg-white border-t border-slate-100 flex gap-3 shrink-0 items-center">
+                  <input 
+                    type="text" 
+                    value={chatInput} 
+                    onChange={(e) => setChatInput(e.target.value)} 
+                    placeholder="Ask a follow-up..."
+                    className="flex-1 px-4 py-3.5 rounded-xl border border-slate-200 outline-none text-sm focus:border-indigo-500 transition-all bg-slate-50" 
+                  />
+                  <button 
+                    type="submit" 
+                    className="bg-indigo-600 text-white p-3.5 rounded-xl hover:bg-indigo-700 active:scale-90 transition-transform"
+                  >
+                    <PaperAirplaneIcon className="w-5 h-5" />
+                  </button>
+                </form>
+              </>
+            )}
+          </div>
        </div>
      );
   }
