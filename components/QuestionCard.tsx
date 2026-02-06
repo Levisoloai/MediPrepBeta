@@ -24,21 +24,42 @@ const LAB_VALUES = [
   {
     category: "Hematology (CBC)",
     items: [
-      { name: "Hemoglobin", normal: "M: 13.5-17.5 g/dL; F: 12.0-15.5 g/dL" },
-      { name: "Hematocrit", normal: "M: 41-53%; F: 36-46%" },
-      { name: "RBC Count", normal: "M: 4.7-6.1 x10^6/µL; F: 4.2-5.4 x10^6/µL" },
-      { name: "WBC", normal: "4.0-11.0 x10^3/µL" },
-      { name: "Platelets", normal: "150-450 x10^3/µL" },
-      { name: "MCV", normal: "80-100 fL" },
-      { name: "Reticulocyte %", normal: "0.5-2.5%" }
+      { name: "Hematocrit (Hct)", normal: "37-47%" },
+      { name: "Hemoglobin (Hb)", normal: "12-16 g/dL" },
+      { name: "RBC", normal: "4.2-5.4 M/µL" },
+      { name: "MCV", normal: "80-96 fL" },
+      { name: "RDW", normal: "12.5-13.5%" },
+      { name: "Platelets", normal: "140-400 x10^3/µL" },
+      { name: "Reticulocyte %", normal: "0.8-2.2%" },
+      { name: "Absolute retic count", normal: "50-100 x10^9/L" },
+      { name: "WBC", normal: "4.8-10.8 x10^3/µL" }
+    ]
+  },
+  {
+    category: "WBC Differential",
+    items: [
+      { name: "PMNs (neutrophils)", normal: "40-70%" },
+      { name: "Lymphocytes", normal: "20-50%" },
+      { name: "Monocytes", normal: "1-8%" },
+      { name: "Eosinophils", normal: "1-3%" },
+      { name: "Basophils", normal: "0-1%" }
+    ]
+  },
+  {
+    category: "Absolute WBC Counts",
+    items: [
+      { name: "Absolute neutrophil count (ANC)", normal: "1.8-7.7 x10^9/L" },
+      { name: "Absolute lymphocyte count (ALC)", normal: "1.0-4.8 x10^9/L" },
+      { name: "Absolute monocyte count", normal: "0.3-0.5 x10^9/L" },
+      { name: "Absolute eosinophil count", normal: "0.1-0.3 x10^9/L" }
     ]
   },
   {
     category: "Coagulation",
     items: [
-      { name: "PT", normal: "11-13.5 s" },
+      { name: "aPTT", normal: "26-36 s" },
+      { name: "PT", normal: "10-12 s" },
       { name: "INR", normal: "0.8-1.2" },
-      { name: "aPTT", normal: "25-35 s" },
       { name: "Fibrinogen", normal: "200-400 mg/dL" },
       { name: "D-dimer", normal: "<0.5 µg/mL FEU" }
     ]
@@ -46,18 +67,61 @@ const LAB_VALUES = [
   {
     category: "Iron Studies",
     items: [
-      { name: "Ferritin", normal: "M: 24-336 ng/mL; F: 11-307 ng/mL" },
-      { name: "Serum Iron", normal: "60-170 µg/dL" },
-      { name: "TIBC", normal: "240-450 µg/dL" },
+      { name: "Ferritin", normal: "10-150 ng/mL" },
+      { name: "Serum iron (Fe)", normal: "65-175 µg/dL" },
+      { name: "TIBC", normal: "250-410 µg/dL" },
       { name: "Transferrin Sat", normal: "20-50%" }
     ]
   },
   {
     category: "Hemolysis Markers",
     items: [
-      { name: "LDH", normal: "100-190 U/L" },
-      { name: "Haptoglobin", normal: "30-200 mg/dL" },
+      { name: "LDH", normal: "60-250 U/L" },
+      { name: "Haptoglobin", normal: "40-240 mg/dL" },
+      { name: "Total bilirubin", normal: "0.2-1.2 mg/dL" },
+      { name: "Direct bilirubin", normal: "0.0-0.3 mg/dL" },
       { name: "Indirect Bilirubin", normal: "0.2-0.8 mg/dL" }
+    ]
+  },
+  {
+    category: "Heme Chemistry",
+    items: [
+      { name: "Vitamin B12", normal: "205-910 pg/mL" },
+      { name: "Folate", normal: "3-20 ng/mL" },
+      { name: "Albumin", normal: "3.5-5.5 g/dL" },
+      { name: "Total protein", normal: "6.0-8.5 g/dL" },
+      { name: "Glucose", normal: "70-115 mg/dL" },
+      { name: "Creatinine", normal: "0.5-1.5 mg/dL" },
+      { name: "BUN", normal: "10-26 mg/dL" },
+      { name: "Uric acid", normal: "2.5-8.0 mg/dL" },
+      { name: "Erythropoietin", normal: "0-19 mU/mL" }
+    ]
+  },
+  {
+    category: "ESR",
+    items: [
+      { name: "Erythrocyte sedimentation rate", normal: "0-20 mm/hr" }
+    ]
+  },
+  {
+    category: "Urinalysis",
+    items: [
+      { name: "pH", normal: "5.0-8.0" },
+      { name: "Specific gravity", normal: "1.015-1.025" },
+      { name: "Bilirubin", normal: "negative" },
+      { name: "Protein", normal: "negative" },
+      { name: "Urobilinogen", normal: "0.2-1.0 EU" },
+      { name: "WBC", normal: "0-1" },
+      { name: "RBC", normal: "0-1" },
+      { name: "Occult blood", normal: "negative" }
+    ]
+  },
+  {
+    category: "Hemoglobin Electrophoresis",
+    items: [
+      { name: "HbA", normal: "95-97.5%" },
+      { name: "HbA2", normal: "2.6-3.4%" },
+      { name: "HbF", normal: "<1.3%" }
     ]
   },
   {
