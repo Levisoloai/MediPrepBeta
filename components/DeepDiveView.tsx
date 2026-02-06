@@ -7,6 +7,7 @@ import { buildFingerprintSet, filterDuplicateQuestions } from '../utils/question
 import { AcademicCapIcon, ArrowRightIcon, BookOpenIcon, TrophyIcon, ArrowDownTrayIcon, PlusIcon, ArrowPathIcon, ChatBubbleLeftRightIcon, PaperAirplaneIcon, XMarkIcon, ArrowLeftIcon } from '@heroicons/react/24/solid';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import katex from 'katex';
+import TutorMessage from './TutorMessage';
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import { betaGuides } from '../utils/betaGuides';
@@ -923,7 +924,11 @@ const DeepDiveView: React.FC<DeepDiveViewProps> = ({ prefilledTopic, clearPrefil
                  <div className={`max-w-[90%] rounded-2xl px-5 py-3.5 text-sm leading-relaxed shadow-sm whitespace-pre-wrap ${msg.role === 'model' ? 'tabular-nums' : ''} ${
                    msg.role === 'user' ? 'bg-indigo-600 text-white rounded-br-sm' : 'bg-white text-slate-700 border border-slate-200 rounded-bl-sm'
                  }`}>
-                   {renderChatContent(msg.text)}
+                   {msg.role === 'model' ? (
+                     <TutorMessage text={msg.text} renderInline={renderChatContent} />
+                   ) : (
+                     renderChatContent(msg.text)
+                   )}
                  </div>
                </div>
              ))}

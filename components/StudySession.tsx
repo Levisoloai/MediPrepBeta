@@ -4,6 +4,7 @@ import { processReview, calculateNextIntervals } from '../services/storageServic
 import { chatWithTutor } from '../services/geminiService';
 import { CheckCircleIcon, ArrowLeftIcon, TrophyIcon, ChatBubbleLeftRightIcon, XMarkIcon, PaperAirplaneIcon, ArrowPathIcon, SparklesIcon, BoltIcon, LightBulbIcon } from '@heroicons/react/24/solid';
 import katex from 'katex';
+import TutorMessage from './TutorMessage';
 
 interface StudySessionProps {
   dueQuestions: StoredQuestion[];
@@ -573,7 +574,11 @@ const StudySession: React.FC<StudySessionProps> = ({ dueQuestions, onComplete, o
                   ? 'bg-teal-600 text-white' 
                   : 'bg-white text-slate-700 border border-slate-200'
               } whitespace-pre-wrap ${msg.role === 'model' ? 'tabular-nums' : ''}`}>
-                {renderMessageContent(msg.text)}
+                {msg.role === 'model' ? (
+                  <TutorMessage text={msg.text} renderInline={renderMessageContent} />
+                ) : (
+                  renderMessageContent(msg.text)
+                )}
               </div>
               
               {/* Regenerate Button for last AI message */}

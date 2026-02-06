@@ -22,6 +22,7 @@ import { getIntegrityStats, prepareQuestionForSession } from './utils/questionIn
 import { formatMsAsMMSS } from './utils/time';
 import { SparklesIcon, XMarkIcon, ChatBubbleLeftRightIcon, PaperAirplaneIcon, ExclamationTriangleIcon, CheckIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/solid';
 import katex from 'katex';
+import TutorMessage from './components/TutorMessage';
 import { supabase } from './services/supabaseClient';
 import { fetchSeenFingerprints, recordSeenQuestions } from './services/seenQuestionsService';
 import { trackTutorUsage } from './services/tutorUsageService';
@@ -2904,7 +2905,11 @@ const App: React.FC = () => {
                 <div className={`max-w-[90%] rounded-2xl px-5 py-3.5 text-sm leading-relaxed shadow-sm whitespace-pre-wrap ${
                   msg.role === 'user' ? 'bg-teal-600 text-white rounded-br-sm' : 'bg-white text-slate-700 border border-slate-200 rounded-bl-sm'
                 }`}>
-                  {renderMessageContent(msg.text)}
+                  {msg.role === 'model' ? (
+                    <TutorMessage text={msg.text} renderInline={renderMessageContent} />
+                  ) : (
+                    renderMessageContent(msg.text)
+                  )}
                 </div>
               </div>
             ))}
