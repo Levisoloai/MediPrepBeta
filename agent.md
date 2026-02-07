@@ -37,6 +37,10 @@ Use it to:
 - (Add as we go)
 
 ## Journal (Newest First)
+### 2026-02-07 (Vercel Config Fix)
+- Fixed Vercel config error by replacing legacy `routes` with `rewrites` in `vercel.json` (SPA fallback) while preserving `/api/*`.
+- Verified `npm test` + `npm run build`.
+
 ### 2026-02-07 (Vercel Auto-Redeploy Safety Net)
 - Added a GitHub Action deploy-hook trigger on pushes to `main` (`.github/workflows/vercel-deploy-hook.yml`) so Vercel redeploys even if the Git integration stops firing.
 - Requires GitHub repo secret `VERCEL_DEPLOY_HOOK_URL` (Vercel Project -> Settings -> Git -> Deploy Hooks).
