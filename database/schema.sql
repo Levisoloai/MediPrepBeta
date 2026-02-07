@@ -127,6 +127,20 @@ create table if not exists tutor_usage_events (
   created_at timestamptz default now() not null
 );
 
+-- 9c. USER CONCEPT MASTERY (Funnel Mode)
+create table if not exists user_concept_mastery (
+  user_id uuid references profiles(id) on delete cascade not null,
+  guide_hash text not null,
+  concept text not null,
+  alpha double precision not null default 1,
+  beta double precision not null default 1,
+  attempts integer not null default 0,
+  avg_time_to_answer_ms integer,
+  tutor_touches integer not null default 0,
+  updated_at timestamptz default now() not null,
+  primary key (user_id, guide_hash, concept)
+);
+
 -- 10. STUDY GUIDE CACHE (Prefab Questions)
 create table if not exists study_guide_cache (
   guide_hash text primary key,
@@ -151,6 +165,7 @@ alter table study_plans enable row level security;
 alter table question_feedback enable row level security;
 alter table study_guide_cache enable row level security;
 alter table tutor_usage_events enable row level security;
+alter table user_concept_mastery enable row level security;
 
 -- Simple All-in-one policies for demo
 -- Dropping existing policies first ensures the script is idempotent and fixes "policy already exists" errors.
@@ -190,6 +205,10 @@ drop policy if exists "Users delete own feedback" on question_feedback;
 drop policy if exists "Users view own or admin tutor usage" on tutor_usage_events;
 drop policy if exists "Users insert own tutor usage" on tutor_usage_events;
 
+drop policy if exists "Users view own or admin concept mastery" on user_concept_mastery;
+drop policy if exists "Users insert own concept mastery" on user_concept_mastery;
+drop policy if exists "Users update own concept mastery" on user_concept_mastery;
+
 create policy "Users view own or admin feedback" on question_feedback
   for select
   using (
@@ -219,6 +238,21 @@ create policy "Users view own or admin tutor usage" on tutor_usage_events
 create policy "Users insert own tutor usage" on tutor_usage_events
   for insert
   with check (auth.uid() = user_id);
+
+create policy "Users view own or admin concept mastery" on user_concept_mastery
+  for select
+  using (
+    auth.uid() = user_id
+    or exists (select 1 from admin_users where admin_users.user_id = auth.uid())
+  );
+
+create policy "Users insert own concept mastery" on user_concept_mastery
+  for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users update own concept mastery" on user_concept_mastery
+  for update
+  using (auth.uid() = user_id);
 
 drop policy if exists "Users read study guide cache" on study_guide_cache;
 drop policy if exists "Admins manage study guide cache" on study_guide_cache;

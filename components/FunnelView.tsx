@@ -579,10 +579,10 @@ const FunnelView: React.FC<Props> = ({
               <FunnelIcon className="w-4 h-4" />
               Funnel Active
             </div>
-            <div className="px-3 py-1.5 rounded-full border border-slate-200 bg-white text-[10px] font-black uppercase tracking-widest text-slate-600">
+            <div className="px-3 py-1.5 rounded-full border border-white/50 bg-white/35 backdrop-blur-md text-[10px] font-black uppercase tracking-widest text-slate-700 shadow-sm">
               {funnelContext?.guideTitle || 'Custom'}
             </div>
-            <div className="px-3 py-1.5 rounded-full border border-slate-200 bg-white text-[10px] font-black uppercase tracking-widest text-slate-600">
+            <div className="px-3 py-1.5 rounded-full border border-white/50 bg-white/35 backdrop-blur-md text-[10px] font-black uppercase tracking-widest text-slate-700 shadow-sm">
               Stage: <span className="text-slate-900">{stage.label}</span>
             </div>
           </div>
@@ -595,7 +595,7 @@ const FunnelView: React.FC<Props> = ({
           <button
             type="button"
             onClick={() => setShowStats((prev) => !prev)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-slate-200 bg-white text-[11px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/50 bg-white/35 backdrop-blur-md text-[11px] font-black uppercase tracking-widest text-slate-700 shadow-sm hover:bg-white/45"
           >
             <ChartBarIcon className="w-4 h-4" />
             {showStats ? 'Session' : 'Stats'}
@@ -613,175 +613,175 @@ const FunnelView: React.FC<Props> = ({
           <button
             type="button"
             onClick={onBackToGenerate}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-slate-200 bg-white text-[11px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/50 bg-white/35 backdrop-blur-md text-[11px] font-black uppercase tracking-widest text-slate-700 shadow-sm hover:bg-white/45"
           >
             Back to selection
           </button>
         </div>
       </div>
 
-      <div className="mb-6 rounded-3xl border border-slate-200 bg-white/90 shadow-sm overflow-hidden">
-        <div className="p-4 md:p-6">
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-            <div className="flex-1">
-              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Topic narrowing</div>
-              <div className="mt-2 text-sm font-semibold text-slate-700">
-                Focus targets shift as you answer and rate questions.
-              </div>
-              {funnelBatchMeta?.focusTargets?.length ? (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {funnelBatchMeta.focusTargets.slice(0, 8).map((key) => (
-                    <span
-                      key={key}
-                      className="px-3 py-1.5 rounded-full bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest"
-                    >
-                      {(funnelBatchMeta.displayByKey?.[key] || key).slice(0, 52)}
-                    </span>
-                  ))}
+      <div className="flex-1 overflow-y-auto space-y-6 pb-32 pr-2 custom-scrollbar">
+        <div className="rounded-3xl border border-white/50 bg-white/35 backdrop-blur-xl shadow-[0_22px_70px_-55px_rgba(15,23,42,0.55)] overflow-hidden">
+          <div className="p-4 md:p-6">
+            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+              <div className="flex-1">
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Topic narrowing</div>
+                <div className="mt-2 text-sm font-semibold text-slate-800">
+                  Focus targets shift as you answer and rate questions.
                 </div>
-              ) : (
-                <div className="mt-3 text-[11px] text-slate-500 font-semibold">No focus targets yet.</div>
-              )}
-            </div>
+                {funnelBatchMeta?.focusTargets?.length ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {funnelBatchMeta.focusTargets.slice(0, 8).map((key) => (
+                      <span
+                        key={key}
+                        className="px-3 py-1.5 rounded-full bg-slate-900/85 text-white text-[10px] font-black uppercase tracking-widest shadow-sm"
+                      >
+                        {(funnelBatchMeta.displayByKey?.[key] || key).slice(0, 52)}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-3 text-[11px] text-slate-600 font-semibold">No focus targets yet.</div>
+                )}
+              </div>
 
-            <div className="w-full md:w-[260px]">
-              <button
-                type="button"
-                onClick={onContinueFunnel}
-                disabled={isLoading}
-                className={`w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-colors ${
-                  isLoading ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                }`}
-              >
-                <ArrowPathIcon className="w-4 h-4" />
-                Continue Funnel
-              </button>
-              <div className="mt-2 text-[10px] text-slate-400 font-semibold">
-                Bank first, generation only as needed.
-              </div>
-              {funnelBatchMeta && (
-                <div className="mt-2 text-[11px] text-slate-500 font-semibold">
-                  Explore {funnelBatchMeta.exploreCount}/{funnelBatchMeta.total}{' '}
-                  <span className="text-slate-400">
-                    · gold {funnelBatchMeta.sourceCounts.gold} · prefab {funnelBatchMeta.sourceCounts.prefab} · gen{' '}
-                    {funnelBatchMeta.sourceCounts.generated}
-                  </span>
+              <div className="w-full md:w-[260px]">
+                <button
+                  type="button"
+                  onClick={onContinueFunnel}
+                  disabled={isLoading}
+                  className={`w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-colors ${
+                    isLoading ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                  }`}
+                >
+                  <ArrowPathIcon className="w-4 h-4" />
+                  Continue Funnel
+                </button>
+                <div className="mt-2 text-[10px] text-slate-500 font-semibold">
+                  Bank first, generation only as needed.
                 </div>
-              )}
+                {funnelBatchMeta && (
+                  <div className="mt-2 text-[11px] text-slate-700 font-semibold">
+                    Explore {funnelBatchMeta.exploreCount}/{funnelBatchMeta.total}{' '}
+                    <span className="text-slate-500">
+                      · gold {funnelBatchMeta.sourceCounts.gold} · prefab {funnelBatchMeta.sourceCounts.prefab} · gen{' '}
+                      {funnelBatchMeta.sourceCounts.generated}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
+          </div>
+
+          <div className="relative h-[240px] md:h-[280px] bg-gradient-to-b from-indigo-50/40 via-white/20 to-teal-50/40 border-t border-white/40 overflow-hidden">
+            <svg
+              className="absolute inset-0 w-full h-full pointer-events-none opacity-35"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+            >
+              <path
+                d="M5 10 H95 L65 60 Q50 80 50 95 Q50 80 35 60 L5 10 Z"
+                fill="none"
+                stroke="rgb(15 23 42)"
+                strokeWidth="0.6"
+              />
+              <path
+                d="M10 14 H90 L62 58 Q50 74 50 92 Q50 74 38 58 L10 14 Z"
+                fill="none"
+                stroke="rgb(99 102 241)"
+                strokeWidth="0.5"
+                strokeDasharray="1 1.5"
+                opacity="0.6"
+              />
+            </svg>
+
+            {conceptDots.map((dot) => {
+              const style = getConceptDotStyle({
+                key: dot.key,
+                index: dot.index,
+                total: conceptDots.length,
+                category: dot.category
+              });
+              const cls =
+                dot.category === 'focus'
+                  ? 'bg-indigo-600/75 text-white border-white/50'
+                  : dot.category === 'explore'
+                  ? 'bg-amber-100/55 text-amber-900 border-white/50'
+                  : 'bg-white/40 text-slate-700 border-white/55';
+              const size = dot.category === 'focus' ? 'px-3 py-1.5 text-[10px]' : 'px-2 py-1 text-[9px]';
+              return (
+                <div
+                  key={dot.key}
+                  className={`absolute rounded-full border ${cls} ${size} font-black uppercase tracking-widest shadow-sm backdrop-blur-md transition-all duration-700 ease-out`}
+                  style={{
+                    ...style,
+                    transform: 'translate(-50%, -50%)'
+                  }}
+                  title={dot.display}
+                >
+                  {dot.display.slice(0, dot.category === 'focus' ? 22 : 18)}
+                </div>
+              );
+            })}
           </div>
         </div>
 
-        <div className="relative h-[240px] md:h-[280px] bg-gradient-to-b from-indigo-50/40 via-white to-teal-50/40 border-t border-slate-200 overflow-hidden">
-          <svg
-            className="absolute inset-0 w-full h-full pointer-events-none opacity-40"
-            viewBox="0 0 100 100"
-            preserveAspectRatio="none"
-          >
-            <path
-              d="M5 10 H95 L65 60 Q50 80 50 95 Q50 80 35 60 L5 10 Z"
-              fill="none"
-              stroke="rgb(15 23 42)"
-              strokeWidth="0.6"
-            />
-            <path
-              d="M10 14 H90 L62 58 Q50 74 50 92 Q50 74 38 58 L10 14 Z"
-              fill="none"
-              stroke="rgb(99 102 241)"
-              strokeWidth="0.5"
-              strokeDasharray="1 1.5"
-              opacity="0.6"
-            />
-          </svg>
-
-          {conceptDots.map((dot) => {
-            const style = getConceptDotStyle({
-              key: dot.key,
-              index: dot.index,
-              total: conceptDots.length,
-              category: dot.category
-            });
-            const cls =
-              dot.category === 'focus'
-                ? 'bg-indigo-600 text-white border-indigo-600'
-                : dot.category === 'explore'
-                ? 'bg-amber-50 text-amber-800 border-amber-200'
-                : 'bg-white text-slate-600 border-slate-200';
-            const size = dot.category === 'focus' ? 'px-3 py-1.5 text-[10px]' : 'px-2 py-1 text-[9px]';
-            return (
-              <div
-                key={dot.key}
-                className={`absolute rounded-full border ${cls} ${size} font-black uppercase tracking-widest shadow-sm transition-all duration-700 ease-out`}
-                style={{
-                  ...style,
-                  transform: 'translate(-50%, -50%)'
-                }}
-                title={dot.display}
-              >
-                {dot.display.slice(0, dot.category === 'focus' ? 22 : 18)}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {showStats ? (
-        <div className="flex-1 overflow-y-auto pb-24 pr-2 custom-scrollbar">
+        {showStats ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-1 p-5 rounded-3xl border border-slate-200 bg-white/90 shadow-sm">
-              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Mastery snapshot</div>
-              <div className="mt-3 text-sm font-semibold text-slate-700">
+            <div className="lg:col-span-1 p-5 rounded-3xl border border-white/50 bg-white/35 backdrop-blur-xl shadow-[0_22px_70px_-55px_rgba(15,23,42,0.55)]">
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Mastery snapshot</div>
+              <div className="mt-3 text-sm font-semibold text-slate-800">
                 Tracked concepts: <span className="text-slate-900 font-black">{masterySnapshot.tracked}</span>
               </div>
-              <div className="mt-1 text-sm font-semibold text-slate-700">
+              <div className="mt-1 text-sm font-semibold text-slate-800">
                 Avg mastery: <span className="text-slate-900 font-black">{Math.round(masterySnapshot.avgExpected * 100)}%</span>
               </div>
-              <div className="mt-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Hardest now</div>
+              <div className="mt-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Hardest now</div>
               <div className="mt-2 space-y-2">
                 {masterySnapshot.hardest.length === 0 ? (
-                  <div className="text-sm text-slate-500 font-semibold">Answer a few questions to calibrate.</div>
+                  <div className="text-sm text-slate-600 font-semibold">Answer a few questions to calibrate.</div>
                 ) : (
                   masterySnapshot.hardest.map((row) => (
-                    <div key={row.key} className="flex items-center justify-between gap-3 text-[11px] text-slate-600 font-semibold">
+                    <div key={row.key} className="flex items-center justify-between gap-3 text-[11px] text-slate-700 font-semibold">
                       <div className="truncate">
                         <span className="text-slate-900 font-black">{row.display}</span>
                       </div>
-                      <div className="shrink-0 text-slate-400">{Math.round(row.expected * 100)}%</div>
+                      <div className="shrink-0 text-slate-600">{Math.round(row.expected * 100)}%</div>
                     </div>
                   ))
                 )}
               </div>
             </div>
 
-            <div className="lg:col-span-2 p-5 rounded-3xl border border-slate-200 bg-white/90 shadow-sm">
+            <div className="lg:col-span-2 p-5 rounded-3xl border border-white/50 bg-white/35 backdrop-blur-xl shadow-[0_22px_70px_-55px_rgba(15,23,42,0.55)]">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Performance</div>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Performance</div>
                   <div className="mt-2 text-3xl font-black text-slate-900">
                     {Math.round(funnelSummary.overallAccuracy * 100)}%
                   </div>
-                  <div className="mt-1 text-sm text-slate-600 font-semibold">
+                  <div className="mt-1 text-sm text-slate-700 font-semibold">
                     {funnelSummary.totalCorrect} correct out of {funnelSummary.totalAnswered} answered
                   </div>
                 </div>
               </div>
 
               <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 rounded-2xl border border-slate-200 bg-white">
-                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Weak concepts</div>
+                <div className="p-4 rounded-2xl border border-white/50 bg-white/40 backdrop-blur-md shadow-sm">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Weak concepts</div>
                   <div className="mt-2 space-y-2">
                     {funnelSummary.weakConcepts.length === 0 ? (
-                      <div className="text-sm text-slate-500 font-semibold">No weak concepts yet.</div>
+                      <div className="text-sm text-slate-600 font-semibold">No weak concepts yet.</div>
                     ) : (
                       funnelSummary.weakConcepts.slice(0, 6).map((stat) => (
                         <div
                           key={stat.concept}
-                          className="flex items-center justify-between gap-3 text-[11px] text-slate-600 font-semibold"
+                          className="flex items-center justify-between gap-3 text-[11px] text-slate-700 font-semibold"
                         >
                           <div className="truncate">
                             <span className="text-slate-900 font-black">{stat.concept}</span>
                           </div>
-                          <div className="shrink-0 text-slate-400">
+                          <div className="shrink-0 text-slate-600">
                             {Math.round(stat.accuracy * 100)}% • {stat.correct}/{stat.attempts}
                           </div>
                         </div>
@@ -790,18 +790,18 @@ const FunnelView: React.FC<Props> = ({
                   </div>
                 </div>
 
-                <div className="p-4 rounded-2xl border border-slate-200 bg-white">
-                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Lowest mastery</div>
+                <div className="p-4 rounded-2xl border border-white/50 bg-white/40 backdrop-blur-md shadow-sm">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Lowest mastery</div>
                   <div className="mt-2 space-y-2">
                     {masterySnapshot.weakest.length === 0 ? (
-                      <div className="text-sm text-slate-500 font-semibold">No mastery data yet.</div>
+                      <div className="text-sm text-slate-600 font-semibold">No mastery data yet.</div>
                     ) : (
                       masterySnapshot.weakest.map((row) => (
-                        <div key={row.key} className="flex items-center justify-between gap-3 text-[11px] text-slate-600 font-semibold">
+                        <div key={row.key} className="flex items-center justify-between gap-3 text-[11px] text-slate-700 font-semibold">
                           <div className="truncate">
                             <span className="text-slate-900 font-black">{row.display}</span>
                           </div>
-                          <div className="shrink-0 text-slate-400">
+                          <div className="shrink-0 text-slate-600">
                             {Math.round(row.expected * 100)}% • {row.attempts}
                           </div>
                         </div>
@@ -812,69 +812,69 @@ const FunnelView: React.FC<Props> = ({
               </div>
             </div>
           </div>
-        </div>
-      ) : (
-        <div className="flex-1 overflow-y-auto space-y-8 pb-32 pr-2 custom-scrollbar">
-          <div className="p-4 rounded-2xl border border-slate-200 bg-white/90 shadow-sm">
-            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Progress</div>
-            <div className="mt-2 flex flex-wrap items-center gap-4 text-[11px] text-slate-600 font-semibold">
-              <div>
-                Completed:{' '}
-                <span className="text-slate-900">
-                  {funnelSummary.totalAnswered}/{funnelQuestions.length}
-                </span>
+        ) : (
+          <>
+            <div className="p-4 rounded-2xl border border-white/50 bg-white/35 backdrop-blur-xl shadow-[0_22px_70px_-55px_rgba(15,23,42,0.55)]">
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Progress</div>
+              <div className="mt-2 flex flex-wrap items-center gap-4 text-[11px] text-slate-700 font-semibold">
+                <div>
+                  Completed:{' '}
+                  <span className="text-slate-900">
+                    {funnelSummary.totalAnswered}/{funnelQuestions.length}
+                  </span>
+                </div>
+                {funnelSummary.totalAnswered > 0 && (
+                  <div className="text-slate-600">{Math.round(funnelSummary.overallAccuracy * 100)}% accuracy</div>
+                )}
               </div>
-              {funnelSummary.totalAnswered > 0 && (
-                <div className="text-slate-400">{Math.round(funnelSummary.overallAccuracy * 100)}% accuracy</div>
-              )}
+              <div className="mt-3 h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-indigo-600 to-teal-500"
+                  style={{
+                    width: `${funnelQuestions.length > 0
+                      ? Math.min(100, Math.round((funnelSummary.totalAnswered / Math.max(funnelQuestions.length, 1)) * 100))
+                      : 0}%`
+                  }}
+                />
+              </div>
             </div>
-            <div className="mt-3 h-2 w-full rounded-full bg-slate-100 overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-indigo-600 to-teal-500"
-                style={{
-                  width: `${funnelQuestions.length > 0
-                    ? Math.min(100, Math.round((funnelSummary.totalAnswered / Math.max(funnelQuestions.length, 1)) * 100))
-                    : 0}%`
-                }}
+
+            {funnelQuestions.map((q, idx) => (
+              <QuestionCard
+                key={q.id}
+                question={q}
+                index={idx}
+                userId={user?.id}
+                onChat={onChat}
+                savedState={funnelStates[q.id]}
+                onStateChange={(s) => setFunnelStates((prev) => ({ ...prev, [q.id]: s }))}
+                ankiRatingEnabled={true}
+                onAnkiRate={(rating, meta) => onAnkiRate(q, rating, meta)}
               />
-            </div>
-          </div>
+            ))}
 
-          {funnelQuestions.map((q, idx) => (
-            <QuestionCard
-              key={q.id}
-              question={q}
-              index={idx}
-              userId={user?.id}
-              onChat={onChat}
-              savedState={funnelStates[q.id]}
-              onStateChange={(s) => setFunnelStates((prev) => ({ ...prev, [q.id]: s }))}
-              ankiRatingEnabled={true}
-              onAnkiRate={(rating, meta) => onAnkiRate(q, rating, meta)}
-            />
-          ))}
-
-          <div className="flex flex-col items-center justify-center p-8 bg-slate-100 rounded-[2rem] border border-slate-200 mt-12 mb-8">
-            <div className="w-16 h-16 bg-slate-900 text-white rounded-full flex items-center justify-center mb-4 shadow-lg">
-              <BoltIcon className="w-8 h-8" />
+            <div className="flex flex-col items-center justify-center p-8 rounded-[2rem] border border-white/50 bg-white/35 backdrop-blur-xl shadow-[0_22px_70px_-55px_rgba(15,23,42,0.55)] mt-12 mb-8">
+              <div className="w-16 h-16 bg-slate-900 text-white rounded-full flex items-center justify-center mb-4 shadow-lg">
+                <BoltIcon className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-black text-slate-900 mb-2">Keep narrowing?</h3>
+              <p className="text-slate-600 text-sm mb-6 max-w-sm text-center">
+                Continue Funnel to pull the next batch based on your ratings and weak concepts.
+              </p>
+              <button
+                type="button"
+                onClick={onContinueFunnel}
+                disabled={isLoading}
+                className={`px-6 py-3 rounded-xl font-black uppercase tracking-widest text-[11px] transition-colors ${
+                  isLoading ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                }`}
+              >
+                Continue Funnel
+              </button>
             </div>
-            <h3 className="text-xl font-black text-slate-800 mb-2">Keep narrowing?</h3>
-            <p className="text-slate-500 text-sm mb-6 max-w-sm text-center">
-              Continue Funnel to pull the next batch based on your ratings and weak concepts.
-            </p>
-            <button
-              type="button"
-              onClick={onContinueFunnel}
-              disabled={isLoading}
-              className={`px-6 py-3 rounded-xl font-black uppercase tracking-widest text-[11px] transition-colors ${
-                isLoading ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700'
-              }`}
-            >
-              Continue Funnel
-            </button>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </div>
     </div>
   );
 };
