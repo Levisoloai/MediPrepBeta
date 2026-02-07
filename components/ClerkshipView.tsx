@@ -4,6 +4,7 @@ import { generateClerkshipInfo } from '../services/geminiService';
 import { MagnifyingGlassIcon, ClipboardDocumentListIcon } from '@heroicons/react/24/outline';
 import { SparklesIcon } from '@heroicons/react/24/solid';
 import katex from 'katex';
+import DOMPurify from 'dompurify';
 
 interface ClerkshipViewProps {
 }
@@ -85,14 +86,26 @@ const ClerkshipView: React.FC<ClerkshipViewProps> = () => {
      if (part.startsWith('$$')) {
         const math = part.slice(2, -2);
         try {
-           const html = katex.renderToString(math, { displayMode: true });
-           return <span key={index} dangerouslySetInnerHTML={{ __html: html }} className="block my-2" />;
+           const html = katex.renderToString(math, {
+             displayMode: true,
+             throwOnError: false,
+             trust: false,
+             maxExpand: 1000
+           });
+           const safeHtml = DOMPurify.sanitize(html);
+           return <span key={index} dangerouslySetInnerHTML={{ __html: safeHtml }} className="block my-2" />;
         } catch(e) { return <code key={index}>{math}</code> }
      } else if (part.startsWith('$')) {
         const math = part.slice(1, -1);
         try {
-           const html = katex.renderToString(math);
-           return <span key={index} dangerouslySetInnerHTML={{ __html: html }} />;
+           const html = katex.renderToString(math, {
+             displayMode: false,
+             throwOnError: false,
+             trust: false,
+             maxExpand: 1000
+           });
+           const safeHtml = DOMPurify.sanitize(html);
+           return <span key={index} dangerouslySetInnerHTML={{ __html: safeHtml }} />;
         } catch(e) { return <code key={index}>{math}</code> }
      } else if (part.startsWith('**') && part.endsWith('**')) {
         return <strong key={index} className="font-bold text-slate-900">{part.slice(2, -2)}</strong>;

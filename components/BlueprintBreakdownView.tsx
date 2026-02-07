@@ -21,6 +21,7 @@ import {
 import { DocumentMagnifyingGlassIcon, CloudArrowUpIcon, DocumentIcon } from '@heroicons/react/24/outline';
 import QuestionCard from './QuestionCard';
 import katex from 'katex';
+import DOMPurify from 'dompurify';
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 
@@ -397,14 +398,26 @@ const BlueprintBreakdownView: React.FC = () => {
       if (part.startsWith('$$')) {
         const math = part.slice(2, -2);
         try {
-          const html = katex.renderToString(math, { displayMode: true });
-          return <div key={i} dangerouslySetInnerHTML={{ __html: html }} className="my-2" />;
+          const html = katex.renderToString(math, {
+            displayMode: true,
+            throwOnError: false,
+            trust: false,
+            maxExpand: 1000
+          });
+          const safeHtml = DOMPurify.sanitize(html);
+          return <div key={i} dangerouslySetInnerHTML={{ __html: safeHtml }} className="my-2" />;
         } catch(e) { return <code key={i}>{math}</code> }
       } else if (part.startsWith('$')) {
         const math = part.slice(1, -1);
         try {
-          const html = katex.renderToString(math);
-          return <span key={i} dangerouslySetInnerHTML={{ __html: html }} />;
+          const html = katex.renderToString(math, {
+            displayMode: false,
+            throwOnError: false,
+            trust: false,
+            maxExpand: 1000
+          });
+          const safeHtml = DOMPurify.sanitize(html);
+          return <span key={i} dangerouslySetInnerHTML={{ __html: safeHtml }} />;
         } catch(e) { return <code key={i}>{math}</code> }
       } else {
         const boldParts = part.split(/(\*\*[\s\S]*?\*\*)/g);

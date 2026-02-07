@@ -2,6 +2,7 @@
 import React, { useRef, useState } from 'react';
 import { ArrowLeftIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import katex from 'katex';
+import DOMPurify from 'dompurify';
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 
@@ -175,8 +176,14 @@ const SummaryView: React.FC<SummaryViewProps> = ({ content, onBack }) => {
       if (part.startsWith('$')) {
         const math = part.replace(/\$/g, '');
         try {
-          const html = katex.renderToString(math, { throwOnError: false });
-          return <span key={i} dangerouslySetInnerHTML={{ __html: html }} />;
+          const html = katex.renderToString(math, {
+            displayMode: false,
+            throwOnError: false,
+            trust: false,
+            maxExpand: 1000
+          });
+          const safeHtml = DOMPurify.sanitize(html);
+          return <span key={i} dangerouslySetInnerHTML={{ __html: safeHtml }} />;
         } catch (e) {
           return <code key={i}>{math}</code>;
         }

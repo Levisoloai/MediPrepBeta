@@ -19,16 +19,17 @@ View your app in AI Studio: https://ai.studio/apps/drive/17hrICBiBsBaDNpAODhIApi
 
 1. Install dependencies:
    `npm install`
-2. Set the `VITE_XAI_API_KEY` in [.env.local](.env.local) (recommended: `VITE_XAI_MODEL=grok-4-1-fast-reasoning`, `VITE_XAI_FAST_MODEL=grok-4-1-fast-non-reasoning`)
-3. Apply Supabase schema updates in `database/schema.sql` (includes `question_feedback` for beta QA)
-4. (Optional) Enable analytics view:
+2. Apply Supabase schema updates in `database/schema.sql` (includes `question_feedback` for beta QA)
+3. (Optional) Enable analytics view:
    - `VITE_ADMIN_EMAILS` = comma-separated emails
    - or `VITE_ADMIN_DOMAIN` = e.g. `mediprep.ai`
    - or `VITE_ADMIN_MODE=true` for dev-only access
    - Add admin users in Supabase: insert into `admin_users` with the user's UUID
    - Prefab cache table: `study_guide_cache` (admin write, user read)
-5. Run the app:
+4. Run the app:
    `npm run dev`
+
+Note: AI features (tutor + generation) are served via a Vercel serverless proxy (`/api/xai/*`) so the xAI key is never shipped to browsers. For local AI usage, run via Vercel (set `XAI_API_KEY`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`) or use a deployed preview.
 
 ## Deploy (Vercel)
 
@@ -40,7 +41,9 @@ This app is a static Vite build, so deployment is straightforward.
    - Build Command: `npm run build`
    - Output Directory: `dist`
 4. Set environment variables in Vercel (Project → Settings → Environment Variables):
-   - `VITE_XAI_API_KEY`
+   - `XAI_API_KEY` (server-side only, do NOT prefix with `VITE_`)
+   - `SUPABASE_URL`
+   - `SUPABASE_ANON_KEY`
    - `VITE_XAI_MODEL` (recommended: `grok-4-1-fast-reasoning`)
    - `VITE_XAI_FAST_MODEL` (recommended: `grok-4-1-fast-non-reasoning`)
    - Optional admin access:

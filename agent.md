@@ -37,6 +37,14 @@ Use it to:
 - (Add as we go)
 
 ## Journal (Newest First)
+### 2026-02-07 (Security Tightening Sprint)
+- Moved all xAI traffic server-side via Vercel functions: `api/xai/chat.ts` (Supabase-session gated + rate limited) and `api/xai/health.ts`.
+- Removed client-side secret usage: deleted all `VITE_XAI_API_KEY` references in app code and updated UI messaging to "AI unavailable" vs env instructions.
+- Removed runtime CDNs (Tailwind CDN, importmap, Google Fonts, KaTeX CDN) and added a real Tailwind build pipeline (`tailwind.config.cjs`, `postcss.config.cjs`, `index.css`).
+- Upgraded `katex` + `jspdf` to clear `npm audit --omit=dev`, and added DOMPurify-based sanitization + KaTeX hardening (`trust:false`, `maxExpand:1000`) anywhere we render KaTeX HTML.
+- Added security headers + CSP in `vercel.json` and switched SPA routing to `routes` with `handle: filesystem` so `/api/*` functions work.
+- Remaining manual action: rotate the xAI key, remove any `VITE_XAI_API_KEY` from Vercel, and set `XAI_API_KEY`, `SUPABASE_URL`, `SUPABASE_ANON_KEY` in Vercel env.
+
 ### 2026-02-07 (Funnel UX + Schema)
 - Funnel: moved the topic-narrowing artifact into the scrollable session area so users can scroll past it; updated styling toward "liquid glass" (translucent + blur).
 - Schema: added `public.user_concept_mastery` to `database/schema.sql` with RLS so Funnel cohort stats can query without "schema cache" errors.

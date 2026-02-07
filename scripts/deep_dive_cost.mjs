@@ -3,7 +3,7 @@ import path from 'path';
 
 const envPath = path.resolve(process.cwd(), '.env.local');
 if (!fs.existsSync(envPath)) {
-  console.error('Missing .env.local. Set VITE_XAI_API_KEY first.');
+  console.error('Missing .env.local. Set XAI_API_KEY first.');
   process.exit(1);
 }
 
@@ -20,11 +20,11 @@ const env = Object.fromEntries(
     })
 );
 
-const apiKey = env.VITE_XAI_API_KEY;
+const apiKey = env.XAI_API_KEY || env.VITE_XAI_API_KEY;
 const model = env.VITE_XAI_MODEL || 'grok-4-1-fast-reasoning';
 
 if (!apiKey) {
-  console.error('VITE_XAI_API_KEY missing in .env.local');
+  console.error('XAI_API_KEY missing in .env.local');
   process.exit(1);
 }
 

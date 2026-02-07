@@ -36,6 +36,7 @@ import {
 } from './utils/funnel';
 import { SparklesIcon, XMarkIcon, ChatBubbleLeftRightIcon, PaperAirplaneIcon, ExclamationTriangleIcon, CheckIcon, ArrowRightOnRectangleIcon, ChevronDoubleLeftIcon, ChevronDoubleRightIcon } from '@heroicons/react/24/solid';
 import katex from 'katex';
+import DOMPurify from 'dompurify';
 import TutorMessage from './components/TutorMessage';
 import { supabase } from './services/supabaseClient';
 import { fetchSeenFingerprints, recordSeenQuestions } from './services/seenQuestionsService';
@@ -1036,10 +1037,17 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!import.meta.env.VITE_XAI_API_KEY) {
-      console.warn("xAI API Key missing in environment variables.");
-      setIsXaiConfigured(false);
-    }
+    let cancelled = false;
+
+    // Server-side xAI proxy health (prevents client-side key shipping).
+    (async () => {
+      try {
+        const resp = await fetch('/api/xai/health', { method: 'GET' });
+        if (!cancelled) setIsXaiConfigured(resp.ok);
+      } catch {
+        if (!cancelled) setIsXaiConfigured(false);
+      }
+    })();
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
@@ -1049,7 +1057,10 @@ const App: React.FC = () => {
       setUser(session?.user ?? null);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -1133,8 +1144,13 @@ const App: React.FC = () => {
       }>;
     }
   ) => {
+    if (!user) {
+      setError('Log in to generate questions.');
+      setIsAuthModalOpen(true);
+      return;
+    }
     if (!isXaiConfigured) {
-      setError("xAI API Key is missing. Please add 'VITE_XAI_API_KEY' to your environment variables.");
+      setError('AI service unavailable. Please try again later.');
       return;
     }
 
@@ -1729,8 +1745,13 @@ const App: React.FC = () => {
       }>;
     }
   ) => {
+    if (!user) {
+      setError('Log in to generate a cheat sheet.');
+      setIsAuthModalOpen(true);
+      return;
+    }
     if (!isXaiConfigured) {
-      setError("xAI API Key is missing. Please add 'VITE_XAI_API_KEY' to your environment variables.");
+      setError('AI service unavailable. Please try again later.');
       return;
     }
 
@@ -1789,8 +1810,13 @@ const App: React.FC = () => {
     },
     topic?: string
   ) => {
+    if (!user) {
+      setError('Log in to generate custom questions.');
+      setIsAuthModalOpen(true);
+      return;
+    }
     if (!isXaiConfigured) {
-      setError("xAI API Key is missing. Please add 'VITE_XAI_API_KEY' to your environment variables.");
+      setError('AI service unavailable. Please try again later.');
       return;
     }
 
@@ -2086,8 +2112,13 @@ const App: React.FC = () => {
   const handleContinueFunnel = async () => {
     if (!funnelGuideContext) return;
     if (funnelGuideContext.prefs?.sessionMode !== 'funnel') return;
+    if (!user) {
+      setError('Log in to continue Funnel Mode.');
+      setIsAuthModalOpen(true);
+      return;
+    }
     if (!isXaiConfigured) {
-      setError("xAI API Key is missing. Please add 'VITE_XAI_API_KEY' to your environment variables.");
+      setError('AI service unavailable. Please try again later.');
       return;
     }
 
@@ -2405,6 +2436,29 @@ const App: React.FC = () => {
     if (e) e.preventDefault();
     if (!chatInput.trim() || isChatLoading || !activeQuestionForChat) return;
 
+    if (!user) {
+      setIsAuthModalOpen(true);
+      const updated = [...chatHistory, { role: 'model' as const, text: 'Log in to use the AI tutor.' }];
+      setChatHistory(updated);
+      setChatHistoryByQuestion(prev => ({
+        ...prev,
+        [activeQuestionForChat.id]: updated
+      }));
+      setChatInput('');
+      return;
+    }
+
+    if (!isXaiConfigured) {
+      const updated = [...chatHistory, { role: 'model' as const, text: 'AI service unavailable. Please try again later.' }];
+      setChatHistory(updated);
+      setChatHistoryByQuestion(prev => ({
+        ...prev,
+        [activeQuestionForChat.id]: updated
+      }));
+      setChatInput('');
+      return;
+    }
+
     const userMsg: ChatMessage = { role: 'user', text: chatInput };
     const nextHistory = [...chatHistory, userMsg];
     setChatHistory(nextHistory);
@@ -2505,16 +2559,28 @@ const App: React.FC = () => {
       if (part.startsWith('$$') && part.endsWith('$$')) {
         const math = part.slice(2, -2);
         try {
-          const html = katex.renderToString(math, { displayMode: true, throwOnError: false });
-          return <div key={index} dangerouslySetInnerHTML={{ __html: html }} className="my-2" />;
+          const html = katex.renderToString(math, {
+            displayMode: true,
+            throwOnError: false,
+            trust: false,
+            maxExpand: 1000
+          });
+          const safeHtml = DOMPurify.sanitize(html);
+          return <div key={index} dangerouslySetInnerHTML={{ __html: safeHtml }} className="my-2" />;
         } catch (e) {
           return <code key={index} className="block bg-slate-100 p-2 rounded">{math}</code>;
         }
       } else if (part.startsWith('$') && part.endsWith('$')) {
         const math = part.slice(1, -1);
         try {
-          const html = katex.renderToString(math, { displayMode: false, throwOnError: false });
-          return <span key={index} dangerouslySetInnerHTML={{ __html: html }} />;
+          const html = katex.renderToString(math, {
+            displayMode: false,
+            throwOnError: false,
+            trust: false,
+            maxExpand: 1000
+          });
+          const safeHtml = DOMPurify.sanitize(html);
+          return <span key={index} dangerouslySetInnerHTML={{ __html: safeHtml }} />;
         } catch (e) {
           return <code key={index} className="bg-slate-100 px-1 rounded">{math}</code>;
         }
@@ -2691,11 +2757,16 @@ const App: React.FC = () => {
                     <ExclamationTriangleIcon className="w-5 h-5" />
                  </div>
                  <div>
-                    <div className="text-xs font-black text-rose-800 uppercase tracking-tight">Deployment Warning</div>
-                    <div className="text-[10px] text-rose-600 font-bold uppercase">xAI API Key missing in environment variables.</div>
+                    <div className="text-xs font-black text-rose-800 uppercase tracking-tight">AI Unavailable</div>
+                    <div className="text-[10px] text-rose-600 font-bold uppercase">The AI service is not reachable right now.</div>
                  </div>
               </div>
-              <a href="https://x.ai/api" target="_blank" className="text-[10px] font-black uppercase text-rose-600 hover:underline">Get Key &rarr;</a>
+              <button
+                onClick={() => window.location.reload()}
+                className="text-[10px] font-black uppercase text-rose-600 hover:underline"
+              >
+                Retry &rarr;
+              </button>
            </div>
         )}
 

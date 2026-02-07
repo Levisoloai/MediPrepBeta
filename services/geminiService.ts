@@ -1,17 +1,9 @@
 import { UserPreferences, QuestionType, Question, QuestionState, StudyFile, ChatMessage, ExamFormat, Subject, BlueprintTopic, ClinicalCase, CaseLabResult, CaseEvaluation, StudyPlanItem, DifficultyLevel, CardStyle } from '../types';
 import { prepareQuestionForSession, recordIntegrityDropped, recordIntegrityRendered } from '../utils/questionIntegrity';
+import { supabase } from './supabaseClient';
 
-const XAI_BASE_URL = 'https://api.x.ai/v1';
 const DEFAULT_MODEL = import.meta.env.VITE_XAI_MODEL || 'grok-4-1-fast-reasoning';
 const FAST_MODEL = import.meta.env.VITE_XAI_FAST_MODEL || 'grok-4-1-fast-non-reasoning';
-
-const getXaiKey = () => {
-  const apiKey = import.meta.env.VITE_XAI_API_KEY;
-  if (!apiKey) {
-    throw new Error('xAI API key not found. Set VITE_XAI_API_KEY in your environment.');
-  }
-  return apiKey;
-};
 
 type XaiMessage = {
   role: 'system' | 'user' | 'assistant';
@@ -33,6 +25,12 @@ const callXai = async (
   timeoutMs = 90000,
   signal?: AbortSignal
 ): Promise<string> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  const accessToken = session?.access_token;
+  if (!accessToken) {
+    throw new Error('Please log in to use the AI tutor and question generation.');
+  }
+
   const controller = new AbortController();
   let didTimeout = false;
   const timeoutId = globalThis.setTimeout(() => {
@@ -50,11 +48,11 @@ const callXai = async (
 
   let response: Response;
   try {
-    response = await fetch(`${XAI_BASE_URL}/chat/completions`, {
+    response = await fetch('/api/xai/chat', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${getXaiKey()}`
+        Authorization: `Bearer ${accessToken}`
       },
       body: JSON.stringify({
         model,
@@ -73,14 +71,23 @@ const callXai = async (
   }
 
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`xAI error (${response.status}): ${errorText}`);
+    let errorText = '';
+    try {
+      const data = await response.json();
+      errorText = data?.error ? String(data.error) : '';
+    } catch {
+      try {
+        errorText = await response.text();
+      } catch {}
+    }
+    const prefix = response.status === 401 ? 'Please log in to use AI features.' : 'AI service error';
+    throw new Error(errorText ? `${prefix}: ${errorText}` : `${prefix} (${response.status}).`);
   }
 
   const data = await response.json();
-  const content = data?.choices?.[0]?.message?.content;
-  if (!content) throw new Error('Empty response from xAI.');
-  return content as string;
+  const content = data?.content;
+  if (!content || typeof content !== 'string') throw new Error('Empty response from AI service.');
+  return content;
 };
 
 const stripCodeFences = (text: string) => {

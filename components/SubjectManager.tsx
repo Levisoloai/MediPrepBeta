@@ -5,6 +5,7 @@ import { getSubjects, deleteSubject, updateSubjectChatHistory, getSubjectDetails
 import { chatWithSubject } from '../services/geminiService';
 import { FolderIcon, TrashIcon, PresentationChartBarIcon, ClipboardDocumentCheckIcon, PlusIcon, InboxIcon, ChatBubbleLeftRightIcon, ArrowLeftIcon, BoltIcon, SparklesIcon, PaperAirplaneIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import katex from 'katex';
+import DOMPurify from 'dompurify';
 
 interface SubjectManagerProps {
   onSelect: (id: string) => void;
@@ -146,16 +147,28 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({ onSelect }) => {
       if (part.startsWith('$$') && part.endsWith('$$')) {
         const math = part.slice(2, -2);
         try {
-          const html = katex.renderToString(math, { displayMode: true, throwOnError: false });
-          return <div key={index} dangerouslySetInnerHTML={{ __html: html }} className="my-2" />;
+          const html = katex.renderToString(math, {
+            displayMode: true,
+            throwOnError: false,
+            trust: false,
+            maxExpand: 1000
+          });
+          const safeHtml = DOMPurify.sanitize(html);
+          return <div key={index} dangerouslySetInnerHTML={{ __html: safeHtml }} className="my-2" />;
         } catch (e) {
           return <code key={index} className="block bg-slate-100 p-2 rounded">{math}</code>;
         }
       } else if (part.startsWith('$') && part.endsWith('$')) {
         const math = part.slice(1, -1);
         try {
-          const html = katex.renderToString(math, { displayMode: false, throwOnError: false });
-          return <span key={index} dangerouslySetInnerHTML={{ __html: html }} />;
+          const html = katex.renderToString(math, {
+            displayMode: false,
+            throwOnError: false,
+            trust: false,
+            maxExpand: 1000
+          });
+          const safeHtml = DOMPurify.sanitize(html);
+          return <span key={index} dangerouslySetInnerHTML={{ __html: safeHtml }} />;
         } catch (e) {
           return <code key={index} className="bg-slate-100 px-1 rounded">{math}</code>;
         }

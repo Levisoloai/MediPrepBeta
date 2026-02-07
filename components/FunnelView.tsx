@@ -299,8 +299,12 @@ const FunnelView: React.FC<Props> = ({
   };
 
   const handleStart = async () => {
+    if (!user) {
+      setPrepError('Log in to start Funnel Mode.');
+      return;
+    }
     if (!isXaiConfigured) {
-      setPrepError("xAI API Key is missing. Please add 'VITE_XAI_API_KEY' to your environment variables.");
+      setPrepError('AI service unavailable. Please try again later.');
       return;
     }
     setPrepError(null);

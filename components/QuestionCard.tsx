@@ -4,6 +4,7 @@ import { Question, QuestionType, QuestionState, FeedbackTag, QuestionFeedbackPay
 import { submitQuestionFeedback } from '../services/feedbackService';
 import { CheckCircleIcon, XCircleIcon, EyeIcon, LightBulbIcon, ChatBubbleLeftRightIcon, TrashIcon, BeakerIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/react/24/solid';
 import katex from 'katex';
+import DOMPurify from 'dompurify';
 
 interface QuestionCardProps {
   question: Question;
@@ -530,16 +531,28 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
       if (part.startsWith('$$') && part.endsWith('$$')) {
         const math = part.slice(2, -2);
         try {
-          const html = katex.renderToString(math, { displayMode: true, throwOnError: false });
-          return <div key={index} dangerouslySetInnerHTML={{ __html: html }} className="my-2" />;
+          const html = katex.renderToString(math, {
+            displayMode: true,
+            throwOnError: false,
+            trust: false,
+            maxExpand: 1000
+          });
+          const safeHtml = DOMPurify.sanitize(html);
+          return <div key={index} dangerouslySetInnerHTML={{ __html: safeHtml }} className="my-2" />;
         } catch (e) {
           return <code key={index} className="block bg-slate-100 p-2 rounded">{math}</code>;
         }
       } else if (part.startsWith('$') && part.endsWith('$')) {
         const math = part.slice(1, -1);
         try {
-          const html = katex.renderToString(math, { displayMode: false, throwOnError: false });
-          return <span key={index} dangerouslySetInnerHTML={{ __html: html }} />;
+          const html = katex.renderToString(math, {
+            displayMode: false,
+            throwOnError: false,
+            trust: false,
+            maxExpand: 1000
+          });
+          const safeHtml = DOMPurify.sanitize(html);
+          return <span key={index} dangerouslySetInnerHTML={{ __html: safeHtml }} />;
         } catch (e) {
           return <code key={index} className="bg-slate-100 px-1 rounded">{math}</code>;
         }

@@ -3,6 +3,7 @@ import React, { useState, useRef } from 'react';
 import { CameraIcon, PhotoIcon, SparklesIcon, ArrowPathIcon, ExclamationCircleIcon } from '@heroicons/react/24/solid';
 import { analyzeMcqScreenshot } from '../services/geminiService';
 import katex from 'katex';
+import DOMPurify from 'dompurify';
 
 const QuestionSolverView: React.FC = () => {
   const [image, setImage] = useState<string | null>(null);
@@ -56,14 +57,26 @@ const QuestionSolverView: React.FC = () => {
       if (part.startsWith('$$')) {
         const math = part.slice(2, -2);
         try {
-          const html = katex.renderToString(math, { displayMode: true, throwOnError: false });
-          return <div key={i} dangerouslySetInnerHTML={{ __html: html }} className="my-2" />;
+          const html = katex.renderToString(math, {
+            displayMode: true,
+            throwOnError: false,
+            trust: false,
+            maxExpand: 1000
+          });
+          const safeHtml = DOMPurify.sanitize(html);
+          return <div key={i} dangerouslySetInnerHTML={{ __html: safeHtml }} className="my-2" />;
         } catch(e) { return <code key={i}>{math}</code> }
       } else if (part.startsWith('$')) {
         const math = part.slice(1, -1);
         try {
-          const html = katex.renderToString(math, { displayMode: false, throwOnError: false });
-          return <span key={i} dangerouslySetInnerHTML={{ __html: html }} />;
+          const html = katex.renderToString(math, {
+            displayMode: false,
+            throwOnError: false,
+            trust: false,
+            maxExpand: 1000
+          });
+          const safeHtml = DOMPurify.sanitize(html);
+          return <span key={i} dangerouslySetInnerHTML={{ __html: safeHtml }} />;
         } catch(e) { return <code key={i}>{math}</code> }
       } else {
         const boldParts = part.split(/(\*\*[\s\S]*?\*\*)/g);
