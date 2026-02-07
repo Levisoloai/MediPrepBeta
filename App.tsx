@@ -5,6 +5,7 @@ import QuestionCard from './components/QuestionCard';
 import EmptyState from './components/EmptyState';
 import DeepDiveView from './components/DeepDiveView';
 import CoagCascadeView from './components/CoagCascadeView';
+import FunnelView, { type FunnelGuideContext } from './components/FunnelView';
 import BetaAnalyticsView from './components/BetaAnalyticsView';
 import SummaryView from './components/SummaryView';
 import AuthModal from './components/AuthModal';
@@ -23,7 +24,16 @@ import type { BetaGuide } from './utils/betaGuides';
 import { getCheatSheetPrefab } from './services/cheatSheetService';
 import { getIntegrityStats, prepareQuestionForSession } from './utils/questionIntegrity';
 import { formatMsAsMMSS } from './utils/time';
-import { applyAnkiRating, defaultFunnelState, getExpected, normalizeConceptKey, recordTutorTouch, type FunnelBatchMeta, type FunnelState } from './utils/funnel';
+import {
+  applyAnkiRating,
+  computePriority,
+  defaultFunnelState,
+  getExpected,
+  normalizeConceptKey,
+  recordTutorTouch,
+  type FunnelBatchMeta,
+  type FunnelState
+} from './utils/funnel';
 import { SparklesIcon, XMarkIcon, ChatBubbleLeftRightIcon, PaperAirplaneIcon, ExclamationTriangleIcon, CheckIcon, ArrowRightOnRectangleIcon, ChevronDoubleLeftIcon, ChevronDoubleRightIcon } from '@heroicons/react/24/solid';
 import katex from 'katex';
 import TutorMessage from './components/TutorMessage';
@@ -31,7 +41,16 @@ import { supabase } from './services/supabaseClient';
 import { fetchSeenFingerprints, recordSeenQuestions } from './services/seenQuestionsService';
 import { trackTutorUsage } from './services/tutorUsageService';
 
-type ViewMode = 'generate' | 'practice' | 'remediation' | 'cascade' | 'deepdive' | 'histology' | 'analytics' | 'cheatsheet';
+type ViewMode =
+  | 'generate'
+  | 'practice'
+  | 'funnel'
+  | 'remediation'
+  | 'cascade'
+  | 'deepdive'
+  | 'histology'
+  | 'analytics'
+  | 'cheatsheet';
 
 const normalizeStudyConcepts = (raw: any): string[] => {
   if (Array.isArray(raw)) {
@@ -63,6 +82,7 @@ const normalizeQuestionShape = (question: Question): Question => {
 
 const App: React.FC = () => {
   const LAST_GUIDE_CONTEXT_KEY = 'mediprep_last_guide_context';
+  const FUNNEL_GUIDE_CONTEXT_KEY = 'mediprep_funnel_guide_context';
   const PRACTICE_SESSION_STYLE_KEY = 'mediprep_practice_session_style';
   const BLOCK_STAGE_KEY = 'mediprep_block_stage';
   const BLOCK_STARTED_AT_KEY = 'mediprep_block_started_at_ms';
@@ -71,7 +91,17 @@ const App: React.FC = () => {
   const BLOCK_MARKED_IDS_KEY = 'mediprep_block_marked_ids';
   const FUNNEL_STATE_PREFIX = 'mediprep_funnel_state_';
   const FUNNEL_BATCH_META_PREFIX = 'mediprep_funnel_batch_meta_';
-  const allowedViews = new Set<ViewMode>(['generate', 'practice', 'remediation', 'cascade', 'deepdive', 'histology', 'analytics', 'cheatsheet']);
+  const allowedViews = new Set<ViewMode>([
+    'generate',
+    'practice',
+    'funnel',
+    'remediation',
+    'cascade',
+    'deepdive',
+    'histology',
+    'analytics',
+    'cheatsheet'
+  ]);
   const loadBetaPrefs = (): UserPreferences => {
     const defaults: UserPreferences = {
       generationMode: 'questions',
@@ -264,6 +294,26 @@ const App: React.FC = () => {
     }
   });
 
+  const [funnelQuestions, setFunnelQuestions] = useState<Question[]>(() => {
+    try {
+      const saved = localStorage.getItem('mediprep_funnel_questions');
+      const parsed = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) ? parsed.map(normalizeQuestionShape) : [];
+    } catch (e) {
+      console.warn('Failed to restore funnel questions from storage', e);
+      return [];
+    }
+  });
+
+  const [funnelStatesById, setFunnelStatesById] = useState<Record<string, QuestionState>>(() => {
+    try {
+      const saved = localStorage.getItem('mediprep_funnel_states');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -308,6 +358,15 @@ const App: React.FC = () => {
   } | null>(() => {
     try {
       const saved = localStorage.getItem(LAST_GUIDE_CONTEXT_KEY);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [funnelGuideContext, setFunnelGuideContext] = useState<FunnelGuideContext | null>(() => {
+    try {
+      const saved = localStorage.getItem(FUNNEL_GUIDE_CONTEXT_KEY);
       return saved ? JSON.parse(saved) : null;
     } catch {
       return null;
@@ -536,12 +595,20 @@ const App: React.FC = () => {
   }, [remediationQuestions]);
 
   useEffect(() => {
+    localStorage.setItem('mediprep_funnel_questions', JSON.stringify(funnelQuestions));
+  }, [funnelQuestions]);
+
+  useEffect(() => {
     localStorage.setItem('mediprep_practice_states', JSON.stringify(practiceStates));
   }, [practiceStates]);
 
   useEffect(() => {
     localStorage.setItem('mediprep_remediation_states', JSON.stringify(remediationStates));
   }, [remediationStates]);
+
+  useEffect(() => {
+    localStorage.setItem('mediprep_funnel_states', JSON.stringify(funnelStatesById));
+  }, [funnelStatesById]);
 
   useEffect(() => {
     try {
@@ -556,9 +623,20 @@ const App: React.FC = () => {
   }, [lastGuideContext]);
 
   useEffect(() => {
-    const guideHashValue = lastGuideContext?.guideHash;
-    const isFunnel = lastGuideContext?.prefs?.sessionMode === 'funnel';
-    if (!isFunnel || !guideHashValue) return;
+    try {
+      if (funnelGuideContext) {
+        localStorage.setItem(FUNNEL_GUIDE_CONTEXT_KEY, JSON.stringify(funnelGuideContext));
+      } else {
+        localStorage.removeItem(FUNNEL_GUIDE_CONTEXT_KEY);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [funnelGuideContext]);
+
+  useEffect(() => {
+    const guideHashValue = funnelGuideContext?.guideHash;
+    if (!guideHashValue) return;
     try {
       const saved = localStorage.getItem(getFunnelStateStorageKey(guideHashValue));
       const parsed = saved ? JSON.parse(saved) : null;
@@ -573,23 +651,21 @@ const App: React.FC = () => {
     } catch {
       setFunnelBatchMeta(null);
     }
-  }, [user?.id, lastGuideContext?.guideHash, lastGuideContext?.prefs?.sessionMode]);
+  }, [user?.id, funnelGuideContext?.guideHash]);
 
   useEffect(() => {
-    const guideHashValue = lastGuideContext?.guideHash;
-    const isFunnel = lastGuideContext?.prefs?.sessionMode === 'funnel';
-    if (!isFunnel || !guideHashValue) return;
+    const guideHashValue = funnelGuideContext?.guideHash;
+    if (!guideHashValue) return;
     try {
       localStorage.setItem(getFunnelStateStorageKey(guideHashValue), JSON.stringify(funnelState));
     } catch {
       // ignore storage errors
     }
-  }, [funnelState, user?.id, lastGuideContext?.guideHash, lastGuideContext?.prefs?.sessionMode]);
+  }, [funnelState, user?.id, funnelGuideContext?.guideHash]);
 
   useEffect(() => {
-    const guideHashValue = lastGuideContext?.guideHash;
-    const isFunnel = lastGuideContext?.prefs?.sessionMode === 'funnel';
-    if (!isFunnel || !guideHashValue) return;
+    const guideHashValue = funnelGuideContext?.guideHash;
+    if (!guideHashValue) return;
     try {
       if (funnelBatchMeta) {
         localStorage.setItem(getFunnelBatchMetaStorageKey(guideHashValue), JSON.stringify(funnelBatchMeta));
@@ -599,7 +675,7 @@ const App: React.FC = () => {
     } catch {
       // ignore storage errors
     }
-  }, [funnelBatchMeta, lastGuideContext?.guideHash, lastGuideContext?.prefs?.sessionMode]);
+  }, [funnelBatchMeta, funnelGuideContext?.guideHash]);
 
   useEffect(() => {
     localStorage.setItem('mediprep_chat_history_by_question', JSON.stringify(chatHistoryByQuestion));
@@ -775,13 +851,14 @@ const App: React.FC = () => {
 
   useEffect(() => {
     setChatHistoryByQuestion(prev => {
-      if (practiceQuestions.length === 0 && remediationQuestions.length === 0) {
+      if (practiceQuestions.length === 0 && remediationQuestions.length === 0 && funnelQuestions.length === 0) {
         return Object.keys(prev).length > 0 ? {} : prev;
       }
 
       const activeIds = new Set([
         ...practiceQuestions.map(q => q.id),
-        ...remediationQuestions.map(q => q.id)
+        ...remediationQuestions.map(q => q.id),
+        ...funnelQuestions.map(q => q.id)
       ]);
       let changed = false;
       const next: Record<string, ChatMessage[]> = {};
@@ -856,6 +933,11 @@ const App: React.FC = () => {
     [remediationQuestions, remediationStates]
   );
 
+  const funnelSummary = React.useMemo(
+    () => buildPerformanceSummary(funnelQuestions, funnelStatesById),
+    [funnelQuestions, funnelStatesById]
+  );
+
   const histologySummary = React.useMemo(
     () => buildPerformanceSummary(histologyQuestions, histologyStates),
     [histologyQuestions, histologyStates]
@@ -887,6 +969,32 @@ const App: React.FC = () => {
       counts
     };
   }, [practiceQuestions, lastGuideContext?.guideHash, lastGuideContext?.guideTitle]);
+
+  const funnelStats = React.useMemo(() => {
+    const guideHash = funnelGuideContext?.guideHash;
+    if (!guideHash) return null;
+    const entries = Object.entries(funnelState?.concepts || {}).map(([key, state]) => {
+      const expected = getExpected(state);
+      const attempts = Number(state.attempts) || 0;
+      const priority = computePriority(state);
+      return { key, concept: state.display || key, expected, attempts, priority };
+    });
+    const tracked = entries.length;
+    const avgExpected = tracked ? entries.reduce((acc, item) => acc + item.expected, 0) / tracked : 0;
+    const hardest = [...entries].sort((a, b) => b.priority - a.priority).slice(0, 8);
+    const weakest = [...entries].sort((a, b) => a.expected - b.expected).slice(0, 8);
+    return {
+      guideHash,
+      guideTitle: funnelGuideContext?.guideTitle,
+      tracked,
+      avgExpected,
+      answered: funnelSummary.totalAnswered,
+      correct: funnelSummary.totalCorrect,
+      accuracy: funnelSummary.overallAccuracy,
+      hardest,
+      weakest
+    };
+  }, [funnelGuideContext?.guideHash, funnelGuideContext?.guideTitle, funnelState, funnelSummary]);
 
   const [abOverride, setAbOverride] = useState<'auto' | 'gold' | 'guide' | 'split'>('auto');
   const [integrityStats, setIntegrityStats] = useState(() => getIntegrityStats());
@@ -1066,15 +1174,32 @@ const App: React.FC = () => {
         }
       : prefs;
 
-    setLastGuideContext({
-      content,
-      prefs: effectivePrefs,
-      guideHash,
-      guideItems,
-      guideTitle,
-      moduleId: guideModule,
-      mixedModules: isMixed && mixedModules ? mixedModules : undefined
-    });
+    if (effectivePrefs.sessionMode === 'funnel') {
+      if (!guideModule) {
+        setError('Funnel mode requires selecting Hematology, Pulmonology, or Mixed.');
+        setIsLoading(false);
+        return;
+      }
+      setFunnelGuideContext({
+        content,
+        prefs: effectivePrefs,
+        guideHash: guideHash || moduleId || 'custom',
+        guideItems: guideItems || [],
+        guideTitle: guideTitle || (guideModule === 'mixed' ? 'Pulm + Heme (Funnel)' : 'Study Guide'),
+        moduleId: guideModule,
+        ...(isMixed && mixedModules ? { mixedModules } : {})
+      });
+    } else {
+      setLastGuideContext({
+        content,
+        prefs: effectivePrefs,
+        guideHash,
+        guideItems,
+        guideTitle,
+        moduleId: guideModule,
+        mixedModules: isMixed && mixedModules ? mixedModules : undefined
+      });
+    }
 
     try {
       const workingFingerprints = new Set(seenFingerprintSet);
@@ -1124,22 +1249,17 @@ const App: React.FC = () => {
           const hemeSubset = normalized.filter((q) => q.guideHash === hemeHash);
           const pulmSubset = normalized.filter((q) => q.guideHash === pulmHash);
 
-          attachHistologyToQuestions(hemeSubset, 'heme', { existingQuestions: practiceQuestions }).forEach((q) =>
+          attachHistologyToQuestions(hemeSubset, 'heme', { existingQuestions: funnelQuestions }).forEach((q) =>
             attachedById.set(q.id, q)
           );
-          attachHistologyToQuestions(pulmSubset, 'pulm', { existingQuestions: practiceQuestions }).forEach((q) =>
+          attachHistologyToQuestions(pulmSubset, 'pulm', { existingQuestions: funnelQuestions }).forEach((q) =>
             attachedById.set(q.id, q)
           );
 
           const withHistology = normalized.map((q) => attachedById.get(q.id) || q).map(normalizeQuestionShape);
 
-          setPracticeQuestions(withHistology);
-          setRemediationQuestions([]);
-          setRemediationStates({});
-          setPracticeStates({});
-          setPrefabMeta(null);
-          setPrefabExhausted(false);
-          setRemediationMeta(null);
+          setFunnelQuestions(withHistology);
+          setFunnelStatesById({});
           setFunnelBatchMeta(meta);
           setFunnelTutorUsedBeforeAnswer({});
 
@@ -1151,31 +1271,19 @@ const App: React.FC = () => {
           await markQuestionsSeenByFingerprint(pulmHash, pulmSeenList);
         } else {
           const withHistology = attachHistologyToQuestions(normalized, guideModule || guideTitle || '');
-          setPracticeQuestions(withHistology.map(normalizeQuestionShape));
-          setRemediationQuestions([]);
-          setRemediationStates({});
-          setPracticeStates({});
-          setPrefabMeta(null);
-          setPrefabExhausted(false);
-          setRemediationMeta(null);
+          const next = withHistology.map(normalizeQuestionShape);
+          setFunnelQuestions(next);
+          setFunnelStatesById({});
           setFunnelBatchMeta(meta);
           setFunnelTutorUsedBeforeAnswer({});
-          markQuestionsSeen(moduleId, normalized);
-          await markQuestionsSeenByFingerprint(moduleId, normalized);
+          markQuestionsSeen(moduleId, next);
+          await markQuestionsSeenByFingerprint(moduleId, next);
         }
-
-        setPracticeSessionStyle('practice');
-        setBlockStage('taking');
-        setBlockStartedAtMs(null);
-        setBlockDurationMs(0);
-        setBlockCurrentIndex(0);
-        setBlockMarkedIds([]);
-        setBlockReviewShowAll(false);
 
         if (warning) {
           setError(warning);
         }
-        setView('practice');
+        setView('funnel');
         return;
       }
 
@@ -1976,8 +2084,8 @@ const App: React.FC = () => {
   };
 
   const handleContinueFunnel = async () => {
-    if (!lastGuideContext) return;
-    if (lastGuideContext.prefs?.sessionMode !== 'funnel') return;
+    if (!funnelGuideContext) return;
+    if (funnelGuideContext.prefs?.sessionMode !== 'funnel') return;
     if (!isXaiConfigured) {
       setError("xAI API Key is missing. Please add 'VITE_XAI_API_KEY' to your environment variables.");
       return;
@@ -1987,9 +2095,9 @@ const App: React.FC = () => {
     setError(null);
 
     try {
-      const guideHash = lastGuideContext.guideHash || 'custom';
-      const guideModule = lastGuideContext.moduleId;
-      const mixedModules = guideModule === 'mixed' ? lastGuideContext.mixedModules : null;
+      const guideHash = funnelGuideContext.guideHash || 'custom';
+      const guideModule = funnelGuideContext.moduleId;
+      const mixedModules = guideModule === 'mixed' ? funnelGuideContext.mixedModules : null;
       const isMixed = Array.isArray(mixedModules) && mixedModules.length >= 2;
 
       const seenFingerprintSet = isMixed ? new Set<string>() : await ensureSeenFingerprints(guideHash);
@@ -1999,18 +2107,18 @@ const App: React.FC = () => {
       }
 
       const { questions: nextRaw, meta, warning } = await buildFunnelBatch({
-        content: lastGuideContext.content,
-        preferences: lastGuideContext.prefs,
+        content: funnelGuideContext.content,
+        preferences: funnelGuideContext.prefs,
         context: {
-          guideHash: lastGuideContext.guideHash,
-          guideItems: lastGuideContext.guideItems,
-          guideTitle: lastGuideContext.guideTitle,
-          moduleId: lastGuideContext.moduleId,
-          mixedModules: lastGuideContext.mixedModules
+          guideHash: funnelGuideContext.guideHash,
+          guideItems: funnelGuideContext.guideItems,
+          guideTitle: funnelGuideContext.guideTitle,
+          moduleId: funnelGuideContext.moduleId,
+          mixedModules: funnelGuideContext.mixedModules
         },
         funnel: funnelState,
         seenFingerprints: seenFingerprintSet,
-        existingQuestions: practiceQuestions
+        existingQuestions: funnelQuestions
       });
 
       const normalized = nextRaw.map(normalizeQuestionShape);
@@ -2026,10 +2134,10 @@ const App: React.FC = () => {
         const hemeSubset = normalized.filter((q) => q.guideHash === hemeHash);
         const pulmSubset = normalized.filter((q) => q.guideHash === pulmHash);
 
-        attachHistologyToQuestions(hemeSubset, 'heme', { existingQuestions: practiceQuestions }).forEach((q) =>
+        attachHistologyToQuestions(hemeSubset, 'heme', { existingQuestions: funnelQuestions }).forEach((q) =>
           attachedById.set(q.id, q)
         );
-        attachHistologyToQuestions(pulmSubset, 'pulm', { existingQuestions: practiceQuestions }).forEach((q) =>
+        attachHistologyToQuestions(pulmSubset, 'pulm', { existingQuestions: funnelQuestions }).forEach((q) =>
           attachedById.set(q.id, q)
         );
 
@@ -2042,13 +2150,13 @@ const App: React.FC = () => {
         await markQuestionsSeenByFingerprint(hemeHash, hemeSeenList);
         await markQuestionsSeenByFingerprint(pulmHash, pulmSeenList);
       } else {
-        const withHistology = attachHistologyToQuestions(normalized, guideModule || lastGuideContext.guideTitle || '');
+        const withHistology = attachHistologyToQuestions(normalized, guideModule || funnelGuideContext.guideTitle || '');
         nextQuestions = withHistology.map(normalizeQuestionShape);
         markQuestionsSeen(guideHash, nextQuestions);
         await markQuestionsSeenByFingerprint(guideHash, nextQuestions);
       }
 
-      setPracticeQuestions((prev) => [...prev, ...nextQuestions]);
+      setFunnelQuestions((prev) => [...prev, ...nextQuestions]);
       setFunnelBatchMeta(meta);
       if (warning) {
         setError(warning);
@@ -2150,12 +2258,11 @@ const App: React.FC = () => {
     rating: 1 | 2 | 3 | 4,
     meta?: { timeToAnswerMs: number | null; isCorrect: boolean | null }
   ) => {
-    if (view !== 'practice') return;
-    if (lastGuideContext?.prefs?.sessionMode !== 'funnel') return;
-    if (!lastGuideContext?.guideHash) return;
+    if (view !== 'funnel') return;
+    if (!funnelGuideContext?.guideHash) return;
 
-    const guideHash = lastGuideContext.guideHash;
-    const selected = practiceStates[question.id]?.selectedOption;
+    const guideHash = funnelGuideContext.guideHash;
+    const selected = funnelStatesById[question.id]?.selectedOption;
     const isCorrect =
       typeof meta?.isCorrect === 'boolean'
         ? meta.isCorrect
@@ -2231,8 +2338,8 @@ const App: React.FC = () => {
   };
 
   const buildFunnelLessonContext = (q: Question) => {
-    const isFunnel = view === 'practice' && lastGuideContext?.prefs?.sessionMode === 'funnel';
-    if (!isFunnel || !lastGuideContext?.guideHash) return undefined;
+    const isFunnel = view === 'funnel';
+    if (!isFunnel || !funnelGuideContext?.guideHash) return undefined;
     const targetKeyRaw = funnelBatchMeta?.targetByQuestionId?.[q.id];
     const targetKey = targetKeyRaw ? normalizeConceptKey(targetKeyRaw) : null;
     if (!targetKey) return undefined;
@@ -2263,8 +2370,8 @@ const App: React.FC = () => {
     setIsChatCollapsed(false);
     setTutorSessionId(sessionId);
 
-    if (view === 'practice' && lastGuideContext?.prefs?.sessionMode === 'funnel') {
-      const unanswered = !practiceStates[q.id]?.selectedOption;
+    if (view === 'funnel' && funnelGuideContext) {
+      const unanswered = !funnelStatesById[q.id]?.selectedOption;
       if (unanswered) {
         setFunnelTutorUsedBeforeAnswer((prev) => ({ ...prev, [q.id]: true }));
       }
@@ -2277,7 +2384,7 @@ const App: React.FC = () => {
       userId: user?.id,
       sessionId,
       questionId: q.id,
-      guideHash: q.guideHash || lastGuideContext?.guideHash || null,
+      guideHash: q.guideHash || funnelGuideContext?.guideHash || lastGuideContext?.guideHash || null,
       sourceType: q.sourceType || null,
       model: tutorModel,
       location: view === 'remediation' ? 'remediation' : 'practice',
@@ -2312,10 +2419,12 @@ const App: React.FC = () => {
       const stateForTutor =
         view === 'remediation'
           ? remediationStates[activeQuestionForChat.id]
+          : view === 'funnel'
+          ? funnelStatesById[activeQuestionForChat.id]
           : practiceStates[activeQuestionForChat.id];
 
-      if (view === 'practice' && lastGuideContext?.prefs?.sessionMode === 'funnel') {
-        const unanswered = !practiceStates[activeQuestionForChat.id]?.selectedOption;
+      if (view === 'funnel' && funnelGuideContext) {
+        const unanswered = !funnelStatesById[activeQuestionForChat.id]?.selectedOption;
         if (unanswered) {
           setFunnelTutorUsedBeforeAnswer((prev) => ({ ...prev, [activeQuestionForChat.id]: true }));
         }
@@ -2328,7 +2437,7 @@ const App: React.FC = () => {
         userId: user?.id,
         sessionId: tutorSessionId,
         questionId: activeQuestionForChat.id,
-        guideHash: activeQuestionForChat.guideHash || lastGuideContext?.guideHash || null,
+        guideHash: activeQuestionForChat.guideHash || funnelGuideContext?.guideHash || lastGuideContext?.guideHash || null,
         sourceType: activeQuestionForChat.sourceType || null,
         model: tutorModel,
         location: view === 'remediation' ? 'remediation' : 'practice',
@@ -2352,7 +2461,7 @@ const App: React.FC = () => {
         userId: user?.id,
         sessionId: tutorSessionId,
         questionId: activeQuestionForChat.id,
-        guideHash: activeQuestionForChat.guideHash || lastGuideContext?.guideHash || null,
+        guideHash: activeQuestionForChat.guideHash || funnelGuideContext?.guideHash || lastGuideContext?.guideHash || null,
         sourceType: activeQuestionForChat.sourceType || null,
         model: tutorModel,
         location: view === 'remediation' ? 'remediation' : 'practice',
@@ -2369,7 +2478,7 @@ const App: React.FC = () => {
         userId: user?.id,
         sessionId: tutorSessionId,
         questionId: activeQuestionForChat.id,
-        guideHash: activeQuestionForChat.guideHash || lastGuideContext?.guideHash || null,
+        guideHash: activeQuestionForChat.guideHash || funnelGuideContext?.guideHash || lastGuideContext?.guideHash || null,
         sourceType: activeQuestionForChat.sourceType || null,
         model: tutorModel,
         location: view === 'remediation' ? 'remediation' : 'practice',
@@ -2480,7 +2589,13 @@ const App: React.FC = () => {
   const canViewAnalytics = isAdmin;
 
   const isRemediationView = view === 'remediation';
-  const isImmersiveView = view === 'practice' || view === 'deepdive' || view === 'remediation' || view === 'histology' || view === 'cascade';
+  const isImmersiveView =
+    view === 'practice' ||
+    view === 'funnel' ||
+    view === 'deepdive' ||
+    view === 'remediation' ||
+    view === 'histology' ||
+    view === 'cascade';
   const activeQuestions = isRemediationView ? remediationQuestions : practiceQuestions;
   const activeStates = isRemediationView ? remediationStates : practiceStates;
   const activeSummary = isRemediationView ? remediationSummary : practiceSummary;
@@ -2555,6 +2670,7 @@ const App: React.FC = () => {
         currentView={view} 
         setView={(v) => { setView(v as ViewMode); setIsChatOpen(false); }} 
         practiceCount={practiceQuestions.length}
+        funnelCount={funnelQuestions.length}
         remediationCount={remediationQuestions.length}
         showRemediation={remediationQuestions.length > 0 || Boolean(remediationMeta)}
         user={user}
@@ -2661,6 +2777,7 @@ const App: React.FC = () => {
                   lastGuideHash={lastGuideContext?.guideHash ?? null}
                   integrityStats={integrityStats}
                   funnelDebug={funnelBatchMeta}
+                  funnelStats={funnelStats}
                 />
               ) : (
                 <div className="max-w-xl mx-auto mt-16 p-8 bg-white border border-slate-200 rounded-2xl text-center shadow-sm">
@@ -2771,6 +2888,71 @@ const App: React.FC = () => {
           )}
 
           {view === 'cascade' && <CoagCascadeView user={user} />}
+
+          {view === 'funnel' && (
+            <div
+              className="h-full flex flex-col"
+              style={{
+                marginRight: desktopChatOffset
+              }}
+            >
+              <FunnelView
+                user={user}
+                isLoading={isLoading}
+                isXaiConfigured={isXaiConfigured}
+                funnelContext={funnelGuideContext}
+                funnelQuestions={funnelQuestions}
+                funnelStates={funnelStatesById}
+                setFunnelStates={setFunnelStatesById}
+                funnelSummary={funnelSummary}
+                funnelState={funnelState}
+                funnelBatchMeta={funnelBatchMeta}
+                onStartFunnel={async (nextCtx) => {
+                  await handleGenerate(
+                    nextCtx.content,
+                    [],
+                    null,
+                    nextCtx.prefs,
+                    {
+                      guideHash: nextCtx.guideHash,
+                      guideItems: nextCtx.guideItems,
+                      guideTitle: nextCtx.guideTitle,
+                      moduleId: nextCtx.moduleId,
+                      mixedModules: nextCtx.mixedModules
+                    } as any
+                  );
+                }}
+                onContinueFunnel={handleContinueFunnel}
+                onResetFunnel={() => {
+                  const guideHash = funnelGuideContext?.guideHash;
+                  const ok = window.confirm(
+                    'Reset Funnel? This clears your funnel questions and mastery for this guide on this device.'
+                  );
+                  if (!ok) return;
+                  if (guideHash) {
+                    try {
+                      localStorage.removeItem(getFunnelStateStorageKey(guideHash));
+                      localStorage.removeItem(getFunnelBatchMetaStorageKey(guideHash));
+                    } catch {
+                      // ignore
+                    }
+                  }
+                  setFunnelQuestions([]);
+                  setFunnelStatesById({});
+                  setFunnelBatchMeta(null);
+                  setFunnelTutorUsedBeforeAnswer({});
+                  setFunnelState(defaultFunnelState());
+                  setFunnelGuideContext(null);
+                }}
+                onBackToGenerate={() => {
+                  setIsChatOpen(false);
+                  setView('generate');
+                }}
+                onChat={openChatForQuestion}
+                onAnkiRate={(q, rating, meta) => handleFunnelAnkiRate(q, rating, meta)}
+              />
+            </div>
+          )}
           
           {isBlockPractice && (
             <div
@@ -3361,7 +3543,7 @@ const App: React.FC = () => {
 
         <div 
           ref={sidebarRef}
-          className={`fixed inset-y-0 right-0 bg-white/95 backdrop-blur-xl shadow-2xl transform transition-transform duration-300 ease-out z-[102] flex flex-col border-l border-slate-200 ${isChatOpen && (view === 'practice' || view === 'remediation') ? 'translate-x-0' : 'translate-x-full'}`}
+          className={`fixed inset-y-0 right-0 bg-white/95 backdrop-blur-xl shadow-2xl transform transition-transform duration-300 ease-out z-[102] flex flex-col border-l border-slate-200 ${isChatOpen && (view === 'practice' || view === 'remediation' || view === 'funnel') ? 'translate-x-0' : 'translate-x-full'}`}
           style={{ width: isChatCollapsed ? CHAT_COLLAPSED_WIDTH : sidebarWidth }}
         >
           {isChatCollapsed ? (

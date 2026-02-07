@@ -1,12 +1,34 @@
 import React from 'react';
-import { BeakerIcon, PencilSquareIcon, AcademicCapIcon, SparklesIcon, UserCircleIcon, ChartBarIcon, ArrowPathIcon, PhotoIcon, DocumentTextIcon, Squares2X2Icon } from '@heroicons/react/24/solid';
+import {
+  BeakerIcon,
+  PencilSquareIcon,
+  AcademicCapIcon,
+  SparklesIcon,
+  UserCircleIcon,
+  ChartBarIcon,
+  ArrowPathIcon,
+  PhotoIcon,
+  DocumentTextIcon,
+  Squares2X2Icon,
+  FunnelIcon
+} from '@heroicons/react/24/solid';
 
-type ViewMode = 'generate' | 'practice' | 'remediation' | 'cascade' | 'deepdive' | 'histology' | 'analytics' | 'cheatsheet';
+type ViewMode =
+  | 'generate'
+  | 'practice'
+  | 'funnel'
+  | 'remediation'
+  | 'cascade'
+  | 'deepdive'
+  | 'histology'
+  | 'analytics'
+  | 'cheatsheet';
 
 interface NavigationProps {
   currentView: ViewMode;
   setView: (view: ViewMode) => void;
   practiceCount: number;
+  funnelCount?: number;
   remediationCount?: number;
   showRemediation?: boolean;
   user?: any;
@@ -19,6 +41,7 @@ const Navigation: React.FC<NavigationProps> = ({
   currentView,
   setView,
   practiceCount,
+  funnelCount,
   remediationCount,
   showRemediation,
   user,
@@ -29,6 +52,7 @@ const Navigation: React.FC<NavigationProps> = ({
   const items = [
     { id: 'generate', label: 'Generate', icon: BeakerIcon },
     { id: 'practice', label: 'Practice', icon: PencilSquareIcon, count: practiceCount },
+    { id: 'funnel', label: 'Funnel', icon: FunnelIcon, count: funnelCount },
     ...(showRemediation ? [{ id: 'remediation', label: 'Remediation', icon: ArrowPathIcon, count: remediationCount }] : []),
     { id: 'cascade', label: 'Cascade', icon: Squares2X2Icon },
     { id: 'cheatsheet', label: 'Cheat Sheet', icon: DocumentTextIcon },

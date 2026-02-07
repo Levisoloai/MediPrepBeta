@@ -105,6 +105,17 @@ type AbDebugProps = {
   lastGuideHash?: string | null;
   integrityStats?: Record<string, IntegrityCounters> | null;
   funnelDebug?: FunnelBatchMeta | null;
+  funnelStats?: {
+    guideHash: string;
+    guideTitle?: string;
+    tracked: number;
+    avgExpected: number;
+    answered: number;
+    correct: number;
+    accuracy: number;
+    hardest: Array<{ key: string; concept: string; expected: number; attempts: number; priority: number }>;
+    weakest: Array<{ key: string; concept: string; expected: number; attempts: number; priority: number }>;
+  } | null;
 };
 
 const timeRanges: { id: TimeRange; label: string }[] = [
@@ -270,7 +281,8 @@ const BetaAnalyticsView: React.FC<AbDebugProps> = ({
   onOverrideChange,
   lastGuideHash,
   integrityStats,
-  funnelDebug
+  funnelDebug,
+  funnelStats
 }) => {
   const debugCounts = abDebug?.counts ?? { gold: 0, prefab: 0, generated: 0, other: 0 };
   const debugGuideTitle = abDebug?.guideTitle ?? 'n/a';
@@ -310,6 +322,16 @@ const BetaAnalyticsView: React.FC<AbDebugProps> = ({
   const [bulkImportModule, setBulkImportModule] = useState<'heme' | 'pulm'>('heme');
   const [tutorSummary, setTutorSummary] = useState<TutorUsageSummary | null>(null);
   const [tutorSummaryError, setTutorSummaryError] = useState<string | null>(null);
+  const [funnelCohortLoading, setFunnelCohortLoading] = useState(false);
+  const [funnelCohortError, setFunnelCohortError] = useState<string | null>(null);
+  const [funnelCohortSummary, setFunnelCohortSummary] = useState<{
+    loadedAt: string;
+    guideHash: string;
+    rowCount: number;
+    userCount: number;
+    avgExpected: number;
+    topUsers: Array<{ userId: string; avgExpected: number; attempts: number; concepts: number }>;
+  } | null>(null);
   const [goldForm, setGoldForm] = useState({
     module: 'heme' as 'heme' | 'pulm',
     questionText: '',
@@ -1687,6 +1709,58 @@ const BetaAnalyticsView: React.FC<AbDebugProps> = ({
     URL.revokeObjectURL(url);
   };
 
+  const loadFunnelCohort = async () => {
+    const guideHash = funnelStats?.guideHash;
+    if (!guideHash) return;
+    setFunnelCohortLoading(true);
+    setFunnelCohortError(null);
+    try {
+      const { data, error } = await supabase
+        .from('user_concept_mastery')
+        .select('user_id,alpha,beta,attempts')
+        .eq('guide_hash', guideHash)
+        .limit(5000);
+      if (error) throw error;
+      const rows = (data || []) as Array<{ user_id: string; alpha: number; beta: number; attempts: number }>;
+      const byUser = new Map<string, { sumExpected: number; count: number; attempts: number }>();
+      let sumExpected = 0;
+      let count = 0;
+      rows.forEach((row) => {
+        const a = Number(row.alpha) || 1;
+        const b = Number(row.beta) || 1;
+        const expected = a / (a + b);
+        sumExpected += expected;
+        count += 1;
+        const userId = row.user_id;
+        const current = byUser.get(userId) || { sumExpected: 0, count: 0, attempts: 0 };
+        current.sumExpected += expected;
+        current.count += 1;
+        current.attempts += Number(row.attempts) || 0;
+        byUser.set(userId, current);
+      });
+      const users = Array.from(byUser.entries()).map(([userId, stats]) => ({
+        userId,
+        avgExpected: stats.count ? stats.sumExpected / stats.count : 0,
+        attempts: stats.attempts,
+        concepts: stats.count
+      }));
+      users.sort((a, b) => b.attempts - a.attempts);
+      setFunnelCohortSummary({
+        loadedAt: new Date().toISOString(),
+        guideHash,
+        rowCount: rows.length,
+        userCount: byUser.size,
+        avgExpected: count ? sumExpected / count : 0,
+        topUsers: users.slice(0, 10)
+      });
+    } catch (err: any) {
+      setFunnelCohortError(err?.message || 'Failed to load funnel cohort mastery.');
+      setFunnelCohortSummary(null);
+    } finally {
+      setFunnelCohortLoading(false);
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
@@ -1830,6 +1904,97 @@ const BetaAnalyticsView: React.FC<AbDebugProps> = ({
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {funnelStats && (
+        <div className="mb-6 p-4 rounded-2xl border border-slate-200 bg-white/90 shadow-sm">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+            <div className="flex-1">
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Funnel Progress</div>
+              <div className="mt-2 flex flex-wrap gap-4 text-[11px] text-slate-600 font-semibold">
+                <div>
+                  Guide: <span className="text-slate-900 font-black">{funnelStats.guideTitle || 'n/a'}</span>{' '}
+                  <span className="text-slate-400">• {maskId(funnelStats.guideHash)}</span>
+                </div>
+                <div>
+                  Session accuracy{' '}
+                  <span className="text-slate-900 font-black">{Math.round(funnelStats.accuracy * 100)}%</span>{' '}
+                  <span className="text-slate-400">
+                    ({funnelStats.correct}/{funnelStats.answered})
+                  </span>
+                </div>
+                <div>
+                  Tracked concepts <span className="text-slate-900 font-black">{funnelStats.tracked}</span>
+                </div>
+                <div>
+                  Avg mastery <span className="text-slate-900 font-black">{Math.round(funnelStats.avgExpected * 100)}%</span>
+                </div>
+              </div>
+
+              {funnelStats.hardest?.length > 0 && (
+                <div className="mt-4">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Hardest Now</div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {funnelStats.hardest.slice(0, 8).map((row) => (
+                      <span
+                        key={row.key}
+                        className="px-3 py-1.5 rounded-full bg-rose-50 border border-rose-200 text-rose-800 text-[10px] font-black uppercase tracking-widest"
+                        title={`${Math.round(row.expected * 100)}% mastery • ${row.attempts} attempts`}
+                      >
+                        {row.concept.slice(0, 42)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="w-full md:w-[260px]">
+              <button
+                type="button"
+                onClick={loadFunnelCohort}
+                disabled={funnelCohortLoading}
+                className={`w-full px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors ${
+                  funnelCohortLoading ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-800'
+                }`}
+              >
+                {funnelCohortLoading ? 'Loading cohort…' : 'Load Cohort Mastery'}
+              </button>
+              <div className="mt-2 text-[10px] text-slate-400 font-semibold">
+                Requires RLS access to `user_concept_mastery`.
+              </div>
+              {funnelCohortError && (
+                <div className="mt-3 p-3 rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 text-xs font-semibold">
+                  {funnelCohortError}
+                </div>
+              )}
+              {funnelCohortSummary && funnelCohortSummary.guideHash === funnelStats.guideHash && (
+                <div className="mt-3 p-3 rounded-2xl border border-slate-200 bg-white">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Cohort</div>
+                  <div className="mt-2 text-[11px] text-slate-600 font-semibold">
+                    Users <span className="text-slate-900 font-black">{funnelCohortSummary.userCount}</span> • rows{' '}
+                    <span className="text-slate-900 font-black">{funnelCohortSummary.rowCount}</span>
+                  </div>
+                  <div className="mt-1 text-[11px] text-slate-600 font-semibold">
+                    Avg mastery <span className="text-slate-900 font-black">{Math.round(funnelCohortSummary.avgExpected * 100)}%</span>
+                  </div>
+                  {funnelCohortSummary.topUsers.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      {funnelCohortSummary.topUsers.slice(0, 5).map((row) => (
+                        <div key={row.userId} className="flex items-center justify-between gap-3 text-[11px] text-slate-600 font-semibold">
+                          <div className="truncate text-slate-900 font-black">{maskId(row.userId)}</div>
+                          <div className="shrink-0 text-slate-400">
+                            {Math.round(row.avgExpected * 100)}% • {row.attempts}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
