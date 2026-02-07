@@ -62,6 +62,14 @@ Use it to:
 - Restores by `lastQuestionId` (scrollIntoView) with scrollTop fallback; saves scroll in a RAF-throttled handler to avoid spamming localStorage.
 - Verified with `npm test` and `npm run build`.
 
+### 2026-02-07 (Funnel Keyboard Shortcuts)
+- Added funnel-only keyboard workflow in `components/QuestionCard.tsx` (enabled via `keyboardShortcutsEnabled`):
+  - Attempt phase: `1-5` or `A-E` selects option; `Enter` reveals rationale.
+  - Undo: `Cmd/Ctrl+Z` hides answer (if revealed) or clears selection.
+  - Review phase: `1-4` submits Anki rating from anywhere in the card.
+- Funnel: added `onFocusCapture` on each question wrapper to keep `lastQuestionId` synced with focus, and a subtle focus ring so it’s obvious which card will receive shortcuts.
+- Verified `npm test` + `npm run build`.
+
 ### 2026-02-07 (Security Tightening Sprint)
 - Moved all xAI traffic server-side via Vercel functions: `api/xai/chat.ts` (Supabase-session gated + rate limited) and `api/xai/health.ts`.
 - Removed client-side secret usage: deleted all `VITE_XAI_API_KEY` references in app code and updated UI messaging to "AI unavailable" vs env instructions.

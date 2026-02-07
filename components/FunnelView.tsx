@@ -1020,7 +1020,12 @@ const FunnelView: React.FC<Props> = ({
             </div>
 
             {funnelQuestions.map((q, idx) => (
-              <div key={q.id} data-funnel-qid={q.id}>
+              <div
+                key={q.id}
+                data-funnel-qid={q.id}
+                onFocusCapture={() => markLastActive(q.id)}
+                className="rounded-[2rem] focus-within:ring-2 focus-within:ring-indigo-200/80 focus-within:ring-offset-4 focus-within:ring-offset-slate-50"
+              >
                 <QuestionCard
                   question={q}
                   index={idx}
@@ -1034,6 +1039,7 @@ const FunnelView: React.FC<Props> = ({
                     markLastActive(q.id);
                     setFunnelStates((prev) => ({ ...prev, [q.id]: s }));
                   }}
+                  keyboardShortcutsEnabled={true}
                   ankiRatingEnabled={true}
                   onAnkiRate={(rating, meta) => onAnkiRate(q, rating, meta)}
                 />

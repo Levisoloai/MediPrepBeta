@@ -20,6 +20,7 @@ interface QuestionCardProps {
   revealEnabled?: boolean;
   headerVariant?: 'full' | 'minimal';
   ankiRatingEnabled?: boolean;
+  keyboardShortcutsEnabled?: boolean;
   onAnkiRate?: (
     rating: 1 | 2 | 3 | 4,
     meta?: { timeToAnswerMs: number | null; isCorrect: boolean | null }
@@ -182,6 +183,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   revealEnabled = true,
   headerVariant = 'full',
   ankiRatingEnabled = false,
+  keyboardShortcutsEnabled = false,
   onAnkiRate
 }) => {
   // Initialize state from props (savedState) ONLY. 
@@ -846,8 +848,88 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
     ? reportTags.length > 0
     : reportComment.trim().length > 0;
 
+  const isTextInputTarget = (target: EventTarget | null) => {
+    const el = target as HTMLElement | null;
+    if (!el) return false;
+    const tag = el.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+    return Boolean((el as any).isContentEditable);
+  };
+
+  const selectOptionByIndex = (idx: number) => {
+    if (showAnswer) return;
+    if (!Array.isArray(question.options)) return;
+    if (idx < 0 || idx >= question.options.length) return;
+    if (struckOptions.has(idx)) return;
+    setSelectedOption(question.options[idx]);
+  };
+
+  const handleKeyboardShortcuts = (e: React.KeyboardEvent) => {
+    if (!keyboardShortcutsEnabled) return;
+    if (isReportOpen) return;
+    if (isTextInputTarget(e.target)) return;
+    if (e.altKey) return;
+
+    const key = String(e.key || '');
+    const lower = key.toLowerCase();
+
+    if ((e.metaKey || e.ctrlKey) && lower === 'z') {
+      e.preventDefault();
+      if (showAnswer) {
+        setShowAnswer(false);
+        return;
+      }
+      if (selectedOption) {
+        setSelectedOption(null);
+        return;
+      }
+      return;
+    }
+
+    if (!showAnswer) {
+      if (lower === 'enter') {
+        if (selectedOption && revealEnabled !== false) {
+          e.preventDefault();
+          handleReveal();
+        }
+        return;
+      }
+
+      // Option selection (attempt phase): 1-5 or A-E.
+      if (!e.metaKey && !e.ctrlKey && !e.shiftKey) {
+        if (/^[1-5]$/.test(lower)) {
+          e.preventDefault();
+          selectOptionByIndex(Number(lower) - 1);
+          return;
+        }
+      }
+
+      if (/^[a-e]$/.test(lower)) {
+        e.preventDefault();
+        selectOptionByIndex(lower.charCodeAt(0) - 97);
+        return;
+      }
+
+      return;
+    }
+
+    // Review phase: 1-4 Anki rating from anywhere.
+    if (!e.metaKey && !e.ctrlKey && !e.shiftKey && /^[1-4]$/.test(lower)) {
+      e.preventDefault();
+      handleAnkiRate(Number(lower) as 1 | 2 | 3 | 4);
+    }
+  };
+
   return (
-    <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-white overflow-hidden transition-all hover:shadow-2xl hover:shadow-slate-200/70 relative ring-1 ring-slate-100 group/card animate-in fade-in slide-in-from-bottom-4 duration-300">
+    <div
+      tabIndex={keyboardShortcutsEnabled ? 0 : undefined}
+      onKeyDown={handleKeyboardShortcuts}
+      className={`bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-white overflow-hidden transition-all hover:shadow-2xl hover:shadow-slate-200/70 relative ring-1 ring-slate-100 group/card animate-in fade-in slide-in-from-bottom-4 duration-300 ${
+        keyboardShortcutsEnabled
+          ? 'focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-4 focus-visible:ring-offset-slate-50'
+          : ''
+      }`}
+    >
       
       <div className="p-6 md:p-10">
         <div className="flex justify-between items-start mb-8">
