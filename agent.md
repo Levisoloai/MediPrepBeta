@@ -134,5 +134,9 @@ Use it to:
   - PDF / DOCX for tables, mnemonics, and full sessions
 - Added parsing helpers in `utils/tutorExportParsing.ts` to extract compare tables, mnemonics, and Anki prompts from tutor responses.
 
+### 2026-02-07 (Tutor Vault Table Rendering)
+- Vault: renders pipe `|` compare tables as a real HTML table (header row, zebra rows, wrapped cells) with horizontal scroll fallback.
+- Keeps raw-text fallback when parsing fails (so odd tutor output still displays).
+
 ### 2026-02-07
 - Started this file. Next: after each task, append 2-5 bullets: what we did, what went well, what to improve.

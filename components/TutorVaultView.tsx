@@ -146,6 +146,51 @@ const kindLabel = (kind: TutorExportKind) => {
   return kind;
 };
 
+type ParsedPipeTable = {
+  headers: string[];
+  rows: string[][];
+};
+
+const splitPipeRow = (line: string) => {
+  const trimmed = String(line ?? '').trim();
+  const noEdgePipes = trimmed.replace(/^\|/, '').replace(/\|$/, '');
+  return noEdgePipes
+    .split('|')
+    .map((cell) => String(cell ?? '').trim());
+};
+
+const isSeparatorRow = (cells: string[]) => {
+  if (cells.length === 0) return false;
+  return cells.every((cell) => /^:?-{3,}:?$/.test(String(cell ?? '').trim()));
+};
+
+const parsePipeTable = (raw: string): ParsedPipeTable | null => {
+  const text = String(raw ?? '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const lines = text
+    .split('\n')
+    .map((l) => l.trimEnd())
+    .filter((l) => l.trim().length > 0);
+  if (lines.length < 2) return null;
+
+  const headerCells = splitPipeRow(lines[0]).filter((c) => c.length > 0);
+  if (headerCells.length < 2) return null;
+
+  const maybeSepCells = splitPipeRow(lines[1]);
+  const hasSeparator = isSeparatorRow(maybeSepCells);
+
+  const colCount = headerCells.length;
+  const rows: string[][] = [];
+  for (let i = hasSeparator ? 2 : 1; i < lines.length; i += 1) {
+    const cells = splitPipeRow(lines[i]);
+    if (cells.every((c) => c.trim().length === 0)) continue;
+    const normalized = Array.from({ length: colCount }, (_, idx) => String(cells[idx] ?? '').trim());
+    rows.push(normalized);
+  }
+
+  if (rows.length === 0) return null;
+  return { headers: headerCells, rows };
+};
+
 const TutorVaultView: React.FC<Props> = ({ user, exports, onDelete, onClearAll }) => {
   const [filter, setFilter] = useState<FilterKind>('all');
   const [query, setQuery] = useState('');
@@ -440,9 +485,52 @@ const TutorVaultView: React.FC<Props> = ({ user, exports, onDelete, onClearAll }
                           <ClipboardDocumentCheckIcon className="w-4 h-4" />
                           Compare table
                         </div>
-                        <pre className="mt-3 text-[12px] leading-relaxed text-slate-800 font-semibold whitespace-pre-wrap overflow-x-auto">
-                          {item.tableText}
-                        </pre>
+                        {(() => {
+                          const parsed = parsePipeTable(item.tableText);
+                          if (!parsed) {
+                            return (
+                              <pre className="mt-3 text-[12px] leading-relaxed text-slate-800 font-semibold whitespace-pre-wrap overflow-x-auto">
+                                {item.tableText}
+                              </pre>
+                            );
+                          }
+                          return (
+                            <div className="mt-3 overflow-x-auto rounded-2xl border border-slate-200 bg-white/70 backdrop-blur-md">
+                              <table className="min-w-full text-[12px] text-slate-800">
+                                <thead className="bg-slate-900/90 text-white">
+                                  <tr>
+                                    {parsed.headers.map((h, idx) => (
+                                      <th
+                                        key={idx}
+                                        scope="col"
+                                        className="px-4 py-3 text-left font-black uppercase tracking-widest text-[10px] whitespace-nowrap"
+                                      >
+                                        {h}
+                                      </th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {parsed.rows.map((row, rowIdx) => (
+                                    <tr
+                                      key={rowIdx}
+                                      className={rowIdx % 2 === 0 ? 'bg-white/70' : 'bg-slate-50/80'}
+                                    >
+                                      {row.map((cell, cellIdx) => (
+                                        <td
+                                          key={cellIdx}
+                                          className="px-4 py-3 align-top font-semibold text-slate-800 border-t border-slate-200/70 whitespace-normal break-words"
+                                        >
+                                          {cell}
+                                        </td>
+                                      ))}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
 
@@ -514,4 +602,3 @@ const TutorVaultView: React.FC<Props> = ({ user, exports, onDelete, onClearAll }
 };
 
 export default TutorVaultView;
-
