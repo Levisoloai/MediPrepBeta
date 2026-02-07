@@ -70,6 +70,11 @@ Use it to:
 - Funnel: added `onFocusCapture` on each question wrapper to keep `lastQuestionId` synced with focus, and a subtle focus ring so it’s obvious which card will receive shortcuts.
 - Verified `npm test` + `npm run build`.
 
+### 2026-02-07 (AI Health Env Fallback)
+- Added `services/supabasePublicConfig.ts` to centralize the public Supabase URL + anon key.
+- Updated Vercel xAI proxy routes (`api/xai/health.ts`, `api/xai/chat.ts`) to fall back to the public Supabase config when `SUPABASE_URL` / `SUPABASE_ANON_KEY` are not set in Vercel env.
+- Net effect: `/api/xai/health` now only fails when `XAI_API_KEY` is missing (and not due to missing Supabase env wiring).
+
 ### 2026-02-07 (Security Tightening Sprint)
 - Moved all xAI traffic server-side via Vercel functions: `api/xai/chat.ts` (Supabase-session gated + rate limited) and `api/xai/health.ts`.
 - Removed client-side secret usage: deleted all `VITE_XAI_API_KEY` references in app code and updated UI messaging to "AI unavailable" vs env instructions.

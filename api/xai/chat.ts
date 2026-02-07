@@ -3,6 +3,8 @@ type XaiMessage = {
   content: string;
 };
 
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from '../../services/supabasePublicConfig';
+
 export const config = {
   // xAI responses can take a bit; keep within typical Vercel limits.
   maxDuration: 60
@@ -138,8 +140,8 @@ const callXai = async (input: {
 };
 
 export default async function handler(req: any, res: any) {
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+  const supabaseUrl = process.env.SUPABASE_URL || SUPABASE_URL;
+  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || SUPABASE_ANON_KEY;
   if (!supabaseUrl || !supabaseAnonKey) {
     sendJson(res, 500, { error: 'Server misconfigured (missing Supabase env).' });
     return;
