@@ -1,13 +1,9 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import Navigation from './components/Navigation';
 import InputSection from './components/InputSection';
 import QuestionCard from './components/QuestionCard';
 import EmptyState from './components/EmptyState';
-import DeepDiveView from './components/DeepDiveView';
-import CoagCascadeView from './components/CoagCascadeView';
-import FunnelView, { type FunnelGuideContext } from './components/FunnelView';
-import BetaAnalyticsView from './components/BetaAnalyticsView';
-import SummaryView from './components/SummaryView';
+import type { FunnelGuideContext } from './components/FunnelView';
 import AuthModal from './components/AuthModal';
 import { generateQuestions, generateCheatSheetText, chatWithTutor } from './services/geminiService';
 import { flushFeedbackQueue } from './services/feedbackService';
@@ -41,6 +37,12 @@ import TutorMessage from './components/TutorMessage';
 import { supabase } from './services/supabaseClient';
 import { fetchSeenFingerprints, recordSeenQuestions } from './services/seenQuestionsService';
 import { trackTutorUsage } from './services/tutorUsageService';
+
+const DeepDiveView = React.lazy(() => import('./components/DeepDiveView'));
+const CoagCascadeView = React.lazy(() => import('./components/CoagCascadeView'));
+const FunnelView = React.lazy(() => import('./components/FunnelView'));
+const BetaAnalyticsView = React.lazy(() => import('./components/BetaAnalyticsView'));
+const SummaryView = React.lazy(() => import('./components/SummaryView'));
 
 type ViewMode =
   | 'generate'
@@ -2808,14 +2810,22 @@ const App: React.FC = () => {
 
           {view === 'cheatsheet' && (
             cheatSheetContent ? (
-              <SummaryView
-                content={cheatSheetContent}
-                onBack={() => {
-                  setCheatSheetContent('');
-                  setCheatSheetTitle(null);
-                  setCheatSheetSource(null);
-                }}
-              />
+              <Suspense
+                fallback={
+                  <div className="flex-1 flex items-center justify-center text-sm text-slate-500">
+                    Loading cheat sheet…
+                  </div>
+                }
+              >
+                <SummaryView
+                  content={cheatSheetContent}
+                  onBack={() => {
+                    setCheatSheetContent('');
+                    setCheatSheetTitle(null);
+                    setCheatSheetSource(null);
+                  }}
+                />
+              </Suspense>
             ) : (
               <div className="h-full flex flex-col items-center justify-center max-w-4xl mx-auto w-full animate-in fade-in zoom-in-95 duration-300">
                 <div className="w-full h-full">
@@ -2830,26 +2840,46 @@ const App: React.FC = () => {
             )
           )}
 
-          {view === 'deepdive' && <DeepDiveView />}
+          {view === 'deepdive' && (
+            <Suspense
+              fallback={
+                <div className="flex-1 flex items-center justify-center text-sm text-slate-500">
+                  Loading Deep Dive…
+                </div>
+              }
+            >
+              <DeepDiveView />
+            </Suspense>
+          )}
           {view === 'analytics' && (
             <div className="animate-in fade-in duration-300">
               {canViewAnalytics ? (
-                <BetaAnalyticsView
-                  abDebug={abDebug}
-                  prefabMeta={prefabMeta ? {
-                    guideHash: prefabMeta.guideHash,
-                    guideTitle: prefabMeta.guideTitle,
-                    totalPrefab: prefabMeta.totalPrefab,
-                    remainingPrefab: prefabMeta.remainingPrefab
-                  } : null}
-                  prefabExhausted={prefabExhausted}
-                  abOverride={abOverride}
-                  onOverrideChange={handleOverrideChange}
-                  lastGuideHash={lastGuideContext?.guideHash ?? null}
-                  integrityStats={integrityStats}
-                  funnelDebug={funnelBatchMeta}
-                  funnelStats={funnelStats}
-                />
+                <Suspense
+                  fallback={
+                    <div className="max-w-xl mx-auto mt-16 p-8 bg-white border border-slate-200 rounded-2xl text-center shadow-sm">
+                      <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Loading</div>
+                      <h3 className="text-lg font-black text-slate-800">Loading analytics…</h3>
+                      <p className="text-sm text-slate-500 mt-2">Fetching admin panels.</p>
+                    </div>
+                  }
+                >
+                  <BetaAnalyticsView
+                    abDebug={abDebug}
+                    prefabMeta={prefabMeta ? {
+                      guideHash: prefabMeta.guideHash,
+                      guideTitle: prefabMeta.guideTitle,
+                      totalPrefab: prefabMeta.totalPrefab,
+                      remainingPrefab: prefabMeta.remainingPrefab
+                    } : null}
+                    prefabExhausted={prefabExhausted}
+                    abOverride={abOverride}
+                    onOverrideChange={handleOverrideChange}
+                    lastGuideHash={lastGuideContext?.guideHash ?? null}
+                    integrityStats={integrityStats}
+                    funnelDebug={funnelBatchMeta}
+                    funnelStats={funnelStats}
+                  />
+                </Suspense>
               ) : (
                 <div className="max-w-xl mx-auto mt-16 p-8 bg-white border border-slate-200 rounded-2xl text-center shadow-sm">
                   <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Access Restricted</div>
@@ -2958,7 +2988,17 @@ const App: React.FC = () => {
             </div>
           )}
 
-          {view === 'cascade' && <CoagCascadeView user={user} />}
+          {view === 'cascade' && (
+            <Suspense
+              fallback={
+                <div className="flex-1 flex items-center justify-center text-sm text-slate-500">
+                  Loading Cascade…
+                </div>
+              }
+            >
+              <CoagCascadeView user={user} />
+            </Suspense>
+          )}
 
           {view === 'funnel' && (
             <div
@@ -2967,61 +3007,69 @@ const App: React.FC = () => {
                 marginRight: desktopChatOffset
               }}
             >
-              <FunnelView
-                user={user}
-                isLoading={isLoading}
-                isXaiConfigured={isXaiConfigured}
-                funnelContext={funnelGuideContext}
-                funnelQuestions={funnelQuestions}
-                funnelStates={funnelStatesById}
-                setFunnelStates={setFunnelStatesById}
-                funnelSummary={funnelSummary}
-                funnelState={funnelState}
-                funnelBatchMeta={funnelBatchMeta}
-                onStartFunnel={async (nextCtx) => {
-                  await handleGenerate(
-                    nextCtx.content,
-                    [],
-                    null,
-                    nextCtx.prefs,
-                    {
-                      guideHash: nextCtx.guideHash,
-                      guideItems: nextCtx.guideItems,
-                      guideTitle: nextCtx.guideTitle,
-                      moduleId: nextCtx.moduleId,
-                      mixedModules: nextCtx.mixedModules
-                    } as any
-                  );
-                }}
-                onContinueFunnel={handleContinueFunnel}
-                onResetFunnel={() => {
-                  const guideHash = funnelGuideContext?.guideHash;
-                  const ok = window.confirm(
-                    'Reset Funnel? This clears your funnel questions and mastery for this guide on this device.'
-                  );
-                  if (!ok) return;
-                  if (guideHash) {
-                    try {
-                      localStorage.removeItem(getFunnelStateStorageKey(guideHash));
-                      localStorage.removeItem(getFunnelBatchMetaStorageKey(guideHash));
-                    } catch {
-                      // ignore
+              <Suspense
+                fallback={
+                  <div className="flex-1 flex items-center justify-center text-sm text-slate-500">
+                    Loading Funnel…
+                  </div>
+                }
+              >
+                <FunnelView
+                  user={user}
+                  isLoading={isLoading}
+                  isXaiConfigured={isXaiConfigured}
+                  funnelContext={funnelGuideContext}
+                  funnelQuestions={funnelQuestions}
+                  funnelStates={funnelStatesById}
+                  setFunnelStates={setFunnelStatesById}
+                  funnelSummary={funnelSummary}
+                  funnelState={funnelState}
+                  funnelBatchMeta={funnelBatchMeta}
+                  onStartFunnel={async (nextCtx) => {
+                    await handleGenerate(
+                      nextCtx.content,
+                      [],
+                      null,
+                      nextCtx.prefs,
+                      {
+                        guideHash: nextCtx.guideHash,
+                        guideItems: nextCtx.guideItems,
+                        guideTitle: nextCtx.guideTitle,
+                        moduleId: nextCtx.moduleId,
+                        mixedModules: nextCtx.mixedModules
+                      } as any
+                    );
+                  }}
+                  onContinueFunnel={handleContinueFunnel}
+                  onResetFunnel={() => {
+                    const guideHash = funnelGuideContext?.guideHash;
+                    const ok = window.confirm(
+                      'Reset Funnel? This clears your funnel questions and mastery for this guide on this device.'
+                    );
+                    if (!ok) return;
+                    if (guideHash) {
+                      try {
+                        localStorage.removeItem(getFunnelStateStorageKey(guideHash));
+                        localStorage.removeItem(getFunnelBatchMetaStorageKey(guideHash));
+                      } catch {
+                        // ignore
+                      }
                     }
-                  }
-                  setFunnelQuestions([]);
-                  setFunnelStatesById({});
-                  setFunnelBatchMeta(null);
-                  setFunnelTutorUsedBeforeAnswer({});
-                  setFunnelState(defaultFunnelState());
-                  setFunnelGuideContext(null);
-                }}
-                onBackToGenerate={() => {
-                  setIsChatOpen(false);
-                  setView('generate');
-                }}
-                onChat={openChatForQuestion}
-                onAnkiRate={(q, rating, meta) => handleFunnelAnkiRate(q, rating, meta)}
-              />
+                    setFunnelQuestions([]);
+                    setFunnelStatesById({});
+                    setFunnelBatchMeta(null);
+                    setFunnelTutorUsedBeforeAnswer({});
+                    setFunnelState(defaultFunnelState());
+                    setFunnelGuideContext(null);
+                  }}
+                  onBackToGenerate={() => {
+                    setIsChatOpen(false);
+                    setView('generate');
+                  }}
+                  onChat={openChatForQuestion}
+                  onAnkiRate={(q, rating, meta) => handleFunnelAnkiRate(q, rating, meta)}
+                />
+              </Suspense>
             </div>
           )}
           

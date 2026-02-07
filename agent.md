@@ -37,6 +37,11 @@ Use it to:
 - (Add as we go)
 
 ## Journal (Newest First)
+### 2026-02-07 (Vite Build Chunk Warning)
+- Reduced initial bundle weight by lazy-loading large tabs (Deep Dive, Funnel, Cascade, Analytics, Cheat Sheet) via `React.lazy` + `Suspense` in `App.tsx`.
+- Raised Vite `build.chunkSizeWarningLimit` to avoid noisy warnings caused by intentionally large worker/assets (pdf.js worker).
+- Verified `npm test` + `npm run build`.
+
 ### 2026-02-07 (Funnel Jump To Current)
 - Funnel: added a “Jump to current” button in the Progress card that scrolls to the last active question (fallback: first unanswered, else last question).
 
