@@ -10,9 +10,10 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.2.7",
     "@heroicons/react": "^2.2.0",
     "@supabase/supabase-js": "^2.91.0",
-    "@fontsource/inter": "^5.2.7",
+    "docx": "^9.5.1",
     "dompurify": "^3.2.4",
     "html2canvas": "1.4.1",
     "jspdf": "^4.1.0",

@@ -11,7 +11,19 @@ import { getPrefabSet, getActivePrefabQuestions } from './services/prefabService
 import { getApprovedGoldQuestions } from './services/goldQuestionService';
 import { buildFunnelBatch } from './services/funnelService';
 import { upsertConceptMasteryRows, type ConceptMasteryRow } from './services/conceptMasteryService';
-import { Question, UserPreferences, StudyFile, ChatMessage, QuestionState, StudyGuideItem, QuestionType, DifficultyLevel, ExamFormat, CardStyle } from './types';
+import {
+  Question,
+  UserPreferences,
+  StudyFile,
+  ChatMessage,
+  QuestionState,
+  StudyGuideItem,
+  QuestionType,
+  DifficultyLevel,
+  ExamFormat,
+  CardStyle,
+  TutorExportItem
+} from './types';
 import { buildFingerprintSet, buildFingerprintVariants, filterDuplicateQuestions } from './utils/questionDedupe';
 import { attachHistologyToQuestions } from './utils/histology';
 import { buildHistologyReviewQuestions, selectHistologyEntries, HistologyReviewMode } from './utils/histologyReview';
@@ -37,12 +49,14 @@ import TutorMessage from './components/TutorMessage';
 import { supabase } from './services/supabaseClient';
 import { fetchSeenFingerprints, recordSeenQuestions } from './services/seenQuestionsService';
 import { trackTutorUsage } from './services/tutorUsageService';
+import { extractStudyToolsFromTutorText } from './utils/tutorExportParsing';
 
 const DeepDiveView = React.lazy(() => import('./components/DeepDiveView'));
 const CoagCascadeView = React.lazy(() => import('./components/CoagCascadeView'));
 const FunnelView = React.lazy(() => import('./components/FunnelView'));
 const BetaAnalyticsView = React.lazy(() => import('./components/BetaAnalyticsView'));
 const SummaryView = React.lazy(() => import('./components/SummaryView'));
+const TutorVaultView = React.lazy(() => import('./components/TutorVaultView'));
 
 type ViewMode =
   | 'generate'
@@ -50,6 +64,7 @@ type ViewMode =
   | 'funnel'
   | 'remediation'
   | 'cascade'
+  | 'vault'
   | 'deepdive'
   | 'histology'
   | 'analytics'
@@ -94,12 +109,14 @@ const App: React.FC = () => {
   const BLOCK_MARKED_IDS_KEY = 'mediprep_block_marked_ids';
   const FUNNEL_STATE_PREFIX = 'mediprep_funnel_state_';
   const FUNNEL_BATCH_META_PREFIX = 'mediprep_funnel_batch_meta_';
+  const TUTOR_EXPORTS_PREFIX = 'mediprep_tutor_exports_v1_';
   const allowedViews = new Set<ViewMode>([
     'generate',
     'practice',
     'funnel',
     'remediation',
     'cascade',
+    'vault',
     'deepdive',
     'histology',
     'analytics',
@@ -397,6 +414,10 @@ const App: React.FC = () => {
   const [tutorModel, setTutorModel] = useState<'flash' | 'pro'>('pro');
   const [tutorSessionId, setTutorSessionId] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const tutorExportsKey = `${TUTOR_EXPORTS_PREFIX}${user?.id || 'anon'}`;
+  const tutorExportsLoadedKeyRef = useRef<string | null>(null);
+  const [tutorExports, setTutorExports] = useState<TutorExportItem[]>([]);
+  const [vaultNotice, setVaultNotice] = useState<string | null>(null);
   const seenFingerprintCache = useRef<Map<string, Set<string>>>(new Map());
 
   const [sidebarWidth, setSidebarWidth] = useState(400);
@@ -683,6 +704,32 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('mediprep_chat_history_by_question', JSON.stringify(chatHistoryByQuestion));
   }, [chatHistoryByQuestion]);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(tutorExportsKey);
+      const parsed = saved ? (JSON.parse(saved) as TutorExportItem[]) : [];
+      setTutorExports(Array.isArray(parsed) ? parsed : []);
+    } catch {
+      setTutorExports([]);
+    }
+    tutorExportsLoadedKeyRef.current = tutorExportsKey;
+  }, [tutorExportsKey]);
+
+  useEffect(() => {
+    if (tutorExportsLoadedKeyRef.current !== tutorExportsKey) return;
+    try {
+      localStorage.setItem(tutorExportsKey, JSON.stringify(tutorExports));
+    } catch {
+      // ignore storage errors
+    }
+  }, [tutorExports, tutorExportsKey]);
+
+  useEffect(() => {
+    if (!vaultNotice) return;
+    const t = window.setTimeout(() => setVaultNotice(null), 2500);
+    return () => window.clearTimeout(t);
+  }, [vaultNotice]);
 
   useEffect(() => {
     try {
@@ -2446,6 +2493,148 @@ const App: React.FC = () => {
     return unanswered || sourceQuestions[0];
   };
 
+  const makeTutorExportId = () => {
+    try {
+      return crypto.randomUUID();
+    } catch {
+      return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    }
+  };
+
+  const buildTutorExportTitle = (prefix: string, q: Question | null) => {
+    const concept = q?.studyConcepts?.[0] || q?.sourceItemTitle || '';
+    if (concept) return `${prefix}: ${concept}`;
+    if (q?.id) return `${prefix}: ${q.id.slice(0, 8)}`;
+    return prefix;
+  };
+
+  const getExportGuideHash = (q: Question | null) =>
+    q?.guideHash || funnelGuideContext?.guideHash || lastGuideContext?.guideHash || null;
+
+  const findLastModelText = () => {
+    for (let i = chatHistory.length - 1; i >= 0; i -= 1) {
+      const msg = chatHistory[i];
+      if (msg?.role === 'model') return msg.text;
+    }
+    return null;
+  };
+
+  const addTutorExport = (item: TutorExportItem) => {
+    setTutorExports((prev) => [item, ...prev].slice(0, 500));
+    setVaultNotice('Saved to Vault.');
+  };
+
+  const handleSaveTutorSession = () => {
+    if (!chatHistory.length) {
+      setVaultNotice('Nothing to save yet.');
+      return;
+    }
+    const q = activeQuestionForChat;
+    const guideHash = getExportGuideHash(q);
+    const createdAt = new Date().toISOString();
+    const title = buildTutorExportTitle('Tutor session', q);
+
+    addTutorExport({
+      id: makeTutorExportId(),
+      kind: 'session',
+      createdAt,
+      title,
+      questionId: q?.id,
+      guideHash,
+      sourceType: q?.sourceType || null,
+      questionPreview: q
+        ? {
+            questionText: q.questionText,
+            options: q.options,
+            correctAnswer: q.correctAnswer,
+            studyConcepts: q.studyConcepts
+          }
+        : undefined,
+      messages: chatHistory
+    });
+  };
+
+  const handleSaveTutorAnki = () => {
+    const last = findLastModelText();
+    if (!last) {
+      setVaultNotice('No tutor response to parse yet.');
+      return;
+    }
+    const { cards } = extractStudyToolsFromTutorText(last);
+    if (!cards.length) {
+      setVaultNotice('No Anki prompts found in the last tutor response.');
+      return;
+    }
+    const q = activeQuestionForChat;
+    const guideHash = getExportGuideHash(q);
+    const createdAt = new Date().toISOString();
+    const title = buildTutorExportTitle('Anki prompts', q);
+    addTutorExport({
+      id: makeTutorExportId(),
+      kind: 'anki',
+      createdAt,
+      title,
+      questionId: q?.id,
+      guideHash,
+      sourceType: q?.sourceType || null,
+      cards
+    });
+  };
+
+  const handleSaveTutorTable = () => {
+    const last = findLastModelText();
+    if (!last) {
+      setVaultNotice('No tutor response to parse yet.');
+      return;
+    }
+    const { table } = extractStudyToolsFromTutorText(last);
+    if (!table) {
+      setVaultNotice('No compare table found in the last tutor response.');
+      return;
+    }
+    const q = activeQuestionForChat;
+    const guideHash = getExportGuideHash(q);
+    const createdAt = new Date().toISOString();
+    const title = buildTutorExportTitle('Compare table', q);
+    addTutorExport({
+      id: makeTutorExportId(),
+      kind: 'table',
+      createdAt,
+      title,
+      questionId: q?.id,
+      guideHash,
+      sourceType: q?.sourceType || null,
+      tableText: table
+    });
+  };
+
+  const handleSaveTutorMnemonic = () => {
+    const last = findLastModelText();
+    if (!last) {
+      setVaultNotice('No tutor response to parse yet.');
+      return;
+    }
+    const { mnemonic } = extractStudyToolsFromTutorText(last);
+    if (!mnemonic) {
+      setVaultNotice('No mnemonic found in the last tutor response.');
+      return;
+    }
+    const q = activeQuestionForChat;
+    const guideHash = getExportGuideHash(q);
+    const createdAt = new Date().toISOString();
+    const title = buildTutorExportTitle('Mnemonic', q);
+    addTutorExport({
+      id: makeTutorExportId(),
+      kind: 'mnemonic',
+      createdAt,
+      title,
+      questionId: q?.id,
+      guideHash,
+      sourceType: q?.sourceType || null,
+      mnemonic
+    });
+  };
+
   const handleSendChatMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!chatInput.trim() || isChatLoading || !activeQuestionForChat) return;
@@ -2752,6 +2941,7 @@ const App: React.FC = () => {
         practiceCount={practiceQuestions.length}
         funnelCount={funnelQuestions.length}
         remediationCount={remediationQuestions.length}
+        vaultCount={tutorExports.length}
         showRemediation={remediationQuestions.length > 0 || Boolean(remediationMeta)}
         user={user}
         showAnalytics={canViewAnalytics}
@@ -3009,6 +3199,23 @@ const App: React.FC = () => {
               }
             >
               <CoagCascadeView user={user} />
+            </Suspense>
+          )}
+
+          {view === 'vault' && (
+            <Suspense
+              fallback={
+                <div className="flex-1 flex items-center justify-center text-sm text-slate-500">
+                  Loading Vault…
+                </div>
+              }
+            >
+              <TutorVaultView
+                user={user}
+                exports={tutorExports}
+                onDelete={(id) => setTutorExports((prev) => prev.filter((item) => item.id !== id))}
+                onClearAll={() => setTutorExports([])}
+              />
             </Suspense>
           )}
 
@@ -3758,24 +3965,93 @@ const App: React.FC = () => {
                       <div className="w-1.5 h-1.5 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
                     </div>
                   </div>
-                )}
+              )}
                 <div ref={chatEndRef} />
               </div>
-              <form onSubmit={handleSendChatMessage} className="p-4 bg-white border-t border-slate-100 flex gap-3 shrink-0 items-center">
-                <input 
-                  type="text" 
-                  value={chatInput} 
-                  onChange={(e) => setChatInput(e.target.value)} 
-                  placeholder="Ask a follow-up..."
-                  className="flex-1 px-4 py-3.5 rounded-xl border border-slate-200 outline-none text-sm focus:border-teal-500 transition-all bg-slate-50" 
-                />
-                <button 
-                  type="submit" 
-                  className="bg-teal-600 text-white p-3.5 rounded-xl hover:bg-teal-700 active:scale-90 transition-transform"
-                >
-                  <PaperAirplaneIcon className="w-5 h-5" />
-                </button>
-              </form>
+              <div className="bg-white border-t border-slate-100 shrink-0">
+                <div className="px-4 pt-3 pb-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSaveTutorSession}
+                      disabled={chatHistory.length === 0}
+                      className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-colors ${
+                        chatHistory.length === 0
+                          ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                          : 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800'
+                      }`}
+                    >
+                      Save session
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveTutorAnki}
+                      disabled={!chatHistory.some((m) => m.role === 'model')}
+                      className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-colors ${
+                        !chatHistory.some((m) => m.role === 'model')
+                          ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                          : 'bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700'
+                      }`}
+                    >
+                      Save Anki
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveTutorTable}
+                      disabled={!chatHistory.some((m) => m.role === 'model')}
+                      className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-colors ${
+                        !chatHistory.some((m) => m.role === 'model')
+                          ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      Save table
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveTutorMnemonic}
+                      disabled={!chatHistory.some((m) => m.role === 'model')}
+                      className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-colors ${
+                        !chatHistory.some((m) => m.role === 'model')
+                          ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      Save mnemonic
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsChatOpen(false);
+                        setView('vault');
+                      }}
+                      className="px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                    >
+                      Open Vault
+                    </button>
+                  </div>
+                  {vaultNotice && (
+                    <div className="mt-2 text-[11px] font-semibold text-slate-500">
+                      {vaultNotice}
+                    </div>
+                  )}
+                </div>
+                <form onSubmit={handleSendChatMessage} className="p-4 pt-2 flex gap-3 items-center">
+                  <input 
+                    type="text" 
+                    value={chatInput} 
+                    onChange={(e) => setChatInput(e.target.value)} 
+                    placeholder="Ask a follow-up..."
+                    className="flex-1 px-4 py-3.5 rounded-xl border border-slate-200 outline-none text-sm focus:border-teal-500 transition-all bg-slate-50" 
+                  />
+                  <button 
+                    type="submit" 
+                    className="bg-teal-600 text-white p-3.5 rounded-xl hover:bg-teal-700 active:scale-90 transition-transform"
+                  >
+                    <PaperAirplaneIcon className="w-5 h-5" />
+                  </button>
+                </form>
+              </div>
             </>
           )}
         </div>

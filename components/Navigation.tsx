@@ -10,7 +10,8 @@ import {
   PhotoIcon,
   DocumentTextIcon,
   Squares2X2Icon,
-  FunnelIcon
+  FunnelIcon,
+  ArchiveBoxIcon
 } from '@heroicons/react/24/solid';
 
 type ViewMode =
@@ -22,7 +23,8 @@ type ViewMode =
   | 'deepdive'
   | 'histology'
   | 'analytics'
-  | 'cheatsheet';
+  | 'cheatsheet'
+  | 'vault';
 
 interface NavigationProps {
   currentView: ViewMode;
@@ -30,6 +32,7 @@ interface NavigationProps {
   practiceCount: number;
   funnelCount?: number;
   remediationCount?: number;
+  vaultCount?: number;
   showRemediation?: boolean;
   user?: any;
   showAnalytics?: boolean;
@@ -43,6 +46,7 @@ const Navigation: React.FC<NavigationProps> = ({
   practiceCount,
   funnelCount,
   remediationCount,
+  vaultCount,
   showRemediation,
   user,
   showAnalytics,
@@ -56,6 +60,7 @@ const Navigation: React.FC<NavigationProps> = ({
     ...(showRemediation ? [{ id: 'remediation', label: 'Remediation', icon: ArrowPathIcon, count: remediationCount }] : []),
     { id: 'cascade', label: 'Cascade', icon: Squares2X2Icon },
     { id: 'cheatsheet', label: 'Cheat Sheet', icon: DocumentTextIcon },
+    { id: 'vault', label: 'Vault', icon: ArchiveBoxIcon, count: vaultCount },
     { id: 'histology', label: 'Histology', icon: PhotoIcon },
     { id: 'deepdive', label: 'Deep Dive', icon: AcademicCapIcon },
     ...(showAnalytics ? [{ id: 'analytics', label: 'Analytics', icon: ChartBarIcon }] : [])

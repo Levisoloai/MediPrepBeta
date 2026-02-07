@@ -126,5 +126,13 @@ Use it to:
 - Persisted funnel session separately via `mediprep_funnel_questions`, `mediprep_funnel_states`, and `mediprep_funnel_guide_context`.
 - Ran `npm test` + `npm run build`, then committed and pushed to `main` (commit `dcafa20`).
 
+### 2026-02-07 (Tutor Vault)
+- Added `Tutor Vault` as a top-level navigation tab for saving tutor outputs and exporting study artifacts.
+- Added save controls in the tutor sidebar: `Save session`, `Save Anki`, `Save table`, `Save mnemonic`, plus `Open Vault`.
+- Implemented local-only persistence keyed by user (`mediprep_tutor_exports_v1_${userId||anon}`) and added export formats:
+  - Anki CSV (Basic + Cloze)
+  - PDF / DOCX for tables, mnemonics, and full sessions
+- Added parsing helpers in `utils/tutorExportParsing.ts` to extract compare tables, mnemonics, and Anki prompts from tutor responses.
+
 ### 2026-02-07
 - Started this file. Next: after each task, append 2-5 bullets: what we did, what went well, what to improve.

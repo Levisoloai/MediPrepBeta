@@ -213,6 +213,61 @@ export interface ChatMessage {
   text: string;
 }
 
+export type TutorExportKind = 'session' | 'anki' | 'table' | 'mnemonic';
+
+export type TutorAnkiCard = {
+  front: string;
+  back: string;
+};
+
+export type TutorExportItem =
+  | {
+      id: string;
+      kind: 'session';
+      createdAt: string;
+      title: string;
+      questionId?: string;
+      guideHash?: string | null;
+      sourceType?: string | null;
+      questionPreview?: {
+        questionText: string;
+        options?: string[];
+        correctAnswer?: string;
+        studyConcepts?: string[];
+      };
+      messages: ChatMessage[];
+    }
+  | {
+      id: string;
+      kind: 'anki';
+      createdAt: string;
+      title: string;
+      questionId?: string;
+      guideHash?: string | null;
+      sourceType?: string | null;
+      cards: TutorAnkiCard[];
+    }
+  | {
+      id: string;
+      kind: 'table';
+      createdAt: string;
+      title: string;
+      questionId?: string;
+      guideHash?: string | null;
+      sourceType?: string | null;
+      tableText: string;
+    }
+  | {
+      id: string;
+      kind: 'mnemonic';
+      createdAt: string;
+      title: string;
+      questionId?: string;
+      guideHash?: string | null;
+      sourceType?: string | null;
+      mnemonic: string;
+    };
+
 export interface Subject {
   id: string;
   name: string;
