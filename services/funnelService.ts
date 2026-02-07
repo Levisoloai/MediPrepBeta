@@ -44,6 +44,23 @@ const addFingerprintsToSet = (question: Question, set: Set<string>) => {
   buildFingerprintVariants(question).forEach((variant) => set.add(variant));
 };
 
+const buildStemSignature = (question: Question) => {
+  const stem = normalizeConceptKey(question.questionText || '');
+  if (!stem) return '';
+  // "Stem only" signature to avoid repeating near-identical question patterns with different options.
+  return stem.replace(/\s+/g, ' ').slice(0, 240);
+};
+
+const hasSeenStemSignature = (question: Question, set: Set<string>) => {
+  const sig = buildStemSignature(question);
+  return sig ? set.has(sig) : false;
+};
+
+const addStemSignature = (question: Question, set: Set<string>) => {
+  const sig = buildStemSignature(question);
+  if (sig) set.add(sig);
+};
+
 const getModuleHintFromItemId = (value?: string): ModuleId | null => {
   if (!value) return null;
   if (value.startsWith('heme-')) return 'heme';
@@ -87,16 +104,43 @@ const buildGenerationInstruction = (targets: string[], displayByKey: Record<stri
   ].join('\n');
 };
 
-const pickBestForTarget = (pool: Candidate[], targetKey: string, workingFingerprints: Set<string>) => {
+const pickBestForTarget = (
+  pool: Candidate[],
+  targetKey: string,
+  workingFingerprints: Set<string>,
+  stemSeen: Set<string>
+) => {
   let best: { score: number; candidate: Candidate } | null = null;
   for (const candidate of pool) {
     if (hasSeenFingerprint(candidate.question, workingFingerprints)) continue;
+    if (hasSeenStemSignature(candidate.question, stemSeen)) continue;
     const score = scoreQuestionForConcept(candidate.question, targetKey);
     if (!best || score > best.score) {
       best = { score, candidate };
     }
   }
-  return best?.candidate ?? null;
+  return best;
+};
+
+const pickFromGoldOrPrefab = (input: {
+  gold: Candidate[];
+  prefab: Candidate[];
+  targetKey: string;
+  workingFingerprints: Set<string>;
+  stemSeen: Set<string>;
+  sourceCounts: { gold: number; prefab: number; generated: number };
+}) => {
+  const { gold, prefab, targetKey, workingFingerprints, stemSeen, sourceCounts } = input;
+  const bestGold = pickBestForTarget(gold, targetKey, workingFingerprints, stemSeen);
+  const bestPrefab = pickBestForTarget(prefab, targetKey, workingFingerprints, stemSeen);
+
+  if (bestGold && bestPrefab) {
+    // Keep "gold-first" preference, but allow prefab when it's essentially equivalent and improves variety.
+    const scoreDelta = bestGold.score - bestPrefab.score;
+    const shouldMixPrefab = scoreDelta <= 1 && sourceCounts.prefab < Math.max(1, sourceCounts.gold);
+    return shouldMixPrefab ? bestPrefab.candidate : bestGold.candidate;
+  }
+  return bestGold?.candidate || bestPrefab?.candidate || null;
 };
 
 export const buildFunnelBatch = async (input: {
@@ -120,6 +164,8 @@ export const buildFunnelBatch = async (input: {
   const baseFingerprints = new Set<string>(input.seenFingerprints);
   const existingSet = buildFingerprintSet(input.existingQuestions || []);
   existingSet.forEach((fp) => baseFingerprints.add(fp));
+  const stemSeen = new Set<string>();
+  (input.existingQuestions || []).forEach((q) => addStemSignature(q, stemSeen));
 
   const guideConcepts = buildGuideConceptUniverse(guideItems, input.funnel);
   (input.extraConcepts || []).forEach((concept) => {
@@ -209,9 +255,14 @@ export const buildFunnelBatch = async (input: {
   const sourceCounts = { gold: 0, prefab: 0, generated: 0 };
 
   for (const targetKey of targetsPerQuestion) {
-    const fromGold = pickBestForTarget(goldCandidates, targetKey, workingFingerprints);
-    const fromPrefab = fromGold ? null : pickBestForTarget(prefabCandidates, targetKey, workingFingerprints);
-    const chosen = fromGold || fromPrefab;
+    const chosen = pickFromGoldOrPrefab({
+      gold: goldCandidates,
+      prefab: prefabCandidates,
+      targetKey,
+      workingFingerprints,
+      stemSeen,
+      sourceCounts
+    });
     if (!chosen) {
       missingTargets.push(targetKey);
       continue;
@@ -226,6 +277,7 @@ export const buildFunnelBatch = async (input: {
     targetByQuestionId[q.id] = targetKey;
     sourceCounts[chosen.sourceType] += 1;
     addFingerprintsToSet(q, workingFingerprints);
+    addStemSignature(q, stemSeen);
   }
 
   let backfillAttempts = 0;
@@ -256,7 +308,16 @@ export const buildFunnelBatch = async (input: {
     fingerprints.forEach((fp) => workingFingerprints.add(fp));
     droppedGenerated += Math.max(0, before - unique.length);
     const remaining = Math.max(0, targets.length);
-    const slice = unique.slice(0, remaining);
+    const slice: Question[] = [];
+    for (const q of unique) {
+      if (slice.length >= remaining) break;
+      if (hasSeenStemSignature(q, stemSeen)) {
+        droppedGenerated += 1;
+        continue;
+      }
+      slice.push(q);
+      addStemSignature(q, stemSeen);
+    }
     slice.forEach((q, idx) => {
       selected.push(q);
       sourceCounts.generated += 1;

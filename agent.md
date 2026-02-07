@@ -114,6 +114,12 @@ Use it to:
 - Funnel: added an Anki-like `Focus view` (single-question) alongside `List view`, persisting per-user/per-guide and auto-advancing to the next unanswered after Anki rating.
 - Verified with `npm test` and `npm run build`.
 
+### 2026-02-07 (Funnel Keyboard + Batch Gating + Variety)
+- Funnel: added a global keydown proxy so `1-5`, `A-E`, `Enter`, and `Cmd/Ctrl+Z` work without clicking inside the card first (fixes “have to click the rating box” slowdown and makes undo reliable).
+- Funnel: gated `Continue Funnel` behind “batch rated” completion and added a next-batch size selector (5/10/15/20); removed the redundant bottom Continue block.
+- Funnel selection: added a stem-only signature dedupe + light gold/prefab mixing when scores are similar to reduce “same kind of question” repetition.
+- Verified with `npm test` and `npm run build`.
+
 ### 2026-02-07 (Funnel Tab + Analytics)
 - Implemented dedicated Funnel tab/workflow (separate from Practice) with entry screen, narrowing visualization, and in-session stats.
 - Added Funnel Progress panel to Beta Analytics, including optional cohort aggregation from `user_concept_mastery` (RLS may block).

@@ -2111,7 +2111,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleContinueFunnel = async () => {
+  const handleContinueFunnel = async (nextCount?: number) => {
     if (!funnelGuideContext) return;
     if (funnelGuideContext.prefs?.sessionMode !== 'funnel') return;
     if (!user) {
@@ -2128,6 +2128,18 @@ const App: React.FC = () => {
     setError(null);
 
     try {
+      const normalizedCount =
+        typeof nextCount === 'number' && Number.isFinite(nextCount)
+          ? Math.min(20, Math.max(3, Math.floor(nextCount)))
+          : null;
+      const effectivePrefs = normalizedCount
+        ? { ...(funnelGuideContext.prefs || loadBetaPrefs()), questionCount: normalizedCount }
+        : funnelGuideContext.prefs;
+
+      if (normalizedCount) {
+        setFunnelGuideContext((prev) => (prev ? { ...prev, prefs: effectivePrefs } : prev));
+      }
+
       const guideHash = funnelGuideContext.guideHash || 'custom';
       const guideModule = funnelGuideContext.moduleId;
       const mixedModules = guideModule === 'mixed' ? funnelGuideContext.mixedModules : null;
@@ -2141,7 +2153,7 @@ const App: React.FC = () => {
 
       const { questions: nextRaw, meta, warning } = await buildFunnelBatch({
         content: funnelGuideContext.content,
-        preferences: funnelGuideContext.prefs,
+        preferences: effectivePrefs,
         context: {
           guideHash: funnelGuideContext.guideHash,
           guideItems: funnelGuideContext.guideItems,

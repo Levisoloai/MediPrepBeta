@@ -68,7 +68,7 @@ type Props = {
   funnelState: FunnelState;
   funnelBatchMeta: FunnelBatchMeta | null;
   onStartFunnel: (next: FunnelGuideContext) => Promise<void>;
-  onContinueFunnel: () => Promise<void>;
+  onContinueFunnel: (nextCount?: number) => Promise<void>;
   onResetFunnel: () => void;
   onBackToGenerate: () => void;
   onChat: (q: Question) => void;
@@ -76,6 +76,7 @@ type Props = {
 };
 
 const MAX_TEXT_CHARS = 120000;
+const ANKI_RATINGS_KEY = 'mediprep_anki_ratings_v1';
 
 const formatSeconds = (totalSeconds: number) => {
   const safe = Math.max(0, Math.floor(Number(totalSeconds) || 0));
@@ -147,6 +148,20 @@ const FunnelView: React.FC<Props> = ({
   const [questionViewMode, setQuestionViewMode] = useState<'list' | 'focus'>('focus');
   const [focusQuestionId, setFocusQuestionId] = useState<string | null>(null);
   const focusWrapRef = useRef<HTMLDivElement | null>(null);
+  const [ankiRatingsById, setAnkiRatingsById] = useState<Record<string, AnkiRating>>(() => {
+    try {
+      const raw = localStorage.getItem(ANKI_RATINGS_KEY);
+      const parsed = raw ? JSON.parse(raw) : null;
+      return parsed && typeof parsed === 'object' ? (parsed as Record<string, AnkiRating>) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [nextBatchCount, setNextBatchCount] = useState<number>(() => {
+    const base = Math.floor(Number(funnelContext?.prefs?.questionCount ?? 10) || 10);
+    return Math.min(20, Math.max(3, base));
+  });
+  const syntheticKeyDispatchingRef = useRef(false);
 
   type FunnelUiState = {
     scrollTop?: number;
@@ -208,6 +223,21 @@ const FunnelView: React.FC<Props> = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uiKey]);
+
+  useEffect(() => {
+    const base = Math.floor(Number(funnelContext?.prefs?.questionCount ?? 10) || 10);
+    setNextBatchCount(Math.min(20, Math.max(3, base)));
+  }, [funnelContext?.prefs?.questionCount, funnelGuideHash]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(ANKI_RATINGS_KEY);
+      const parsed = raw ? JSON.parse(raw) : null;
+      setAnkiRatingsById(parsed && typeof parsed === 'object' ? (parsed as Record<string, AnkiRating>) : {});
+    } catch {
+      setAnkiRatingsById({});
+    }
+  }, [funnelGuideHash]);
 
   useEffect(() => {
     return () => {
@@ -395,6 +425,83 @@ const FunnelView: React.FC<Props> = ({
     el?.focus();
   };
 
+  const isTextInputTarget = (target: EventTarget | null) => {
+    const el = target as HTMLElement | null;
+    if (!el) return false;
+    const tag = el.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+    return Boolean((el as any).isContentEditable);
+  };
+
+  const getActiveQuestionCardRoot = (): HTMLElement | null => {
+    if (showStats) return null;
+    if (questionViewMode === 'focus') {
+      return focusWrapRef.current?.querySelector<HTMLElement>('[tabindex="0"]') || null;
+    }
+    const container = scrollRef.current;
+    if (!container) return null;
+    const targetId = resolveJumpTargetId();
+    if (!targetId) return null;
+    const cssEscape =
+      typeof (globalThis as any).CSS?.escape === 'function'
+        ? (value: string) => (CSS as any).escape(value)
+        : (value: string) => value.replace(/["\\\\]/g, '\\\\$&');
+    const wrap = container.querySelector(`[data-funnel-qid=\"${cssEscape(targetId)}\"]`);
+    if (!wrap) return null;
+    return (wrap as HTMLElement).querySelector<HTMLElement>('[tabindex="0"]') || null;
+  };
+
+  useEffect(() => {
+    // Make shortcuts "just work" without requiring the user to click the card first.
+    const handler = (e: KeyboardEvent) => {
+      if (syntheticKeyDispatchingRef.current) return;
+      if (showStats) return;
+      if (isTextInputTarget(e.target)) return;
+      if (e.altKey) return;
+
+      const key = String(e.key || '');
+      const lower = key.toLowerCase();
+
+      const isUndo = (e.metaKey || e.ctrlKey) && lower === 'z';
+      const isEnter = lower === 'enter';
+      const isOptionOrRating = /^[1-5]$/.test(lower) || /^[a-e]$/.test(lower);
+
+      if (!isUndo && !isEnter && !isOptionOrRating) return;
+
+      const root = getActiveQuestionCardRoot();
+      if (!root) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      try {
+        root.focus();
+      } catch {
+        // ignore
+      }
+
+      syntheticKeyDispatchingRef.current = true;
+      try {
+        const synthetic = new KeyboardEvent('keydown', {
+          key,
+          code: (e as any).code,
+          metaKey: e.metaKey,
+          ctrlKey: e.ctrlKey,
+          shiftKey: e.shiftKey,
+          altKey: e.altKey,
+          bubbles: true,
+          cancelable: true
+        });
+        root.dispatchEvent(synthetic);
+      } finally {
+        syntheticKeyDispatchingRef.current = false;
+      }
+    };
+
+    window.addEventListener('keydown', handler, true);
+    return () => window.removeEventListener('keydown', handler, true);
+  }, [showStats, questionViewMode, focusQuestionId, funnelQuestions.length, funnelStates]);
+
   useEffect(() => {
     if (questionViewMode !== 'focus') return;
     if (showStats) return;
@@ -446,6 +553,28 @@ const FunnelView: React.FC<Props> = ({
     const total = Math.max(1, Math.floor(Number(funnelContext?.prefs?.questionCount ?? 20) || 20));
     return selectTargets({ guideConcepts: conceptUniverse, funnel: funnelState, total });
   }, [conceptUniverse, funnelState, funnelContext?.prefs?.questionCount]);
+
+  const currentBatchIds = useMemo(() => {
+    const ids = Object.keys(funnelBatchMeta?.targetByQuestionId || {});
+    if (ids.length > 0) return ids;
+    const fallbackCount = Math.min(
+      funnelQuestions.length,
+      Math.max(1, Math.floor(Number(funnelContext?.prefs?.questionCount ?? 20) || 20))
+    );
+    return funnelQuestions.slice(-fallbackCount).map((q) => q.id);
+  }, [funnelBatchMeta?.createdAt, funnelQuestions.length, funnelContext?.prefs?.questionCount]);
+
+  const batchRatedCount = useMemo(() => {
+    if (currentBatchIds.length === 0) return 0;
+    let count = 0;
+    currentBatchIds.forEach((id) => {
+      const r = ankiRatingsById[id];
+      if (r === 1 || r === 2 || r === 3 || r === 4) count += 1;
+    });
+    return count;
+  }, [currentBatchIds, ankiRatingsById]);
+
+  const isBatchComplete = currentBatchIds.length > 0 && batchRatedCount >= currentBatchIds.length;
 
   const conceptDots = useMemo(() => {
     if (!conceptUniverse) return [];
@@ -893,18 +1022,45 @@ const FunnelView: React.FC<Props> = ({
               <div className="w-full md:w-[260px]">
                 <button
                   type="button"
-                  onClick={onContinueFunnel}
-                  disabled={isLoading}
+                  onClick={() => onContinueFunnel(nextBatchCount)}
+                  disabled={isLoading || !isBatchComplete}
                   className={`w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-colors ${
-                    isLoading ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                    isLoading || !isBatchComplete
+                      ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                      : 'bg-indigo-600 text-white hover:bg-indigo-700'
                   }`}
                 >
                   <ArrowPathIcon className="w-4 h-4" />
                   Continue Funnel
                 </button>
-                <div className="mt-2 text-[10px] text-slate-500 font-semibold">
-                  Focus targets update as you answer and rate. Continue Funnel generates the next batch when you’re ready.
+                <div className="mt-2 text-[10px] text-slate-600 font-semibold">
+                  Batch progress: <span className="text-slate-900 font-black">{batchRatedCount}/{currentBatchIds.length}</span> rated
                 </div>
+                {!isBatchComplete ? (
+                  <div className="mt-2 text-[10px] text-slate-500 font-semibold">
+                    Finish rating this batch to unlock Continue.
+                  </div>
+                ) : (
+                  <div className="mt-2">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Next batch size</div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {[5, 10, 15, 20].map((n) => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => setNextBatchCount(n)}
+                          className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-colors ${
+                            nextBatchCount === n
+                              ? 'bg-slate-900 text-white border-slate-900'
+                              : 'bg-white/70 text-slate-700 border-slate-200 hover:bg-white'
+                          }`}
+                        >
+                          {n}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {funnelBatchMeta && (
                   <div className="mt-2 text-[11px] text-slate-700 font-semibold">
                     <span className="text-slate-500">
@@ -1204,7 +1360,10 @@ const FunnelView: React.FC<Props> = ({
                     }}
                     keyboardShortcutsEnabled={true}
                     ankiRatingEnabled={true}
-                    onAnkiRate={(rating, meta) => onAnkiRate(q, rating, meta)}
+                    onAnkiRate={(rating, meta) => {
+                      setAnkiRatingsById((prev) => ({ ...prev, [q.id]: rating }));
+                      onAnkiRate(q, rating, meta);
+                    }}
                   />
                 </div>
               ))
@@ -1237,6 +1396,7 @@ const FunnelView: React.FC<Props> = ({
                       keyboardShortcutsEnabled={true}
                       ankiRatingEnabled={true}
                       onAnkiRate={(rating, meta) => {
+                        setAnkiRatingsById((prev) => ({ ...prev, [current.id]: rating }));
                         onAnkiRate(current, rating, meta);
                         // Anki-like flow: advance after rating.
                         const start = idx >= 0 ? idx + 1 : 0;
@@ -1257,26 +1417,6 @@ const FunnelView: React.FC<Props> = ({
                 );
               })()
             )}
-
-            <div className="flex flex-col items-center justify-center p-8 rounded-[2rem] border border-white/50 bg-white/35 backdrop-blur-xl shadow-[0_22px_70px_-55px_rgba(15,23,42,0.55)] mt-12 mb-8">
-              <div className="w-16 h-16 bg-slate-900 text-white rounded-full flex items-center justify-center mb-4 shadow-lg">
-                <BoltIcon className="w-8 h-8" />
-              </div>
-              <h3 className="text-xl font-black text-slate-900 mb-2">Keep narrowing?</h3>
-              <p className="text-slate-600 text-sm mb-6 max-w-sm text-center">
-                Continue Funnel to pull the next batch based on your ratings and weak concepts.
-              </p>
-              <button
-                type="button"
-                onClick={onContinueFunnel}
-                disabled={isLoading}
-                className={`px-6 py-3 rounded-xl font-black uppercase tracking-widest text-[11px] transition-colors ${
-                  isLoading ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                }`}
-              >
-                Continue Funnel
-              </button>
-            </div>
           </>
         )}
       </div>
