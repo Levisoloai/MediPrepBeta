@@ -5,6 +5,7 @@ import QuestionCard from './components/QuestionCard';
 import EmptyState from './components/EmptyState';
 import type { FunnelGuideContext } from './components/FunnelView';
 import AuthModal from './components/AuthModal';
+import LandingView from './components/LandingView';
 import { generateQuestions, generateCheatSheetText, chatWithTutor } from './services/geminiService';
 import { flushFeedbackQueue } from './services/feedbackService';
 import { getPrefabSet, getActivePrefabQuestions } from './services/prefabService';
@@ -339,6 +340,7 @@ const App: React.FC = () => {
 
   const [user, setUser] = useState<any>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authInitialMode, setAuthInitialMode] = useState<'login' | 'signup'>('login');
   const [isXaiConfigured, setIsXaiConfigured] = useState(true);
   const [prefabMeta, setPrefabMeta] = useState<{
     mode: 'prefab' | 'mixed';
@@ -2837,19 +2839,26 @@ const App: React.FC = () => {
     );
   }
 
-  if (!user && !isAuthModalOpen) {
+  if (!user) {
     return (
       <>
-        <div className="h-screen w-full bg-slate-50 flex items-center justify-center">
-           <div className="animate-pulse flex flex-col items-center">
-              <SparklesIcon className="w-12 h-12 text-teal-500 mb-4" />
-              <h1 className="text-xl font-black text-slate-800">MediPrep AI</h1>
-           </div>
-        </div>
-        <AuthModal 
-          isOpen={true} 
-          onClose={() => {}} 
-          onLoginSuccess={() => {}}
+        <LandingView
+          onLogin={() => {
+            setAuthInitialMode('login');
+            setIsAuthModalOpen(true);
+          }}
+          onSignup={() => {
+            setAuthInitialMode('signup');
+            setIsAuthModalOpen(true);
+          }}
+        />
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          initialMode={authInitialMode}
+          onClose={() => setIsAuthModalOpen(false)}
+          onLoginSuccess={() => {
+            setView('generate');
+          }}
         />
       </>
     );
@@ -2898,6 +2907,7 @@ const App: React.FC = () => {
         isOpen={isAuthModalOpen} 
         onClose={() => setIsAuthModalOpen(false)} 
         onLoginSuccess={() => {}}
+        initialMode={authInitialMode}
       />
 
       {showOnboarding && view === 'generate' && !isAuthModalOpen && (

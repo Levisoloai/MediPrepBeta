@@ -142,5 +142,14 @@ Use it to:
 - Vault: renders saved tutor sessions using chat-style bubbles (user vs model) and uses `TutorMessage` for model output so tables render like the live tutor.
 - Added per-session `View full` toggle and limited-height scroll area so long sessions stay readable.
 
+### 2026-02-07 (Landing Page Redesign Plan)
+- Planned a new public landing experience (pre-login) that explains MediPrep’s core modes (Practice, NBME Block, Funnel) and supporting tools (Tutor, Vault, Deep Dive, Histology, Cascade).
+- Proposed updating the unauthenticated flow to show a real landing page with clear CTAs (Sign up / Log in) instead of immediately forcing the auth modal.
+
+### 2026-02-07 (Landing Page Implemented)
+- Added `components/LandingView.tsx` with a pre-login hero + mode explanation + tools overview and clear `Sign up` / `Log in` CTAs.
+- Updated `components/AuthModal.tsx` to support `initialMode` so landing CTAs open directly to login vs signup.
+- Updated `App.tsx` unauthenticated flow: shows landing page and only opens the auth modal when requested (no forced modal).
+
 ### 2026-02-07
 - Started this file. Next: after each task, append 2-5 bullets: what we did, what went well, what to improve.
