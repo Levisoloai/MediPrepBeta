@@ -143,6 +143,118 @@ const FunnelView: React.FC<Props> = ({
   const [isPreparing, setIsPreparing] = useState(false);
   const [prepProgress, setPrepProgress] = useState(0);
   const [prepError, setPrepError] = useState<string | null>(null);
+
+  type FunnelUiState = {
+    scrollTop?: number;
+    lastQuestionId?: string;
+    showStats?: boolean;
+  };
+
+  const funnelUserId = user?.id ? String(user.id) : 'anon';
+  const funnelGuideHash = funnelContext?.guideHash || 'custom';
+  const uiKey = `mediprep_funnel_ui_v1_${funnelUserId}_${funnelGuideHash}`;
+  const uiStateRef = useRef<FunnelUiState>({});
+  const restoreDoneRef = useRef(false);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const scrollRafPendingRef = useRef(false);
+  const lastScrollTopRef = useRef<number | null>(null);
+
+  const readUiState = (): FunnelUiState => {
+    try {
+      const raw = localStorage.getItem(uiKey);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? (parsed as FunnelUiState) : {};
+    } catch {
+      return {};
+    }
+  };
+
+  const writeUiState = (patch: Partial<FunnelUiState>) => {
+    try {
+      const next = { ...(uiStateRef.current || {}), ...patch };
+      uiStateRef.current = next;
+      localStorage.setItem(uiKey, JSON.stringify(next));
+    } catch {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
+    // Switching users/guide should allow a fresh restore.
+    restoreDoneRef.current = false;
+    const loaded = readUiState();
+    uiStateRef.current = loaded;
+    if (typeof loaded.showStats === 'boolean') {
+      setShowStats(loaded.showStats);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uiKey]);
+
+  useEffect(() => {
+    return () => {
+      const node = scrollRef.current;
+      if (node) writeUiState({ scrollTop: node.scrollTop });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uiKey]);
+
+  const handleScroll = () => {
+    const node = scrollRef.current;
+    if (!node) return;
+    lastScrollTopRef.current = node.scrollTop;
+    if (scrollRafPendingRef.current) return;
+    scrollRafPendingRef.current = true;
+    window.requestAnimationFrame(() => {
+      scrollRafPendingRef.current = false;
+      const top = lastScrollTopRef.current;
+      if (typeof top === 'number' && Number.isFinite(top)) {
+        writeUiState({ scrollTop: top });
+      }
+    });
+  };
+
+  useEffect(() => {
+    if (restoreDoneRef.current) return;
+    const container = scrollRef.current;
+    if (!container) return;
+
+    // Wait until content is present.
+    if (!showStats && funnelQuestions.length === 0) return;
+
+    const doRestore = () => {
+      const state = uiStateRef.current || {};
+      if (!showStats) {
+        const lastId = state.lastQuestionId;
+        if (lastId && funnelQuestions.some((q) => q.id === lastId)) {
+          const cssEscape =
+            typeof (globalThis as any).CSS?.escape === 'function'
+              ? (value: string) => (CSS as any).escape(value)
+              : (value: string) => value.replace(/["\\\\]/g, '\\\\$&');
+          const el = container.querySelector(`[data-funnel-qid=\"${cssEscape(lastId)}\"]`);
+          if (el && 'scrollIntoView' in el) {
+            (el as HTMLElement).scrollIntoView({ block: 'center' });
+            restoreDoneRef.current = true;
+            return;
+          }
+        }
+      }
+
+      const top = state.scrollTop;
+      if (typeof top === 'number' && Number.isFinite(top)) {
+        const max = Math.max(0, container.scrollHeight - container.clientHeight);
+        container.scrollTop = Math.max(0, Math.min(top, max));
+      }
+      restoreDoneRef.current = true;
+    };
+
+    const id = window.requestAnimationFrame(doRestore);
+    return () => window.cancelAnimationFrame(id);
+  }, [funnelQuestions.length, showStats]);
+
+  const markLastActive = (questionId: string) => {
+    writeUiState({ lastQuestionId: questionId });
+  };
   const [preferences, setPreferences] = useState<UserPreferences>(() => {
     const defaults: UserPreferences = {
       generationMode: 'questions',
@@ -598,7 +710,13 @@ const FunnelView: React.FC<Props> = ({
         <div className="flex flex-wrap items-center gap-2 justify-end">
           <button
             type="button"
-            onClick={() => setShowStats((prev) => !prev)}
+            onClick={() =>
+              setShowStats((prev) => {
+                const next = !prev;
+                writeUiState({ showStats: next });
+                return next;
+              })
+            }
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/50 bg-white/35 backdrop-blur-md text-[11px] font-black uppercase tracking-widest text-slate-700 shadow-sm hover:bg-white/45"
           >
             <ChartBarIcon className="w-4 h-4" />
@@ -624,7 +742,11 @@ const FunnelView: React.FC<Props> = ({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto space-y-6 pb-32 pr-2 custom-scrollbar">
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto space-y-6 pb-32 pr-2 custom-scrollbar"
+      >
         <div className="rounded-3xl border border-white/50 bg-white/35 backdrop-blur-xl shadow-[0_22px_70px_-55px_rgba(15,23,42,0.55)] overflow-hidden">
           <div className="p-4 md:p-6">
             <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
@@ -844,17 +966,24 @@ const FunnelView: React.FC<Props> = ({
             </div>
 
             {funnelQuestions.map((q, idx) => (
-              <QuestionCard
-                key={q.id}
-                question={q}
-                index={idx}
-                userId={user?.id}
-                onChat={onChat}
-                savedState={funnelStates[q.id]}
-                onStateChange={(s) => setFunnelStates((prev) => ({ ...prev, [q.id]: s }))}
-                ankiRatingEnabled={true}
-                onAnkiRate={(rating, meta) => onAnkiRate(q, rating, meta)}
-              />
+              <div key={q.id} data-funnel-qid={q.id}>
+                <QuestionCard
+                  question={q}
+                  index={idx}
+                  userId={user?.id}
+                  onChat={(question) => {
+                    markLastActive(question?.id || q.id);
+                    onChat(question);
+                  }}
+                  savedState={funnelStates[q.id]}
+                  onStateChange={(s) => {
+                    markLastActive(q.id);
+                    setFunnelStates((prev) => ({ ...prev, [q.id]: s }));
+                  }}
+                  ankiRatingEnabled={true}
+                  onAnkiRate={(rating, meta) => onAnkiRate(q, rating, meta)}
+                />
+              </div>
             ))}
 
             <div className="flex flex-col items-center justify-center p-8 rounded-[2rem] border border-white/50 bg-white/35 backdrop-blur-xl shadow-[0_22px_70px_-55px_rgba(15,23,42,0.55)] mt-12 mb-8">

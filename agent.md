@@ -37,6 +37,11 @@ Use it to:
 - (Add as we go)
 
 ## Journal (Newest First)
+### 2026-02-07 (Funnel UI State Persistence)
+- Funnel: persisted per-user/per-guide UI state in `components/FunnelView.tsx` (scrollTop, last active question id, showStats) so returning to the Funnel tab restores the last question in view.
+- Restores by `lastQuestionId` (scrollIntoView) with scrollTop fallback; saves scroll in a RAF-throttled handler to avoid spamming localStorage.
+- Verified with `npm test` and `npm run build`.
+
 ### 2026-02-07 (Security Tightening Sprint)
 - Moved all xAI traffic server-side via Vercel functions: `api/xai/chat.ts` (Supabase-session gated + rate limited) and `api/xai/health.ts`.
 - Removed client-side secret usage: deleted all `VITE_XAI_API_KEY` references in app code and updated UI messaging to "AI unavailable" vs env instructions.
