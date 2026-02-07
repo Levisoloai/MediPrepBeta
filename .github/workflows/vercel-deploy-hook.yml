@@ -1,0 +1,25 @@
+name: Trigger Vercel Deploy Hook
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: {}
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Vercel deploy hook
+        env:
+          HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${HOOK_URL:-}" ]; then
+            echo "VERCEL_DEPLOY_HOOK_URL is not set. Skipping."
+            exit 0
+          fi
+
+          # Deploy hooks are simple POST endpoints; no payload required.
+          curl -sS -X POST "$HOOK_URL" --fail --retry 3 --retry-delay 2
+

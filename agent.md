@@ -37,6 +37,10 @@ Use it to:
 - (Add as we go)
 
 ## Journal (Newest First)
+### 2026-02-07 (Vercel Auto-Redeploy Safety Net)
+- Added a GitHub Action deploy-hook trigger on pushes to `main` (`.github/workflows/vercel-deploy-hook.yml`) so Vercel redeploys even if the Git integration stops firing.
+- Requires GitHub repo secret `VERCEL_DEPLOY_HOOK_URL` (Vercel Project -> Settings -> Git -> Deploy Hooks).
+
 ### 2026-02-07 (Funnel Live Narrowing)
 - Funnel: moved “Jump to current” into the Progress header with higher-contrast styling.
 - Funnel: narrowing chips/dots are now driven by live mastery (`funnelState`) via `selectTargets`, so the artifact keeps evolving as users answer/rate without generating new questions.
