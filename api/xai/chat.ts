@@ -3,12 +3,11 @@ type XaiMessage = {
   content: string;
 };
 
-import { SUPABASE_ANON_KEY, SUPABASE_URL } from '../../services/supabasePublicConfig';
-
-export const config = {
-  // xAI responses can take a bit; keep within typical Vercel limits.
-  maxDuration: 60
-};
+// NOTE: Vercel serverless functions may run without bundling in some configs.
+// Avoid cross-folder imports and rely on inline public Supabase config as a fallback.
+const DEFAULT_SUPABASE_URL = 'https://zdfhzyqewtgfnnyeklsx.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpkZmh6eXFld3RnZm5ueWVrbHN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5MTYyNDAsImV4cCI6MjA4NDQ5MjI0MH0.k_MsWlsLod9wICGWgLGdLVG7GRi5jLlGUoEVKI9ZL7c';
 
 const XAI_BASE_URL = 'https://api.x.ai/v1';
 
@@ -140,8 +139,8 @@ const callXai = async (input: {
 };
 
 export default async function handler(req: any, res: any) {
-  const supabaseUrl = process.env.SUPABASE_URL || SUPABASE_URL;
-  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || SUPABASE_ANON_KEY;
+  const supabaseUrl = process.env.SUPABASE_URL || DEFAULT_SUPABASE_URL;
+  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
   if (!supabaseUrl || !supabaseAnonKey) {
     sendJson(res, 500, { error: 'Server misconfigured (missing Supabase env).' });
     return;

@@ -75,6 +75,11 @@ Use it to:
 - Updated Vercel xAI proxy routes (`api/xai/health.ts`, `api/xai/chat.ts`) to fall back to the public Supabase config when `SUPABASE_URL` / `SUPABASE_ANON_KEY` are not set in Vercel env.
 - Net effect: `/api/xai/health` now only fails when `XAI_API_KEY` is missing (and not due to missing Supabase env wiring).
 
+### 2026-02-07 (Fix Vercel FUNCTION_INVOCATION_FAILED on /api/xai/*)
+- Removed cross-folder imports from `api/xai/health.ts` and `api/xai/chat.ts` and inlined the public Supabase URL + anon key as a fallback.
+- Reason: some Vercel function runtimes/builders can choke on extensionless ESM imports outside the `api/` directory, causing invocation-time crashes.
+- Expected behavior after deploy: `/api/xai/health` should return JSON (200 or a JSON 500 describing missing `XAI_API_KEY`), not Vercel's crash page.
+
 ### 2026-02-07 (Security Tightening Sprint)
 - Moved all xAI traffic server-side via Vercel functions: `api/xai/chat.ts` (Supabase-session gated + rate limited) and `api/xai/health.ts`.
 - Removed client-side secret usage: deleted all `VITE_XAI_API_KEY` references in app code and updated UI messaging to "AI unavailable" vs env instructions.
