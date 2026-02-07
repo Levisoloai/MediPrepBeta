@@ -37,6 +37,9 @@ Use it to:
 - (Add as we go)
 
 ## Journal (Newest First)
+### 2026-02-07 (Funnel Jump To Current)
+- Funnel: added a “Jump to current” button in the Progress card that scrolls to the last active question (fallback: first unanswered, else last question).
+
 ### 2026-02-07 (Funnel UI State Persistence)
 - Funnel: persisted per-user/per-guide UI state in `components/FunnelView.tsx` (scrollTop, last active question id, showStats) so returning to the Funnel tab restores the last question in view.
 - Restores by `lastQuestionId` (scrollIntoView) with scrollTop fallback; saves scroll in a RAF-throttled handler to avoid spamming localStorage.

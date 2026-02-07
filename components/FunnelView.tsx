@@ -255,6 +255,38 @@ const FunnelView: React.FC<Props> = ({
   const markLastActive = (questionId: string) => {
     writeUiState({ lastQuestionId: questionId });
   };
+
+  const scrollToQuestionId = (questionId: string, behavior: ScrollBehavior = 'smooth') => {
+    const container = scrollRef.current;
+    if (!container) return false;
+
+    const cssEscape =
+      typeof (globalThis as any).CSS?.escape === 'function'
+        ? (value: string) => (CSS as any).escape(value)
+        : (value: string) => value.replace(/["\\\\]/g, '\\\\$&');
+    const el = container.querySelector(`[data-funnel-qid=\"${cssEscape(questionId)}\"]`);
+    if (!el || !('scrollIntoView' in el)) return false;
+
+    (el as HTMLElement).scrollIntoView({ block: 'center', behavior });
+    return true;
+  };
+
+  const handleJumpToCurrentQuestion = () => {
+    if (showStats) return;
+
+    const lastId = uiStateRef.current?.lastQuestionId;
+    const validLastId = lastId && funnelQuestions.some((q) => q.id === lastId) ? lastId : null;
+    const firstUnanswered = funnelQuestions.find((q) => {
+      const state = funnelStates[q.id];
+      return !state || state.selectedOption == null;
+    });
+
+    const targetId = validLastId || firstUnanswered?.id || funnelQuestions[funnelQuestions.length - 1]?.id;
+    if (!targetId) return;
+
+    markLastActive(targetId);
+    scrollToQuestionId(targetId, 'smooth');
+  };
   const [preferences, setPreferences] = useState<UserPreferences>(() => {
     const defaults: UserPreferences = {
       generationMode: 'questions',
@@ -942,16 +974,30 @@ const FunnelView: React.FC<Props> = ({
           <>
             <div className="p-4 rounded-2xl border border-white/50 bg-white/35 backdrop-blur-xl shadow-[0_22px_70px_-55px_rgba(15,23,42,0.55)]">
               <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Progress</div>
-              <div className="mt-2 flex flex-wrap items-center gap-4 text-[11px] text-slate-700 font-semibold">
-                <div>
-                  Completed:{' '}
-                  <span className="text-slate-900">
-                    {funnelSummary.totalAnswered}/{funnelQuestions.length}
-                  </span>
+              <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-wrap items-center gap-4 text-[11px] text-slate-700 font-semibold">
+                  <div>
+                    Completed:{' '}
+                    <span className="text-slate-900">
+                      {funnelSummary.totalAnswered}/{funnelQuestions.length}
+                    </span>
+                  </div>
+                  {funnelSummary.totalAnswered > 0 && (
+                    <div className="text-slate-600">{Math.round(funnelSummary.overallAccuracy * 100)}% accuracy</div>
+                  )}
                 </div>
-                {funnelSummary.totalAnswered > 0 && (
-                  <div className="text-slate-600">{Math.round(funnelSummary.overallAccuracy * 100)}% accuracy</div>
-                )}
+                <button
+                  type="button"
+                  onClick={handleJumpToCurrentQuestion}
+                  disabled={funnelQuestions.length === 0}
+                  className={`inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-colors ${
+                    funnelQuestions.length === 0
+                      ? 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'
+                      : 'border-white/60 bg-white/50 text-slate-700 hover:bg-white/70'
+                  }`}
+                >
+                  Jump to current
+                </button>
               </div>
               <div className="mt-3 h-2 w-full rounded-full bg-slate-100 overflow-hidden">
                 <div
