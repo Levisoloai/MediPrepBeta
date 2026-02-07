@@ -8,6 +8,7 @@ import {
   DocumentTextIcon,
   ClipboardDocumentCheckIcon
 } from '@heroicons/react/24/solid';
+import TutorMessage from './TutorMessage';
 import type { TutorAnkiCard, TutorExportItem, TutorExportKind } from '../types';
 
 type Props = {
@@ -194,6 +195,7 @@ const parsePipeTable = (raw: string): ParsedPipeTable | null => {
 const TutorVaultView: React.FC<Props> = ({ user, exports, onDelete, onClearAll }) => {
   const [filter, setFilter] = useState<FilterKind>('all');
   const [query, setQuery] = useState('');
+  const [expandedSessions, setExpandedSessions] = useState<Record<string, boolean>>({});
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -543,27 +545,50 @@ const TutorVaultView: React.FC<Props> = ({ user, exports, onDelete, onClearAll }
 
                     {item.kind === 'session' && (
                       <div className="p-4 rounded-2xl border border-white/60 bg-white/50 backdrop-blur-md">
-                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Session</div>
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Session</div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedSessions((prev) => ({
+                                ...prev,
+                                [item.id]: !prev[item.id]
+                              }))
+                            }
+                            className="px-3 py-1.5 rounded-full border border-slate-200 bg-white/80 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-white"
+                          >
+                            {expandedSessions[item.id] ? 'Collapse' : 'View full'}
+                          </button>
+                        </div>
                         {item.questionPreview?.questionText && (
                           <div className="mt-2 text-[12px] text-slate-700 font-semibold">
                             <span className="font-black">Question preview:</span> {item.questionPreview.questionText.slice(0, 220)}
                             {item.questionPreview.questionText.length > 220 ? '…' : ''}
                           </div>
                         )}
-                        <div className="mt-3 space-y-3">
-                          {item.messages.slice(-6).map((m, idx) => (
-                            <div key={idx} className="text-[12px] text-slate-700">
-                              <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                                {m.role}
+                        <div className="mt-3 text-[11px] text-slate-500 font-semibold">
+                          {expandedSessions[item.id]
+                            ? `Showing all ${item.messages.length} messages.`
+                            : `Showing last 10 messages (saved: ${item.messages.length}).`}
+                        </div>
+                        <div className="mt-3 max-h-[420px] overflow-y-auto pr-2 custom-scrollbar space-y-4">
+                          {(expandedSessions[item.id] ? item.messages : item.messages.slice(-10)).map((m, idx) => (
+                            <div key={idx} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
+                              <div
+                                className={`max-w-[92%] rounded-2xl px-4 py-3 text-[12px] leading-relaxed shadow-sm whitespace-pre-wrap ${
+                                  m.role === 'user'
+                                    ? 'bg-teal-600 text-white rounded-br-sm'
+                                    : 'bg-white/95 text-slate-700 border border-slate-200 rounded-bl-sm'
+                                }`}
+                              >
+                                {m.role === 'model' ? (
+                                  <TutorMessage text={m.text} renderInline={(t) => t} />
+                                ) : (
+                                  m.text
+                                )}
                               </div>
-                              <div className="whitespace-pre-wrap font-semibold">{m.text}</div>
                             </div>
                           ))}
-                          {item.messages.length > 6 && (
-                            <div className="text-[11px] text-slate-500 font-semibold">
-                              Showing last 6 messages (saved: {item.messages.length}).
-                            </div>
-                          )}
                         </div>
                         <div className="mt-4 flex flex-wrap gap-2">
                           <button

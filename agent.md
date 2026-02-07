@@ -138,5 +138,9 @@ Use it to:
 - Vault: renders pipe `|` compare tables as a real HTML table (header row, zebra rows, wrapped cells) with horizontal scroll fallback.
 - Keeps raw-text fallback when parsing fails (so odd tutor output still displays).
 
+### 2026-02-07 (Tutor Vault Session Rendering)
+- Vault: renders saved tutor sessions using chat-style bubbles (user vs model) and uses `TutorMessage` for model output so tables render like the live tutor.
+- Added per-session `View full` toggle and limited-height scroll area so long sessions stay readable.
+
 ### 2026-02-07
 - Started this file. Next: after each task, append 2-5 bullets: what we did, what went well, what to improve.
