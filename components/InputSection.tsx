@@ -95,11 +95,13 @@ const InputSection: React.FC<InputSectionProps> = ({
     if (saved) {
       const parsed = JSON.parse(saved);
       const safeCount = Math.min(20, Math.max(3, Number(parsed.questionCount) || 10));
-      const safeStyle = parsed.sessionStyle === 'block' ? 'block' : 'practice';
+      const safeMode = parsed.sessionMode === 'funnel' ? 'funnel' : 'standard';
+      const safeStyle = parsed.sessionStyle === 'block' && safeMode !== 'funnel' ? 'block' : 'practice';
       return {
         ...parsed,
         questionCount: safeCount,
         sessionStyle: safeStyle,
+        sessionMode: safeMode,
         autoQuestionCount: false
       };
     }
@@ -110,6 +112,7 @@ const InputSection: React.FC<InputSectionProps> = ({
       questionCount: 10,
       autoQuestionCount: false,
       sessionStyle: 'practice',
+      sessionMode: 'standard',
       customInstructions: '',
       focusedOnWeakness: false,
       examFormat: ExamFormat.NBME,
@@ -122,10 +125,11 @@ const InputSection: React.FC<InputSectionProps> = ({
   }, [preferences]);
 
   useEffect(() => {
-    if (preferences.sessionStyle !== 'block' && mixedBlockEnabled) {
+    const mixedAllowed = preferences.sessionStyle === 'block' || preferences.sessionMode === 'funnel';
+    if (!mixedAllowed && mixedBlockEnabled) {
       setMixedBlockEnabled(false);
     }
-  }, [preferences.sessionStyle, mixedBlockEnabled]);
+  }, [preferences.sessionStyle, preferences.sessionMode, mixedBlockEnabled]);
 
   useEffect(() => {
     if (typeof customOpen === 'boolean') {
@@ -461,49 +465,67 @@ const InputSection: React.FC<InputSectionProps> = ({
           {!isCheatSheetMode && (
             <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
               <div className="flex justify-between items-center mb-3">
-                <span className="text-xs font-bold text-slate-600">Session Style</span>
-                {preferences.sessionStyle === 'block' && (
+                <span className="text-xs font-bold text-slate-600">Session Mode</span>
+                {preferences.sessionStyle === 'block' && preferences.sessionMode !== 'funnel' && (
                   <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
                     Time limit: {formatSeconds(preferences.questionCount * 90)}
                   </span>
                 )}
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 <button
                   type="button"
-                  onClick={() => setPreferences(p => ({ ...p, sessionStyle: 'practice' }))}
+                  onClick={() => setPreferences(p => ({ ...p, sessionStyle: 'practice', sessionMode: 'standard' }))}
                   className={`px-3 py-3 rounded-xl border text-[11px] font-black uppercase tracking-widest transition-colors ${
-                    preferences.sessionStyle !== 'block'
+                    preferences.sessionMode !== 'funnel' && preferences.sessionStyle !== 'block'
                       ? 'bg-teal-600 text-white border-teal-600'
                       : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
                   }`}
                 >
-                  Practice (Immediate Feedback)
+                  Practice (Immediate)
                 </button>
                 <button
                   type="button"
-                  onClick={() => setPreferences(p => ({ ...p, sessionStyle: 'block' }))}
+                  onClick={() => setPreferences(p => ({ ...p, sessionStyle: 'block', sessionMode: 'standard' }))}
                   className={`px-3 py-3 rounded-xl border text-[11px] font-black uppercase tracking-widest transition-colors ${
-                    preferences.sessionStyle === 'block'
+                    preferences.sessionMode !== 'funnel' && preferences.sessionStyle === 'block'
                       ? 'bg-indigo-600 text-white border-indigo-600'
                       : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
                   }`}
                 >
                   NBME Block (Timed)
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setPreferences(p => ({ ...p, sessionStyle: 'practice', sessionMode: 'funnel' }))}
+                  className={`px-3 py-3 rounded-xl border text-[11px] font-black uppercase tracking-widest transition-colors ${
+                    preferences.sessionMode === 'funnel'
+                      ? 'bg-slate-900 text-white border-slate-900'
+                      : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  Funnel (Adaptive)
+                </button>
               </div>
-              {preferences.sessionStyle === 'block' && (
+              {preferences.sessionStyle === 'block' && preferences.sessionMode !== 'funnel' && (
                 <div className="mt-2 text-[11px] text-slate-500 font-semibold">
                   No explanations until you submit the block or time expires.
+                </div>
+              )}
+              {preferences.sessionMode === 'funnel' && (
+                <div className="mt-2 text-[11px] text-slate-500 font-semibold">
+                  Adaptive targeting based on correctness, time, tutor usage, and Anki rating. Uses bank first; generates only if needed.
                 </div>
               )}
             </div>
           )}
 
-          {!isCheatSheetMode && preferences.sessionStyle === 'block' && (
+          {!isCheatSheetMode && (preferences.sessionStyle === 'block' || preferences.sessionMode === 'funnel') && (
             <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
               <div className="flex justify-between items-center mb-3">
-                <span className="text-xs font-bold text-slate-600">Block Mix</span>
+                <span className="text-xs font-bold text-slate-600">
+                  {preferences.sessionStyle === 'block' && preferences.sessionMode !== 'funnel' ? 'Block Mix' : 'Module Mix'}
+                </span>
                 {mixedBlockEnabled && (
                   <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
                     Pulm + Heme
@@ -641,6 +663,8 @@ const InputSection: React.FC<InputSectionProps> = ({
               ? 'Processing...'
               : isCheatSheetMode
               ? 'Generate Cheat Sheet'
+              : preferences.sessionMode === 'funnel'
+              ? 'Start Funnel'
               : preferences.sessionStyle === 'block'
               ? 'Start NBME Block'
               : 'Generate Practice Questions'}

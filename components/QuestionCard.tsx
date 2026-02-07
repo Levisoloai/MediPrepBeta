@@ -18,6 +18,11 @@ interface QuestionCardProps {
   revealLabel?: string;
   revealEnabled?: boolean;
   headerVariant?: 'full' | 'minimal';
+  ankiRatingEnabled?: boolean;
+  onAnkiRate?: (
+    rating: 1 | 2 | 3 | 4,
+    meta?: { timeToAnswerMs: number | null; isCorrect: boolean | null }
+  ) => void;
 }
 
 const LAB_VALUES = [
@@ -148,6 +153,7 @@ const LAB_VALUES = [
 ];
 
 const RATINGS_KEY = 'mediprep_question_ratings';
+const ANKI_RATINGS_KEY = 'mediprep_anki_ratings_v1';
 const HIGHLIGHTS_KEY = 'mediprep_question_highlights';
 const HIGHLIGHT_PREF_KEY = 'mediprep_highlight_enabled';
 const CONTENT_TAGS: FeedbackTag[] = [
@@ -173,7 +179,9 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   variant = 'standard',
   revealLabel,
   revealEnabled = true,
-  headerVariant = 'full'
+  headerVariant = 'full',
+  ankiRatingEnabled = false,
+  onAnkiRate
 }) => {
   // Initialize state from props (savedState) ONLY. 
   // We do not listen to prop changes for these values to avoid circular update loops (flickering).
@@ -186,6 +194,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   const isFlashcard = variant === 'flashcard';
   const isHeaderMinimal = headerVariant === 'minimal';
   const [rating, setRating] = useState<number | null>(null);
+  const [ankiRating, setAnkiRating] = useState<1 | 2 | 3 | 4 | null>(null);
   const [highlightEnabled, setHighlightEnabled] = useState<boolean>(() => {
     try {
       const saved = localStorage.getItem(HIGHLIGHT_PREF_KEY);
@@ -247,6 +256,21 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
 
   useEffect(() => {
     try {
+      const saved = localStorage.getItem(ANKI_RATINGS_KEY);
+      if (!saved) {
+        setAnkiRating(null);
+        return;
+      }
+      const parsed = JSON.parse(saved);
+      const value = parsed?.[question.id];
+      setAnkiRating(value === 1 || value === 2 || value === 3 || value === 4 ? value : null);
+    } catch {
+      setAnkiRating(null);
+    }
+  }, [question.id]);
+
+  useEffect(() => {
+    try {
       localStorage.setItem(HIGHLIGHT_PREF_KEY, JSON.stringify(highlightEnabled));
     } catch {}
   }, [highlightEnabled]);
@@ -272,6 +296,18 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
       localStorage.setItem(RATINGS_KEY, JSON.stringify(parsed));
     } catch (e) {
       console.warn('Failed to persist rating', e);
+    }
+  };
+
+  const persistAnkiRating = (value: 1 | 2 | 3 | 4) => {
+    setAnkiRating(value);
+    try {
+      const saved = localStorage.getItem(ANKI_RATINGS_KEY);
+      const parsed = saved ? JSON.parse(saved) : {};
+      parsed[question.id] = value;
+      localStorage.setItem(ANKI_RATINGS_KEY, JSON.stringify(parsed));
+    } catch (e) {
+      console.warn('Failed to persist anki rating', e);
     }
   };
 
@@ -348,6 +384,16 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
       result.queued ? 'Saved locally — will sync.' : 'Rating saved.',
       result.queued ? 'warning' : 'success'
     );
+  };
+
+  const handleAnkiRate = (value: 1 | 2 | 3 | 4) => {
+    if (!ankiRatingEnabled) return;
+    if (!showAnswer) return;
+    if (!selectedOption) return;
+    if (ankiRating === value) return;
+    persistAnkiRating(value);
+    const metrics = computeMetrics();
+    onAnkiRate?.(value, { timeToAnswerMs: metrics.timeToAnswerMs, isCorrect: getIsCorrect() });
   };
 
   const toggleReportTag = (tag: FeedbackTag) => {
@@ -1109,6 +1155,70 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
           </div>
           
           {renderExplanation(question.explanation)}
+
+          {ankiRatingEnabled && selectedOption && (
+            <div className="mt-10 p-4 rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Anki Rating</div>
+              <div className="mt-1 text-sm font-semibold text-slate-700">How well did you know this?</div>
+              <div
+                className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  const key = e.key;
+                  if (key === '1') handleAnkiRate(1);
+                  if (key === '2') handleAnkiRate(2);
+                  if (key === '3') handleAnkiRate(3);
+                  if (key === '4') handleAnkiRate(4);
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => handleAnkiRate(1)}
+                  className={`px-3 py-3 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-colors ${
+                    ankiRating === 1
+                      ? 'bg-rose-600 text-white border-rose-600'
+                      : 'bg-white text-rose-700 border-rose-200 hover:bg-rose-50'
+                  }`}
+                >
+                  Again
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAnkiRate(2)}
+                  className={`px-3 py-3 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-colors ${
+                    ankiRating === 2
+                      ? 'bg-amber-500 text-white border-amber-500'
+                      : 'bg-white text-amber-800 border-amber-200 hover:bg-amber-50'
+                  }`}
+                >
+                  Hard
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAnkiRate(3)}
+                  className={`px-3 py-3 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-colors ${
+                    ankiRating === 3
+                      ? 'bg-teal-600 text-white border-teal-600'
+                      : 'bg-white text-teal-700 border-teal-200 hover:bg-teal-50'
+                  }`}
+                >
+                  Good
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAnkiRate(4)}
+                  className={`px-3 py-3 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-colors ${
+                    ankiRating === 4
+                      ? 'bg-indigo-600 text-white border-indigo-600'
+                      : 'bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50'
+                  }`}
+                >
+                  Easy
+                </button>
+              </div>
+              <div className="mt-2 text-[10px] text-slate-400 font-semibold">Shortcut: 1-4</div>
+            </div>
+          )}
           
           {Array.isArray(question.studyConcepts) && question.studyConcepts.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-12 pt-8 border-t border-slate-200/60">

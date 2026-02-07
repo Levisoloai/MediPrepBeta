@@ -229,6 +229,7 @@ export interface UserPreferences {
   questionCount: number;
   autoQuestionCount: boolean;
   sessionStyle?: 'practice' | 'block';
+  sessionMode?: 'standard' | 'funnel';
   customInstructions: string;
   focusedOnWeakness: boolean;
   weakConcepts?: string[];

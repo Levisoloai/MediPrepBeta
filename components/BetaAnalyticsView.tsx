@@ -15,6 +15,7 @@ import { cheatSheetPrefabs } from '../utils/cheatSheets';
 import { betaGuides } from '../utils/betaGuides';
 import { getCheatSheetPrefabs, upsertCheatSheetPrefab } from '../services/cheatSheetService';
 import type { IntegrityCounters } from '../utils/questionIntegrity';
+import type { FunnelBatchMeta } from '../utils/funnel';
 
 type FeedbackRow = {
   id: string;
@@ -103,6 +104,7 @@ type AbDebugProps = {
   onOverrideChange?: (value: AbOverrideOption) => void;
   lastGuideHash?: string | null;
   integrityStats?: Record<string, IntegrityCounters> | null;
+  funnelDebug?: FunnelBatchMeta | null;
 };
 
 const timeRanges: { id: TimeRange; label: string }[] = [
@@ -267,7 +269,8 @@ const BetaAnalyticsView: React.FC<AbDebugProps> = ({
   abOverride = 'auto',
   onOverrideChange,
   lastGuideHash,
-  integrityStats
+  integrityStats,
+  funnelDebug
 }) => {
   const debugCounts = abDebug?.counts ?? { gold: 0, prefab: 0, generated: 0, other: 0 };
   const debugGuideTitle = abDebug?.guideTitle ?? 'n/a';
@@ -1780,6 +1783,53 @@ const BetaAnalyticsView: React.FC<AbDebugProps> = ({
           <div className="mt-2 text-[10px] text-slate-400">
             Override applies to the last guide used in Practice.
           </div>
+        </div>
+      )}
+
+      {funnelDebug && (
+        <div className="mb-6 p-4 rounded-2xl border border-slate-200 bg-white/90 shadow-sm">
+          <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Funnel</div>
+          <div className="mt-2 flex flex-wrap gap-4 text-[11px] text-slate-600 font-semibold">
+            <div>
+              Guide:{' '}
+              <span className="text-slate-900">
+                {funnelDebug.guideTitle || 'n/a'}
+              </span>
+              {funnelDebug.guideHash && (
+                <span className="text-slate-400"> • {maskId(funnelDebug.guideHash)}</span>
+              )}
+            </div>
+            <div>
+              Explore:{' '}
+              <span className="text-slate-900 font-black">
+                {funnelDebug.exploreCount}/{funnelDebug.total}
+              </span>
+            </div>
+            <div>
+              Sources:{' '}
+              <span className="text-amber-700">gold {funnelDebug.sourceCounts.gold}</span> •{' '}
+              <span className="text-indigo-700">prefab {funnelDebug.sourceCounts.prefab}</span> •{' '}
+              <span className="text-slate-700">generated {funnelDebug.sourceCounts.generated}</span>
+            </div>
+            <div>
+              Backfill:{' '}
+              <span className="text-slate-900 font-black">{funnelDebug.backfillAttempts}</span> attempts •{' '}
+              dropped <span className="text-slate-900 font-black">{funnelDebug.droppedGenerated}</span> •{' '}
+              shortfall <span className="text-slate-900 font-black">{funnelDebug.shortfall}</span>
+            </div>
+          </div>
+          {funnelDebug.focusTargets?.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {funnelDebug.focusTargets.slice(0, 10).map((key) => (
+                <span
+                  key={key}
+                  className="px-3 py-1.5 rounded-full bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest"
+                >
+                  {(funnelDebug.displayByKey?.[key] || key).slice(0, 48)}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
