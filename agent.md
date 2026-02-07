@@ -84,6 +84,11 @@ Use it to:
 - Added `api/xai/status.ts` and switched the client health probe in `App.tsx` to call `/api/xai/status` (instead of `/api/xai/health`).
 - Goal: avoid a hard dependency on the crashing `/api/xai/health` route while still gating AI features safely.
 
+### 2026-02-07 (Vercel Deploy Debug)
+- Production `GET /api/xai/health` is returning `500 FUNCTION_INVOCATION_FAILED` (Vercel crash page), meaning the function is failing before sending a response.
+- Verified `POST /api/xai/chat` returns JSON 401 (function is alive), but newly-added endpoints like `/api/ping` and `/api/xai/status` were serving `index.html`, suggesting the production deployment is not picking up the latest commits (or a failed deploy is leaving the site on an older build).
+- Next action is in Vercel dashboard: confirm latest deployment commit SHA matches `main`, and inspect deployment logs for the failing `/api/xai/health` function.
+
 ### 2026-02-07 (Security Tightening Sprint)
 - Moved all xAI traffic server-side via Vercel functions: `api/xai/chat.ts` (Supabase-session gated + rate limited) and `api/xai/health.ts`.
 - Removed client-side secret usage: deleted all `VITE_XAI_API_KEY` references in app code and updated UI messaging to "AI unavailable" vs env instructions.
