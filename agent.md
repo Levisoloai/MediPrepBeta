@@ -80,6 +80,10 @@ Use it to:
 - Reason: some Vercel function runtimes/builders can choke on extensionless ESM imports outside the `api/` directory, causing invocation-time crashes.
 - Expected behavior after deploy: `/api/xai/health` should return JSON (200 or a JSON 500 describing missing `XAI_API_KEY`), not Vercel's crash page.
 
+### 2026-02-07 (AI Status Endpoint)
+- Added `api/xai/status.ts` and switched the client health probe in `App.tsx` to call `/api/xai/status` (instead of `/api/xai/health`).
+- Goal: avoid a hard dependency on the crashing `/api/xai/health` route while still gating AI features safely.
+
 ### 2026-02-07 (Security Tightening Sprint)
 - Moved all xAI traffic server-side via Vercel functions: `api/xai/chat.ts` (Supabase-session gated + rate limited) and `api/xai/health.ts`.
 - Removed client-side secret usage: deleted all `VITE_XAI_API_KEY` references in app code and updated UI messaging to "AI unavailable" vs env instructions.

@@ -1044,7 +1044,7 @@ const App: React.FC = () => {
     // Server-side xAI proxy health (prevents client-side key shipping).
     (async () => {
       try {
-        const resp = await fetch('/api/xai/health', { method: 'GET' });
+        const resp = await fetch('/api/xai/status', { method: 'GET' });
         if (!cancelled) setIsXaiConfigured(resp.ok);
       } catch {
         if (!cancelled) setIsXaiConfigured(false);
