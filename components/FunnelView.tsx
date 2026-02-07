@@ -144,11 +144,16 @@ const FunnelView: React.FC<Props> = ({
   const [isPreparing, setIsPreparing] = useState(false);
   const [prepProgress, setPrepProgress] = useState(0);
   const [prepError, setPrepError] = useState<string | null>(null);
+  const [questionViewMode, setQuestionViewMode] = useState<'list' | 'focus'>('focus');
+  const [focusQuestionId, setFocusQuestionId] = useState<string | null>(null);
+  const focusWrapRef = useRef<HTMLDivElement | null>(null);
 
   type FunnelUiState = {
     scrollTop?: number;
     lastQuestionId?: string;
     showStats?: boolean;
+    questionViewMode?: 'list' | 'focus';
+    focusQuestionId?: string;
   };
 
   const funnelUserId = user?.id ? String(user.id) : 'anon';
@@ -189,6 +194,18 @@ const FunnelView: React.FC<Props> = ({
     if (typeof loaded.showStats === 'boolean') {
       setShowStats(loaded.showStats);
     }
+    if (loaded.questionViewMode === 'list' || loaded.questionViewMode === 'focus') {
+      setQuestionViewMode(loaded.questionViewMode);
+    } else {
+      setQuestionViewMode('focus');
+    }
+    if (typeof loaded.focusQuestionId === 'string' && loaded.focusQuestionId.trim().length > 0) {
+      setFocusQuestionId(loaded.focusQuestionId);
+    } else if (typeof loaded.lastQuestionId === 'string' && loaded.lastQuestionId.trim().length > 0) {
+      setFocusQuestionId(loaded.lastQuestionId);
+    } else {
+      setFocusQuestionId(null);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uiKey]);
 
@@ -226,15 +243,9 @@ const FunnelView: React.FC<Props> = ({
     const doRestore = () => {
       const state = uiStateRef.current || {};
       if (!showStats) {
-        const lastId = state.lastQuestionId;
-        if (lastId && funnelQuestions.some((q) => q.id === lastId)) {
-          const cssEscape =
-            typeof (globalThis as any).CSS?.escape === 'function'
-              ? (value: string) => (CSS as any).escape(value)
-              : (value: string) => value.replace(/["\\\\]/g, '\\\\$&');
-          const el = container.querySelector(`[data-funnel-qid=\"${cssEscape(lastId)}\"]`);
-          if (el && 'scrollIntoView' in el) {
-            (el as HTMLElement).scrollIntoView({ block: 'center' });
+        const preferredId = state.focusQuestionId || state.lastQuestionId;
+        if (preferredId && funnelQuestions.some((q) => q.id === preferredId)) {
+          if (scrollToQuestionId(preferredId, 'auto')) {
             restoreDoneRef.current = true;
             return;
           }
@@ -266,26 +277,54 @@ const FunnelView: React.FC<Props> = ({
         ? (value: string) => (CSS as any).escape(value)
         : (value: string) => value.replace(/["\\\\]/g, '\\\\$&');
     const el = container.querySelector(`[data-funnel-qid=\"${cssEscape(questionId)}\"]`);
-    if (!el || !('scrollIntoView' in el)) return false;
+    if (!el) return false;
 
-    (el as HTMLElement).scrollIntoView({ block: 'center', behavior });
+    const target = el as HTMLElement;
+    const elRect = target.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    const currentScrollTop = container.scrollTop;
+    const elTopInContainer = elRect.top - containerRect.top + currentScrollTop;
+    const centeredTop = elTopInContainer - container.clientHeight / 2 + target.offsetHeight / 2;
+    const max = Math.max(0, container.scrollHeight - container.clientHeight);
+    const nextTop = Math.max(0, Math.min(centeredTop, max));
+    try {
+      container.scrollTo({ top: nextTop, behavior });
+    } catch {
+      container.scrollTop = nextTop;
+    }
     return true;
+  };
+
+  const isAnswered = (questionId: string) => {
+    const state = funnelStates[questionId];
+    return typeof state?.selectedOption === 'string' && state.selectedOption.trim().length > 0;
+  };
+
+  const firstUnansweredId = useMemo(() => {
+    const found = funnelQuestions.find((q) => !isAnswered(q.id));
+    return found?.id || null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [funnelQuestions, funnelStates]);
+
+  const resolveJumpTargetId = () => {
+    if (funnelQuestions.length === 0) return null;
+    const lastId = uiStateRef.current?.lastQuestionId;
+    const validLastId = lastId && funnelQuestions.some((q) => q.id === lastId) ? lastId : null;
+
+    const lastIsUnanswered = validLastId ? !isAnswered(validLastId) : false;
+    return (lastIsUnanswered ? validLastId : null) || firstUnansweredId || validLastId || funnelQuestions[funnelQuestions.length - 1]?.id || null;
   };
 
   const handleJumpToCurrentQuestion = () => {
     if (showStats) return;
-
-    const lastId = uiStateRef.current?.lastQuestionId;
-    const validLastId = lastId && funnelQuestions.some((q) => q.id === lastId) ? lastId : null;
-    const firstUnanswered = funnelQuestions.find((q) => {
-      const state = funnelStates[q.id];
-      return !state || state.selectedOption == null;
-    });
-
-    const targetId = validLastId || firstUnanswered?.id || funnelQuestions[funnelQuestions.length - 1]?.id;
+    const targetId = resolveJumpTargetId();
     if (!targetId) return;
 
     markLastActive(targetId);
+    if (questionViewMode === 'focus') {
+      setFocusQuestionId(targetId);
+      writeUiState({ focusQuestionId: targetId });
+    }
     scrollToQuestionId(targetId, 'smooth');
   };
   const [preferences, setPreferences] = useState<UserPreferences>(() => {
@@ -322,6 +361,47 @@ const FunnelView: React.FC<Props> = ({
     vizTickRef.current += 1;
     setVizTick(vizTickRef.current);
   }, [funnelBatchMeta?.createdAt]);
+
+  useEffect(() => {
+    writeUiState({ questionViewMode });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [questionViewMode]);
+
+  useEffect(() => {
+    if (questionViewMode !== 'focus') return;
+    if (!focusQuestionId) return;
+    if (!funnelQuestions.some((q) => q.id === focusQuestionId)) return;
+    writeUiState({ focusQuestionId });
+    markLastActive(focusQuestionId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [questionViewMode, focusQuestionId, funnelQuestions.length]);
+
+  useEffect(() => {
+    if (questionViewMode !== 'focus') return;
+    if (showStats) return;
+    if (funnelQuestions.length === 0) return;
+    if (focusQuestionId && funnelQuestions.some((q) => q.id === focusQuestionId)) return;
+    const fallback = resolveJumpTargetId() || funnelQuestions[0]?.id || null;
+    if (!fallback) return;
+    setFocusQuestionId(fallback);
+    writeUiState({ focusQuestionId: fallback });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [questionViewMode, showStats, funnelQuestions.length]);
+
+  const focusCurrentCard = () => {
+    const wrap = focusWrapRef.current;
+    if (!wrap) return;
+    const el = wrap.querySelector<HTMLElement>('[tabindex="0"]');
+    el?.focus();
+  };
+
+  useEffect(() => {
+    if (questionViewMode !== 'focus') return;
+    if (showStats) return;
+    if (!focusQuestionId) return;
+    const id = window.requestAnimationFrame(() => focusCurrentCard());
+    return () => window.cancelAnimationFrame(id);
+  }, [questionViewMode, showStats, focusQuestionId]);
 
   useEffect(() => {
     try {
@@ -981,18 +1061,35 @@ const FunnelView: React.FC<Props> = ({
             <div className="p-4 rounded-2xl border border-white/50 bg-white/35 backdrop-blur-xl shadow-[0_22px_70px_-55px_rgba(15,23,42,0.55)]">
               <div className="flex items-center justify-between gap-3">
                 <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Progress</div>
-                <button
-                  type="button"
-                  onClick={handleJumpToCurrentQuestion}
-                  disabled={funnelQuestions.length === 0}
-                  className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm transition-colors ${
-                    funnelQuestions.length === 0
-                      ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                      : 'bg-slate-900 text-white hover:bg-slate-800'
-                  }`}
-                >
-                  Jump to current
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setQuestionViewMode((prev) => {
+                        const next = prev === 'focus' ? 'list' : 'focus';
+                        writeUiState({ questionViewMode: next });
+                        return next;
+                      })
+                    }
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full border border-white/50 bg-white/45 backdrop-blur-md text-[10px] font-black uppercase tracking-widest text-slate-700 shadow-sm hover:bg-white/60"
+                    title={questionViewMode === 'focus' ? 'Switch to list view' : 'Switch to focus view'}
+                  >
+                    {questionViewMode === 'focus' ? 'List view' : 'Focus view'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleJumpToCurrentQuestion}
+                    disabled={funnelQuestions.length === 0}
+                    className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm transition-colors ${
+                      funnelQuestions.length === 0
+                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                        : 'bg-slate-900 text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    Jump to current
+                  </button>
+                </div>
               </div>
               <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex flex-wrap items-center gap-4 text-[11px] text-slate-700 font-semibold">
@@ -1017,34 +1114,149 @@ const FunnelView: React.FC<Props> = ({
                   }}
                 />
               </div>
+
+              {questionViewMode === 'focus' && funnelQuestions.length > 0 && (
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-[11px] text-slate-600 font-semibold">
+                    Current:{' '}
+                    <span className="text-slate-900 font-black">
+                      {Math.max(1, funnelQuestions.findIndex((q) => q.id === focusQuestionId) + 1)}/{funnelQuestions.length}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const idx = funnelQuestions.findIndex((q) => q.id === focusQuestionId);
+                        if (idx <= 0) return;
+                        const nextId = funnelQuestions[idx - 1]?.id;
+                        if (!nextId) return;
+                        setFocusQuestionId(nextId);
+                        writeUiState({ focusQuestionId: nextId });
+                        markLastActive(nextId);
+                      }}
+                      disabled={funnelQuestions.findIndex((q) => q.id === focusQuestionId) <= 0}
+                      className="px-3 py-2 rounded-xl border border-slate-200 bg-white/70 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Prev
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const idx = funnelQuestions.findIndex((q) => q.id === focusQuestionId);
+                        if (idx < 0) return;
+                        const nextId = funnelQuestions[idx + 1]?.id;
+                        if (!nextId) return;
+                        setFocusQuestionId(nextId);
+                        writeUiState({ focusQuestionId: nextId });
+                        markLastActive(nextId);
+                      }}
+                      disabled={funnelQuestions.findIndex((q) => q.id === focusQuestionId) >= funnelQuestions.length - 1}
+                      className="px-3 py-2 rounded-xl border border-slate-200 bg-white/70 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const idx = funnelQuestions.findIndex((q) => q.id === focusQuestionId);
+                        const start = idx >= 0 ? idx + 1 : 0;
+                        const nextUnanswered =
+                          funnelQuestions.slice(start).find((q) => !isAnswered(q.id)) ||
+                          funnelQuestions.find((q) => !isAnswered(q.id)) ||
+                          null;
+                        if (!nextUnanswered) return;
+                        setFocusQuestionId(nextUnanswered.id);
+                        writeUiState({ focusQuestionId: nextUnanswered.id });
+                        markLastActive(nextUnanswered.id);
+                        scrollToQuestionId(nextUnanswered.id, 'smooth');
+                      }}
+                      className="px-3 py-2 rounded-xl border border-indigo-200 bg-indigo-50 text-[10px] font-black uppercase tracking-widest text-indigo-700 hover:bg-indigo-100"
+                      title="Jump to the next unanswered question"
+                    >
+                      Next unanswered
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {funnelQuestions.map((q, idx) => (
-              <div
-                key={q.id}
-                data-funnel-qid={q.id}
-                onFocusCapture={() => markLastActive(q.id)}
-                className="rounded-[2rem] focus-within:ring-2 focus-within:ring-indigo-200/80 focus-within:ring-offset-4 focus-within:ring-offset-slate-50"
-              >
-                <QuestionCard
-                  question={q}
-                  index={idx}
-                  userId={user?.id}
-                  onChat={(question) => {
-                    markLastActive(question?.id || q.id);
-                    onChat(question);
-                  }}
-                  savedState={funnelStates[q.id]}
-                  onStateChange={(s) => {
-                    markLastActive(q.id);
-                    setFunnelStates((prev) => ({ ...prev, [q.id]: s }));
-                  }}
-                  keyboardShortcutsEnabled={true}
-                  ankiRatingEnabled={true}
-                  onAnkiRate={(rating, meta) => onAnkiRate(q, rating, meta)}
-                />
-              </div>
-            ))}
+            {questionViewMode === 'list' ? (
+              funnelQuestions.map((q, idx) => (
+                <div
+                  key={q.id}
+                  data-funnel-qid={q.id}
+                  onFocusCapture={() => markLastActive(q.id)}
+                  className="rounded-[2rem] focus-within:ring-2 focus-within:ring-indigo-200/80 focus-within:ring-offset-4 focus-within:ring-offset-slate-50"
+                >
+                  <QuestionCard
+                    question={q}
+                    index={idx}
+                    userId={user?.id}
+                    onChat={(question) => {
+                      markLastActive(question?.id || q.id);
+                      onChat(question);
+                    }}
+                    savedState={funnelStates[q.id]}
+                    onStateChange={(s) => {
+                      markLastActive(q.id);
+                      setFunnelStates((prev) => ({ ...prev, [q.id]: s }));
+                    }}
+                    keyboardShortcutsEnabled={true}
+                    ankiRatingEnabled={true}
+                    onAnkiRate={(rating, meta) => onAnkiRate(q, rating, meta)}
+                  />
+                </div>
+              ))
+            ) : (
+              (() => {
+                const idx = funnelQuestions.findIndex((q) => q.id === focusQuestionId);
+                const current = idx >= 0 ? funnelQuestions[idx] : funnelQuestions[0];
+                if (!current) return null;
+                return (
+                  <div
+                    ref={focusWrapRef}
+                    key={current.id}
+                    data-funnel-qid={current.id}
+                    onFocusCapture={() => markLastActive(current.id)}
+                    className="rounded-[2rem] focus-within:ring-2 focus-within:ring-indigo-200/80 focus-within:ring-offset-4 focus-within:ring-offset-slate-50"
+                  >
+                    <QuestionCard
+                      question={current}
+                      index={idx >= 0 ? idx : 0}
+                      userId={user?.id}
+                      onChat={(question) => {
+                        markLastActive(question?.id || current.id);
+                        onChat(question);
+                      }}
+                      savedState={funnelStates[current.id]}
+                      onStateChange={(s) => {
+                        markLastActive(current.id);
+                        setFunnelStates((prev) => ({ ...prev, [current.id]: s }));
+                      }}
+                      keyboardShortcutsEnabled={true}
+                      ankiRatingEnabled={true}
+                      onAnkiRate={(rating, meta) => {
+                        onAnkiRate(current, rating, meta);
+                        // Anki-like flow: advance after rating.
+                        const start = idx >= 0 ? idx + 1 : 0;
+                        const nextUnanswered =
+                          funnelQuestions.slice(start).find((q) => !isAnswered(q.id)) ||
+                          funnelQuestions.find((q) => !isAnswered(q.id)) ||
+                          funnelQuestions[start]?.id ||
+                          null;
+                        const nextId = typeof nextUnanswered === 'string' ? nextUnanswered : nextUnanswered?.id;
+                        if (nextId && nextId !== current.id) {
+                          setFocusQuestionId(nextId);
+                          writeUiState({ focusQuestionId: nextId });
+                          markLastActive(nextId);
+                        }
+                      }}
+                    />
+                  </div>
+                );
+              })()
+            )}
 
             <div className="flex flex-col items-center justify-center p-8 rounded-[2rem] border border-white/50 bg-white/35 backdrop-blur-xl shadow-[0_22px_70px_-55px_rgba(15,23,42,0.55)] mt-12 mb-8">
               <div className="w-16 h-16 bg-slate-900 text-white rounded-full flex items-center justify-center mb-4 shadow-lg">

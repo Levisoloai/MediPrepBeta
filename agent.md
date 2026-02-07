@@ -108,6 +108,12 @@ Use it to:
 ### 2026-02-07 (Process)
 - User requested: update `agent.md` at the end of every assistant response going forward.
 
+### 2026-02-07 (Funnel Jump Fix + Focus View)
+- Funnel: fixed `Jump to current` targeting so it no longer prioritizes stale `lastQuestionId` over unanswered work; now prefers last-active *unanswered* question, else first unanswered, else last active.
+- Funnel: replaced `scrollIntoView` with a deterministic centered `scrollTop` calculation (prevents “jump to end” behavior).
+- Funnel: added an Anki-like `Focus view` (single-question) alongside `List view`, persisting per-user/per-guide and auto-advancing to the next unanswered after Anki rating.
+- Verified with `npm test` and `npm run build`.
+
 ### 2026-02-07 (Funnel Tab + Analytics)
 - Implemented dedicated Funnel tab/workflow (separate from Practice) with entry screen, narrowing visualization, and in-session stats.
 - Added Funnel Progress panel to Beta Analytics, including optional cohort aggregation from `user_concept_mastery` (RLS may block).
