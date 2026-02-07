@@ -17,6 +17,7 @@ import {
   computePriority,
   getExpected,
   normalizeConceptKey,
+  selectTargets,
   type FunnelBatchMeta,
   type FunnelState
 } from '../utils/funnel';
@@ -360,20 +361,26 @@ const FunnelView: React.FC<Props> = ({
     return map;
   }, [funnelContext?.guideItems, funnelState]);
 
+  const liveTargets = useMemo(() => {
+    if (!conceptUniverse) return null;
+    const total = Math.max(1, Math.floor(Number(funnelContext?.prefs?.questionCount ?? 20) || 20));
+    return selectTargets({ guideConcepts: conceptUniverse, funnel: funnelState, total });
+  }, [conceptUniverse, funnelState, funnelContext?.prefs?.questionCount]);
+
   const conceptDots = useMemo(() => {
     if (!conceptUniverse) return [];
     const keys = Array.from(conceptUniverse.keys());
     const maxDots = 120;
     const limited = keys.slice(0, Math.min(keys.length, maxDots));
-    const focus = new Set((funnelBatchMeta?.focusTargets || []).map((k) => normalizeConceptKey(k)));
-    const explore = new Set((funnelBatchMeta?.exploreTargets || []).map((k) => normalizeConceptKey(k)));
+    const focus = new Set((liveTargets?.focusTargetsDistinct || []).map((k) => normalizeConceptKey(k)));
+    const explore = new Set((liveTargets?.exploreTargets || []).map((k) => normalizeConceptKey(k)));
     return limited.map((key, index) => {
       const norm = normalizeConceptKey(key);
       const category = focus.has(norm) ? 'focus' : explore.has(norm) ? 'explore' : 'other';
       const display = conceptUniverse.get(key) || key;
       return { key, norm, display, index, category };
     });
-  }, [conceptUniverse, funnelBatchMeta?.focusTargets, funnelBatchMeta?.exploreTargets, vizTick]);
+  }, [conceptUniverse, liveTargets?.focusTargetsDistinct, liveTargets?.exploreTargets, vizTick]);
 
   const masterySnapshot = useMemo(() => {
     const entries = Object.entries(funnelState?.concepts || {}).map(([key, state]) => {
@@ -787,14 +794,14 @@ const FunnelView: React.FC<Props> = ({
                 <div className="mt-2 text-sm font-semibold text-slate-800">
                   Focus targets shift as you answer and rate questions.
                 </div>
-                {funnelBatchMeta?.focusTargets?.length ? (
+                {liveTargets?.focusTargetsDistinct?.length ? (
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {funnelBatchMeta.focusTargets.slice(0, 8).map((key) => (
+                    {liveTargets.focusTargetsDistinct.slice(0, 8).map((key) => (
                       <span
                         key={key}
                         className="px-3 py-1.5 rounded-full bg-slate-900/85 text-white text-[10px] font-black uppercase tracking-widest shadow-sm"
                       >
-                        {(funnelBatchMeta.displayByKey?.[key] || key).slice(0, 52)}
+                        {(conceptUniverse?.get(key) || key).slice(0, 52)}
                       </span>
                     ))}
                   </div>
@@ -816,13 +823,12 @@ const FunnelView: React.FC<Props> = ({
                   Continue Funnel
                 </button>
                 <div className="mt-2 text-[10px] text-slate-500 font-semibold">
-                  Bank first, generation only as needed.
+                  Focus targets update as you answer and rate. Continue Funnel generates the next batch when you’re ready.
                 </div>
                 {funnelBatchMeta && (
                   <div className="mt-2 text-[11px] text-slate-700 font-semibold">
-                    Explore {funnelBatchMeta.exploreCount}/{funnelBatchMeta.total}{' '}
                     <span className="text-slate-500">
-                      · gold {funnelBatchMeta.sourceCounts.gold} · prefab {funnelBatchMeta.sourceCounts.prefab} · gen{' '}
+                      Last batch: gold {funnelBatchMeta.sourceCounts.gold} · prefab {funnelBatchMeta.sourceCounts.prefab} · gen{' '}
                       {funnelBatchMeta.sourceCounts.generated}
                     </span>
                   </div>
@@ -973,7 +979,21 @@ const FunnelView: React.FC<Props> = ({
         ) : (
           <>
             <div className="p-4 rounded-2xl border border-white/50 bg-white/35 backdrop-blur-xl shadow-[0_22px_70px_-55px_rgba(15,23,42,0.55)]">
-              <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Progress</div>
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Progress</div>
+                <button
+                  type="button"
+                  onClick={handleJumpToCurrentQuestion}
+                  disabled={funnelQuestions.length === 0}
+                  className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm transition-colors ${
+                    funnelQuestions.length === 0
+                      ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                      : 'bg-slate-900 text-white hover:bg-slate-800'
+                  }`}
+                >
+                  Jump to current
+                </button>
+              </div>
               <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex flex-wrap items-center gap-4 text-[11px] text-slate-700 font-semibold">
                   <div>
@@ -986,18 +1006,6 @@ const FunnelView: React.FC<Props> = ({
                     <div className="text-slate-600">{Math.round(funnelSummary.overallAccuracy * 100)}% accuracy</div>
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={handleJumpToCurrentQuestion}
-                  disabled={funnelQuestions.length === 0}
-                  className={`inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-colors ${
-                    funnelQuestions.length === 0
-                      ? 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'
-                      : 'border-white/60 bg-white/50 text-slate-700 hover:bg-white/70'
-                  }`}
-                >
-                  Jump to current
-                </button>
               </div>
               <div className="mt-3 h-2 w-full rounded-full bg-slate-100 overflow-hidden">
                 <div

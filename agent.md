@@ -37,6 +37,10 @@ Use it to:
 - (Add as we go)
 
 ## Journal (Newest First)
+### 2026-02-07 (Funnel Live Narrowing)
+- Funnel: moved “Jump to current” into the Progress header with higher-contrast styling.
+- Funnel: narrowing chips/dots are now driven by live mastery (`funnelState`) via `selectTargets`, so the artifact keeps evolving as users answer/rate without generating new questions.
+
 ### 2026-02-07 (Vite Build Chunk Warning)
 - Reduced initial bundle weight by lazy-loading large tabs (Deep Dive, Funnel, Cascade, Analytics, Cheat Sheet) via `React.lazy` + `Suspense` in `App.tsx`.
 - Raised Vite `build.chunkSizeWarningLimit` to avoid noisy warnings caused by intentionally large worker/assets (pdf.js worker).
